@@ -14,6 +14,10 @@
 # ---
 
 # # PSF leakage: object-wise estimation
+#
+# Demonstration notebook of shear_psf_leakage.run_object.LeakageObject() class.
+#
+# Martin Kilbinger <martin.kilbinger@cea.fr>
 
 # +
 import os
@@ -57,7 +61,7 @@ params_in["cols_ratio"] = "mag_snr"
 # ### Other parameters
 
 # +
-# PSF ellipticty column names
+# PSF ellipticity column names
 params_in['e1_PSF_col'] = 'e1_PSF'
 params_in['e2_PSF_col'] = 'e2_PSF'
 
@@ -90,26 +94,31 @@ for key in params_in:
 
 # ### Option 1. Run all at once
 
-obj.run()
+# obj.run()
 
 # ### Option 2. Execute individual steps
+# Run commands as given in LeakageObject.run()
 
 # +
 # Check parameter validity                                              
 obj.check_params()
 
+# Update parameters (here: strings to list)
+obj.update_params()
+
 # Prepare output directory
 obj.prepare_output()
 # -
 
+# Read input catalogue
 obj.read_data()
 
 if obj._params["PSF_leakage"]:
     # Object-by-object spin-consistent PSF leakage                  
     obj.PSF_leakage()
 
-if obj._params["PSF_leakage"]:
+if obj._params["obs_leakage"]:
     # Object-by-object spin-consistent PSF leakage                  
-    obj.PSF_leakage()
+    obj.obs_leakage()
 
 
