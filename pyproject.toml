@@ -20,7 +20,7 @@ jupytext = "^1.15.0"
 jupyter = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^6.2.5"
 pydocstyle = "^6.3.0"
 pytest-cov = "^4.1.0"
 black = "^23.7.0"
