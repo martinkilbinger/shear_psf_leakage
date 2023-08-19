@@ -23,20 +23,20 @@ from . import plots
 
 
 # MKDEBUG TODO: to cs_util (and see sp_validation/io.py)
-def open_stats_file(directory, file_name):                                      
-    """Open statistics file.                                                    
-                                                                                
-    Open output file for statistics                                             
-                                                                                
-    Parameters                                                                  
-    ----------                                                                  
-    directory : string                                                          
-        directory                                                               
-    file_name : string                                                          
-        file name                                                               
-    """                                                                         
-    stats_file = open('{}/{}'.format(directory, file_name), 'w')                
-                                                                                
+def open_stats_file(directory, file_name):
+    """Open statistics file.
+
+    Open output file for statistics
+
+    Parameters
+    ----------
+    directory : string
+        directory
+    file_name : string
+        file name
+    """
+    stats_file = open("{}/{}".format(directory, file_name), "w")
+
     return stats_file
 
 
@@ -55,106 +55,105 @@ def print_stats(msg, stats_file, verbose=False):
         print message to stdout if True
     """
     stats_file.write(msg)
-    stats_file.write('\n')
+    stats_file.write("\n")
     stats_file.flush()
 
     if verbose:
         print(msg)
 
 
-def open_fits_or_npy(path, hdu_no=1):                                           
-    """Open FITS OR NPY.                                                        
-                                                                                
-    Open FITS or numpy binary file.                                             
-                                                                                
-    Parameters                                                                  
-    ----------                                                                  
-    path : str                                                                  
-        path to input binary file                                               
-    hdu_no : int, optional                                                      
-        HDU number, default is 1                                                
+def open_fits_or_npy(path, hdu_no=1):
+    """Open FITS OR NPY.
+
+    Open FITS or numpy binary file.
+
+    Parameters
+    ----------
+    path : str
+        path to input binary file
+    hdu_no : int, optional
+        HDU number, default is 1
 
     Raises
     ------
     ValueError
         if file extension not valid, i.e. neither ``.fits`` nor ``.npy``
-                                                                                
-    Returns                                                                     
-    -------                                                                     
-    FITS.rec or numpy.ndarray                                                   
-        data                                                                    
-                                                                                
-    """                                                                         
-    filename, file_extension = os.path.splitext(path)                           
-    if file_extension in ['.fits', '.cat']:                                     
-        hdu_list = fits.open(path)                                              
-        data = hdu_list[hdu_no].data                                            
-    elif file_extension == '.npy':                                              
-        data = np.load(path)                                                    
-    else:                                                                       
-        raise ValueError(f'Invalid file extension \'{file_extension}\'')        
-                                                                                
+
+    Returns
+    -------
+    FITS.rec or numpy.ndarray
+        data
+
+    """
+    filename, file_extension = os.path.splitext(path)
+    if file_extension in [".fits", ".cat"]:
+        hdu_list = fits.open(path)
+        data = hdu_list[hdu_no].data
+    elif file_extension == ".npy":
+        data = np.load(path)
+    else:
+        raise ValueError(f"Invalid file extension '{file_extension}'")
+
     return data
 
 
-def cut_data(data, cut, verbose=False):                                         
-    """Cut Data.                                                                
-                                                                                
-    Cut data according to selection criteria list.                              
-                                                                                
-    Parameters                                                                  
-    ----------                                                                  
-    data : numpy,ndarray                                                        
-        input data                                                              
-    cut : str                                                                   
-        selection criteria expressions, white-space separated                   
-    verbose : bool, optional                                                    
-        verbose output if `True`, default is `False`                            
-                                                                                
-    Raises                                                                      
-    ------                                                                      
-    ValueError :                                                                
-        if cut expression is not valid                                          
-                                                                                
-    Returns                                                                     
-    -------                                                                     
-    numpy.ndarray                                                               
-        data after cuts                                                         
-                                                                                
-    """                                                                         
-    if cut is None:                                                             
-        if verbose:                                                             
-            print('No cuts applied to input galaxy catalogue')                  
-                                                                                
-        return data                                                             
-                                                                                
-    cut_list = cut.split(' ')                                                   
-                                                                                
-    for cut in cut_list:                                                        
-        res = re.match(r'(\w+)([<>=!]+)(\w+)', cut)                             
-        if res is None:                                                         
-            raise ValueError(f'cut \'{cut}\' has incorrect syntax')             
-        if len(res.groups()) != 3:                                              
-            raise ValueError(                                                   
-                f'cut criterium \'{cut}\' does not match syntax '               
-                '\'field rel val\''                                             
-            )                                                                   
-        field, rel, val = res.groups()                                          
-                                                                                
-        cond = 'data[\'{}\']{}{}'.format(field, rel, val)                       
-                                                                                
-        if verbose:                                                             
-            print(f'Applying cut \'{cond}\' to input galaxy catalogue')         
-                                                                                
-        data = data[np.where(eval(cond))]                                       
-                                                                                
-    if verbose:                                                                 
-        print(f'Using {len(data)} galaxies after cuts.')                        
-                                                                                
+def cut_data(data, cut, verbose=False):
+    """Cut Data.
+
+    Cut data according to selection criteria list.
+
+    Parameters
+    ----------
+    data : numpy,ndarray
+        input data
+    cut : str
+        selection criteria expressions, white-space separated
+    verbose : bool, optional
+        verbose output if `True`, default is `False`
+
+    Raises
+    ------
+    ValueError :
+        if cut expression is not valid
+
+    Returns
+    -------
+    numpy.ndarray
+        data after cuts
+
+    """
+    if cut is None:
+        if verbose:
+            print("No cuts applied to input galaxy catalogue")
+
+        return data
+
+    cut_list = cut.split(" ")
+
+    for cut in cut_list:
+        res = re.match(r"(\w+)([<>=!]+)(\w+)", cut)
+        if res is None:
+            raise ValueError(f"cut '{cut}' has incorrect syntax")
+        if len(res.groups()) != 3:
+            raise ValueError(
+                f"cut criterium '{cut}' does not match syntax " "'field rel val'"
+            )
+        field, rel, val = res.groups()
+
+        cond = "data['{}']{}{}".format(field, rel, val)
+
+        if verbose:
+            print(f"Applying cut '{cond}' to input galaxy catalogue")
+
+        data = data[np.where(eval(cond))]
+
+    if verbose:
+        print(f"Using {len(data)} galaxies after cuts.")
+
     return data
 
 
-def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
+def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
     """Func Bias 2D Full.
 
     Function of 2D bias model evaluated on full 2D grid.
@@ -188,7 +187,7 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     y2 = np.zeros(shape=(len1, len2))
 
     # Create 2D mesh for input x1, x2 values
-    v1, v2 = np.meshgrid(x1, x2, indexing='ij')
+    v1, v2 = np.meshgrid(x1, x2, indexing="ij")
 
     # Compute both components y1, y2 over the meash
     y1, y2 = func_bias_2d(params, v1, v2, order=order, mix=mix)
@@ -196,7 +195,7 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     return y1, y2
 
 
-def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
+def func_bias_2d(params, x1_data, x2_data, order="lin", mix=False):
     """Func Bias 2D.
 
     Function of 2D bias model.
@@ -225,36 +224,36 @@ def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
 
     """
     # Get affine parameters
-    a11 = params['a11'].value
-    a22 = params['a22'].value
-    c1 = params['c1'].value
-    c2 = params['c2'].value
+    a11 = params["a11"].value
+    a22 = params["a22"].value
+    c1 = params["c1"].value
+    c2 = params["c2"].value
 
     # Compute y-values for affine model
     y1_model = a11 * x1_data + c1
     y2_model = a22 * x2_data + c2
 
-    if order == 'quad':
+    if order == "quad":
         # Add quadratic part
-        q111 = params['q111'].value
-        q222 = params['q222'].value
-        y1_model += q111 * x1_data ** 2
-        y2_model += q222 * x2_data ** 2
+        q111 = params["q111"].value
+        q222 = params["q222"].value
+        y1_model += q111 * x1_data**2
+        y2_model += q222 * x2_data**2
 
     if mix:
         # Add linear mixing part
-        a12 = params['a12'].value
+        a12 = params["a12"].value
         y1_model += a12 * x2_data
         y2_model += a12 * x1_data
 
-        if order == 'quad':
+        if order == "quad":
             # Add quadratic mixing part
-            q112 = params['q112'].value
-            q122 = params['q122'].value
-            q212 = params['q212'].value
-            q211 = params['q211'].value
-            y1_model += q112 * x1_data * x2_data + q122 * x2_data ** 2
-            y2_model += q212 * x1_data * x2_data + q211 * x1_data ** 2
+            q112 = params["q112"].value
+            q122 = params["q122"].value
+            q212 = params["q212"].value
+            q211 = params["q211"].value
+            y1_model += q112 * x1_data * x2_data + q122 * x2_data**2
+            y2_model += q212 * x1_data * x2_data + q211 * x1_data**2
 
     return y1_model, y2_model
 
@@ -294,7 +293,7 @@ def jackknife_mean_std(
     keep_size_pc = 1 - remove_size
 
     if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
+        raise ValueError("remove size should be in [0, 1]")
 
     subsamp_size = int(samp_size * keep_size_pc)
 
@@ -304,7 +303,7 @@ def jackknife_mean_std(
     for i in range(n_realization):
         sub_data_ind = np.random.choice(all_ind, subsamp_size)
 
-        if (sum(data[sub_data_ind]) == 0):
+        if sum(data[sub_data_ind]) == 0:
             all_est.append(np.nan)
         else:
             all_est.append(
@@ -334,9 +333,9 @@ def func_bias_quad_1D(params, x_data):
         y-values of the model
 
     """
-    q = params['q'].value
-    m = params['m'].value
-    c = params['c'].value
+    q = params["q"].value
+    m = params["m"].value
+    c = params["c"].value
 
     y_model = q * x_data**2 + m * x_data + c
 
@@ -381,7 +380,7 @@ def quad_corr_quant(
     weights=None,
     n_bin=30,
     out_path=None,
-    title='',
+    title="",
     colors=None,
     stats_file=None,
     verbose=False,
@@ -446,26 +445,26 @@ def quad_corr_quant(
     n_y = len(y)
 
     if qlabel is None:
-        qlabel = np.full(n_y, 'q')
+        qlabel = np.full(n_y, "q")
     if mlabel is None:
-        mlabel = np.full(n_y, 'm')
+        mlabel = np.full(n_y, "m")
     if clabel is None:
-        clabel = np.full(n_y, 'c')
+        clabel = np.full(n_y, "c")
 
     if weights is None:
         weights = np.ones_like(y[0])
 
     if colors is None:
-        prop_cycle = plt.rcParams['axes.prop_cycle']
-        colors = prop_cycle.by_key()['color']
+        prop_cycle = plt.rcParams["axes.prop_cycle"]
+        colors = prop_cycle.by_key()["color"]
 
     size_all = len(y[0])
     for idx in range(1, n_y):
         if len(y[idx]) != size_all:
             raise IndexError
             (
-                f'Size {len(y[idx])} of input #{idx} is different from size '
-                + f'{size_all} of input #0'
+                f"Size {len(y[idx])} of input #{idx} is different from size "
+                + f"{size_all} of input #0"
             )
     size_bin = int(size_all / n_bin)
     diff_size = size_all - size_bin
@@ -489,7 +488,7 @@ def quad_corr_quant(
             bin_size_tmp = size_bin
             starter = diff_size
         ind = x_arg_sort[
-            starter + idx * bin_size_tmp: starter + (idx + 1) * bin_size_tmp
+            starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
         ]
 
         x_bin.append(np.mean(x[ind]))
@@ -518,25 +517,25 @@ def quad_corr_quant(
     plt.figure(figsize=(10, 6))
     for jdx in range(len(y)):
         params = Parameters()
-        params.add('q', value=0.01)
-        params.add('m', value=0.01)
-        params.add('c', value=0.01)
+        params.add("q", value=0.01)
+        params.add("m", value=0.01)
+        params.add("c", value=0.01)
 
         # Optimize parameters
         res = minimize(
             loss_bias_quad_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
         )
 
-        qslope.append(res.params['q'].value)
-        slope.append(res.params['m'].value)
+        qslope.append(res.params["q"].value)
+        slope.append(res.params["m"].value)
 
         ticks_names.append(f"{xlabel}_e_{jdx+1}")
-        q_dm = ufloat(res.params['q'].value, res.params['q'].stderr)
-        m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
-        c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
+        q_dm = ufloat(res.params["q"].value, res.params["q"].stderr)
+        m_dm = ufloat(res.params["m"].value, res.params["m"].stderr)
+        c_dc = ufloat(res.params["c"].value, res.params["c"].stderr)
 
-        q_err.append(res.params['q'].stderr)
-        m_err.append(res.params['m'].stderr)
+        q_err.append(res.params["q"].stderr)
+        m_err.append(res.params["m"].stderr)
 
         label = (
             rf"${qlabel[jdx]}={q_dm: .2ugL}, {mlabel[jdx]}={m_dm: .2ugL},"
@@ -555,12 +554,12 @@ def quad_corr_quant(
             y_bin[jdx],
             yerr=err_bin[jdx],
             c=colors[jdx],
-            fmt='.',
+            fmt=".",
         )
 
         if stats_file:
-            msg1 = '{}: {}={:.2ugP}'.format(xlabel, qlabel[jdx], q_dm)
-            msg2 = '{}: {}={:.2ugP}'.format(xlabel, mlabel[jdx], m_dm)
+            msg1 = "{}: {}={:.2ugP}".format(xlabel, qlabel[jdx], q_dm)
+            msg2 = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
             print_stats(msg1, stats_file, verbose=verbose)
             print_stats(msg2, stats_file, verbose=verbose)
 
@@ -575,7 +574,7 @@ def quad_corr_quant(
     plt.tight_layout()
 
     if out_path:
-        plt.savefig(out_path, bbox_inches='tight')
+        plt.savefig(out_path, bbox_inches="tight")
     plt.close()
 
     return slope, qslope, ticks_names, m_err, q_err
@@ -592,7 +591,7 @@ def quad_corr_n_quant(
     weights=None,
     n_bin=30,
     out_path_arr=None,
-    title='',
+    title="",
     colors=None,
     stats_file=None,
     verbose=False,
@@ -642,9 +641,7 @@ def quad_corr_n_quant(
 
     if out_path_arr is None:
         out_path_arr = [None] * len(x_arr)
-    for x, xlabel, out_path, seed_tmp in zip(
-        x_arr, xlabel_arr, out_path_arr, seeds
-    ):
+    for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
         slope, qslope, ticks_names, m_err, q_err = quad_corr_quant(
             x,
             y,
@@ -677,18 +674,18 @@ def quad_corr_n_quant(
         ticks_positions,
         slopes,
         yerr=merr,
-        color='peru',
-        label='m',
-        fmt='.',
+        color="peru",
+        label="m",
+        fmt=".",
     )
 
     plt.errorbar(
         ticks_positions,
         qslopes,
         yerr=qerr,
-        color='crimson',
-        label='q',
-        fmt='.',
+        color="crimson",
+        label="q",
+        fmt=".",
     )
 
     plt.xticks(
@@ -701,10 +698,10 @@ def quad_corr_n_quant(
     plt.yticks(fontsize=10)
     plt.axhline(
         y=0,
-        color='black',
-        linestyle='--',
+        color="black",
+        linestyle="--",
     )
-    plt.ylabel('q and m', fontsize=10)
+    plt.ylabel("q and m", fontsize=10)
     title = "(e1, e2) systematic tests (quadratic)"
     plt.title(title, fontsize=10)
     plt.legend()
@@ -731,8 +728,8 @@ def func_bias_lin_1d(params, x_data):
         y-values of the model
 
     """
-    m = params['m'].value
-    c = params['c'].value
+    m = params["m"].value
+    c = params["c"].value
 
     y_model = m * x_data + c
 
@@ -766,7 +763,7 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     return residuals
 
 
-def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
+def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
     """Func Bias 2D Full.
 
     Function of 2D bias model evaluated on full 2D grid.
@@ -802,7 +799,7 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     y2 = np.zeros(shape=(len1, len2))
 
     # Create 2D mesh for input x1, x2 values
-    v1, v2 = np.meshgrid(x1, x2, indexing='ij')
+    v1, v2 = np.meshgrid(x1, x2, indexing="ij")
 
     # Compute both components y1, y2 over the meash
     y1, y2 = func_bias_2d(params, v1, v2, order=order, mix=mix)
@@ -848,16 +845,10 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
     y2_data = y_data[1]
 
     if len(x1_data) != len(x2_data):
-        raise IndexError('Length of both data components has to be equal')
+        raise IndexError("Length of both data components has to be equal")
 
     # Get model 1D y1 and y2 components
-    y1_model, y2_model = func_bias_2d(
-        params,
-        x1_data,
-        x2_data,
-        order=order,
-        mix=mix
-    )
+    y1_model, y2_model = func_bias_2d(params, x1_data, x2_data, order=order, mix=mix)
 
     # Compute residuals between data and model
     res1 = (y1_model - y1_data) / err
@@ -883,16 +874,16 @@ def print_fit_report(res, file=None):
 
     """
     # chi^2
-    print(f'chi^2 = {res.chisqr}', file=file)
+    print(f"chi^2 = {res.chisqr}", file=file)
 
     # Reduced chi^2
-    print(f'reduced chi^2 = {res.redchi}', file=file)
+    print(f"reduced chi^2 = {res.redchi}", file=file)
 
     # Akaike Information Criterium
-    print(f'aic = {res.aic}', file=file)
+    print(f"aic = {res.aic}", file=file)
 
     # Bayesian Information Criterium
-    print(f'bic = {res.bic}', file=file)
+    print(f"bic = {res.bic}", file=file)
 
 
 def corr_2d(
@@ -901,10 +892,10 @@ def corr_2d(
     xlabel_arr,
     ylabel_arr,
     weights=None,
-    order='lin',
+    order="lin",
     mix=False,
     n_bin=30,
-    title='',
+    title="",
     colors=None,
     out_path=None,
     y_ground_truth=None,
@@ -956,33 +947,33 @@ def corr_2d(
 
     """
     if colors is None:
-        prop_cycle = plt.rcParams['axes.prop_cycle']
-        colors = prop_cycle.by_key()['color']
+        prop_cycle = plt.rcParams["axes.prop_cycle"]
+        colors = prop_cycle.by_key()["color"]
 
     if len(y) != 2 or len(x) != 2:
-        raise IndexError('Input data needs to have two components')
+        raise IndexError("Input data needs to have two components")
     if any(len(y[0]) != c for c in {len(y[1]), len(x[0]), len(x[1])}):
-        raise IndexError('Input data has inconsistent length')
+        raise IndexError("Input data has inconsistent length")
 
     # Initialise parameters of model to fit
     params = Parameters()
 
     # Affine parameters
-    for p_affine in ['a11', 'a22', 'c1', 'c2']:
+    for p_affine in ["a11", "a22", "c1", "c2"]:
         params.add(p_affine, value=0.0)
 
     if mix:
         # Linear mixing pararmeter
-        params.add('a12', value=0.0)
+        params.add("a12", value=0.0)
 
-    if order == 'quad':
+    if order == "quad":
         # Quadratic parameters
-        for p_quad in ['q111', 'q222']:
+        for p_quad in ["q111", "q222"]:
             params.add(p_quad, value=0.0)
 
         if mix:
             # Quadratic mixing parameters
-            for p_quad_mix in ['q112', 'q122', 'q212', 'q211']:
+            for p_quad_mix in ["q112", "q122", "q212", "q211"]:
                 params.add(p_quad_mix, value=0.0)
 
     # Mininise loss function
@@ -990,17 +981,9 @@ def corr_2d(
         err = 1 / np.sqrt(weights)
     else:
         err = np.ones_like(y[0])
-    res = minimize(
-        loss_bias_2d,
-        params,
-        args=(x, y, err, order, mix)
-    )
+    res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix))
     if stats_file:
-        print_stats(
-            f'2D fit order={order} mix={mix}:',
-            stats_file,
-            verbose=verbose
-        )
+        print_stats(f"2D fit order={order} mix={mix}:", stats_file, verbose=verbose)
         print_fit_report(res, file=stats_file)
     if verbose:
         print_fit_report(res)
@@ -1016,19 +999,15 @@ def corr_2d(
     # Output to stats file
     if stats_file:
         for p in res.params:
-            print_stats(f'{p}={p_dp[p]:.3ugP}', stats_file, verbose=verbose)
+            print_stats(f"{p}={p_dp[p]:.3ugP}", stats_file, verbose=verbose)
         for spin in s_ds:
-            print_stats(
-                f'{spin}={s_ds[spin]:.3ugP}',
-                stats_file,
-                verbose=verbose
-            )
+            print_stats(f"{spin}={s_ds[spin]:.3ugP}", stats_file, verbose=verbose)
 
     # Plots
 
     # Spin compoments
     if out_path:
-        out_path_spin = f'{out_path}_spin.png'
+        out_path_spin = f"{out_path}_spin.png"
     else:
         out_path_spin = None
 
@@ -1085,22 +1064,22 @@ def param_order2spin(p_dp, order, mix):
     """
     s_ds = {}
 
-    s_ds['x0'] = 0.5 * (p_dp['a11'] + p_dp['a22'])
+    s_ds["x0"] = 0.5 * (p_dp["a11"] + p_dp["a22"])
 
-    if order == 'quad' and mix:
-        s_ds['x2'] = 0.5 * (p_dp['q111'] + p_dp['q122'])
-        s_ds['y2'] = 0.5 * (p_dp['q211'] - p_dp['q222'])
-        s_ds['x-2'] = 0.25 * (p_dp['q111'] - p_dp['q122'] + p_dp['q212'])
-        s_ds['y-2'] = 0.25 * (p_dp['q211'] - p_dp['q222'] - p_dp['q112'])
+    if order == "quad" and mix:
+        s_ds["x2"] = 0.5 * (p_dp["q111"] + p_dp["q122"])
+        s_ds["y2"] = 0.5 * (p_dp["q211"] - p_dp["q222"])
+        s_ds["x-2"] = 0.25 * (p_dp["q111"] - p_dp["q122"] + p_dp["q212"])
+        s_ds["y-2"] = 0.25 * (p_dp["q211"] - p_dp["q222"] - p_dp["q112"])
 
-    s_ds['x4'] = 0.5 * (p_dp['a11'] - p_dp['a22'])
+    s_ds["x4"] = 0.5 * (p_dp["a11"] - p_dp["a22"])
 
     if mix:
-        s_ds['y4'] = p_dp['a12']
+        s_ds["y4"] = p_dp["a12"]
 
-    if order == 'quad' and mix:
-        s_ds['x6'] = 0.25 * (p_dp['q111'] - p_dp['q122'] - p_dp['q212'])
-        s_ds['y6'] = 0.25 * (p_dp['q211'] - p_dp['q222'] + p_dp['q112'])
+    if order == "quad" and mix:
+        s_ds["x6"] = 0.25 * (p_dp["q111"] - p_dp["q122"] - p_dp["q212"])
+        s_ds["y6"] = 0.25 * (p_dp["q211"] - p_dp["q222"] + p_dp["q112"])
 
     return s_ds
 
@@ -1115,7 +1094,7 @@ def affine_corr(
     weights=None,
     n_bin=30,
     out_path=None,
-    title='',
+    title="",
     colors=None,
     stats_file=None,
     verbose=False,
@@ -1176,24 +1155,24 @@ def affine_corr(
     n_y = len(y)
 
     if mlabel is None:
-        mlabel = np.full(n_y, r'\alpha')
+        mlabel = np.full(n_y, r"\alpha")
     if clabel is None:
-        clabel = np.full(n_y, 'c')
+        clabel = np.full(n_y, "c")
 
     if weights is None:
         weights = np.ones_like(y[0])
 
     if colors is None:
-        prop_cycle = plt.rcParams['axes.prop_cycle']
-        colors = prop_cycle.by_key()['color']
+        prop_cycle = plt.rcParams["axes.prop_cycle"]
+        colors = prop_cycle.by_key()["color"]
 
     size_all = len(y[0])
     for idx in range(1, n_y):
         if len(y[idx]) != size_all:
             raise IndexError
             (
-                f'Size {len(y[idx])} of input #{idx} is different from size '
-                + f'{size_all} of input #0'
+                f"Size {len(y[idx])} of input #{idx} is different from size "
+                + f"{size_all} of input #0"
             )
     size_bin = int(size_all / n_bin)
     diff_size = size_all - size_bin
@@ -1217,7 +1196,7 @@ def affine_corr(
             bin_size_tmp = size_bin
             starter = diff_size
         ind = x_arg_sort[
-            starter + idx * bin_size_tmp: starter + (idx + 1) * bin_size_tmp
+            starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
         ]
 
         x_bin.append(np.mean(x[ind]))
@@ -1246,36 +1225,23 @@ def affine_corr(
 
     for jdx in range(len(y)):
         params = Parameters()
-        params.add('m', value=0.01)
-        params.add('c', value=0.01)
-        res = minimize(
-            loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
-        )
+        params.add("m", value=0.01)
+        params.add("c", value=0.01)
+        res = minimize(loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights)))
 
-        m_arr.append(res.params['m'].value)
+        m_arr.append(res.params["m"].value)
         # MKDEBUG float required?
-        m_err_arr.append(float(res.params['m'].stderr))
+        m_err_arr.append(float(res.params["m"].stderr))
         tick_name_arr.append(f"{xlabel}_e{jdx+1}")
 
-        m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
-        c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
-        label = rf'${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$'
-        plt.plot(
-            x_bin,
-            func_bias_lin_1d(res.params, x_bin),
-            c=colors[jdx],
-            label=label
-        )
-        plt.errorbar(
-            x_bin,
-            y_bin[jdx],
-            yerr=err_bin[jdx],
-            c=colors[jdx],
-            fmt='.'
-        )
+        m_dm = ufloat(res.params["m"].value, res.params["m"].stderr)
+        c_dc = ufloat(res.params["c"].value, res.params["c"].stderr)
+        label = rf"${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$"
+        plt.plot(x_bin, func_bias_lin_1d(res.params, x_bin), c=colors[jdx], label=label)
+        plt.errorbar(x_bin, y_bin[jdx], yerr=err_bin[jdx], c=colors[jdx], fmt=".")
 
         if stats_file:
-            msg = '{}: {}={:.2ugP}'.format(xlabel, mlabel[jdx], m_dm)
+            msg = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
             print_stats(msg, stats_file, verbose=verbose)
 
     # Finalise plots
@@ -1289,7 +1255,7 @@ def affine_corr(
     plt.tight_layout()
 
     if out_path:
-        plt.savefig(out_path, bbox_inches='tight')
+        plt.savefig(out_path, bbox_inches="tight")
 
     plt.close()
 
@@ -1306,7 +1272,7 @@ def affine_corr_n(
     weights=None,
     n_bin=30,
     out_path_arr=None,
-    title='',
+    title="",
     colors=None,
     stats_file=None,
     verbose=False,
@@ -1351,9 +1317,7 @@ def affine_corr_n(
 
     if out_path_arr is None:
         out_path_arr = [None] * len(x_arr)
-    for x, xlabel, out_path, seed_tmp in zip(
-        x_arr, xlabel_arr, out_path_arr, seeds
-    ):
+    for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
         m_arr, m_err_arr, tick_name_arr = affine_corr(
             x,
             y,
@@ -1374,13 +1338,7 @@ def affine_corr_n(
     # Summary plot
     plt.figure()
     ticks_positions = np.arange(1, len(m_arr) + 1, 1)
-    plt.errorbar(
-        ticks_positions,
-        m_arr,
-        yerr=m_err_arr,
-        color='peru',
-        fmt='.'
-    )
+    plt.errorbar(ticks_positions, m_arr, yerr=m_err_arr, color="peru", fmt=".")
     plt.xticks(
         ticks_positions,
         tick_name_arr,
@@ -1390,10 +1348,10 @@ def affine_corr_n(
     plt.yticks(fontsize=10)
     plt.axhline(
         y=0,
-        color='black',
-        linestyle='--',
+        color="black",
+        linestyle="--",
     )
-    plt.ylabel('m')
+    plt.ylabel("m")
     title = "(e1, e2) systematic tests"
     plt.title(title, fontsize=10)
     plt_xmin, plt_xmax = plt.xlim()

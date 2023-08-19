@@ -26,6 +26,7 @@ import matplotlib.pylab as plt
 from cs_util import canfar
 
 import shear_psf_leakage.run_object as run
+
 # -
 
 # ## Set input parameters
@@ -36,10 +37,10 @@ params_in = {}
 
 # +
 # Input galaxy shear catalogue
-params_in['input_path_shear'] = "unions_shapepipe_extended_2022_W3_v1.0.3.fits"
+params_in["input_path_shear"] = "unions_shapepipe_extended_2022_W3_v1.0.3.fits"
 
 # Output directory
-params_in['output_dir'] = "leakage_object"
+params_in["output_dir"] = "leakage_object"
 # -
 
 # ### Job control
@@ -62,11 +63,11 @@ params_in["cols_ratio"] = "mag_snr"
 
 # +
 # PSF ellipticity column names
-params_in['e1_PSF_col'] = 'e1_PSF'
-params_in['e2_PSF_col'] = 'e2_PSF'
+params_in["e1_PSF_col"] = "e1_PSF"
+params_in["e2_PSF_col"] = "e2_PSF"
 
 # Set verbose output
-params_in['verbose'] = True
+params_in["verbose"] = True
 # -
 
 # ### Retrieve test catalogue from VOspace if not yet downloade
@@ -74,8 +75,8 @@ params_in['verbose'] = True
 vos_dir = "vos:cfis/XXXX/"
 canfar.download(
     f"{vos_dir}/{params_in['input_path_shear']}",
-    params_in['input_path_shear'],
-    verbose=params_in["verbose"]
+    params_in["input_path_shear"],
+    verbose=params_in["verbose"],
 )
 
 # ## Compute leakage
@@ -100,7 +101,7 @@ for key in params_in:
 # Run commands as given in LeakageObject.run()
 
 # +
-# Check parameter validity                                              
+# Check parameter validity
 obj.check_params()
 
 # Update parameters (here: strings to list)
@@ -114,11 +115,9 @@ obj.prepare_output()
 obj.read_data()
 
 if obj._params["PSF_leakage"]:
-    # Object-by-object spin-consistent PSF leakage                  
+    # Object-by-object spin-consistent PSF leakage
     obj.PSF_leakage()
 
 if obj._params["obs_leakage"]:
-    # Object-by-object spin-consistent PSF leakage                  
+    # Object-by-object spin-consistent PSF leakage
     obj.obs_leakage()
-
-

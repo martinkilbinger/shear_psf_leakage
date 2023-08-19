@@ -37,8 +37,8 @@ def func_bias_lin_1d(params, x_data):
         y-values of the model
 
     """
-    m = params['m'].value
-    c = params['c'].value
+    m = params["m"].value
+    c = params["c"].value
 
     y_model = m * x_data + c
 
@@ -72,7 +72,7 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     return residuals
 
 
-def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
+def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
     """Func Bias 2D Full.
 
     Function of 2D bias model evaluated on full 2D grid.
@@ -106,7 +106,7 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     y2 = np.zeros(shape=(len1, len2))
 
     # Create 2D mesh for input x1, x2 values
-    v1, v2 = np.meshgrid(x1, x2, indexing='ij')
+    v1, v2 = np.meshgrid(x1, x2, indexing="ij")
 
     # Compute both components y1, y2 over the meash
     y1, y2 = util.func_bias_2d(params, v1, v2, order=order, mix=mix)
@@ -152,15 +152,11 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
     y2_data = y_data[1]
 
     if len(x1_data) != len(x2_data):
-        raise IndexError('Length of both data components has to be equal')
+        raise IndexError("Length of both data components has to be equal")
 
     # Get model 1D y1 and y2 components
     y1_model, y2_model = util.func_bias_2d(
-        params,
-        x1_data,
-        x2_data,
-        order=order,
-        mix=mix
+        params, x1_data, x2_data, order=order, mix=mix
     )
 
     # Compute residuals between data and model
@@ -187,16 +183,16 @@ def print_fit_report(res, file=None):
 
     """
     # chi^2
-    print(f'chi^2 = {res.chisqr}', file=file)
+    print(f"chi^2 = {res.chisqr}", file=file)
 
     # Reduced chi^2
-    print(f'reduced chi^2 = {res.redchi}', file=file)
+    print(f"reduced chi^2 = {res.redchi}", file=file)
 
     # Akaike Information Criterium
-    print(f'aic = {res.aic}', file=file)
+    print(f"aic = {res.aic}", file=file)
 
     # Bayesian Information Criterium
-    print(f'bic = {res.bic}', file=file)
+    print(f"bic = {res.bic}", file=file)
 
 
 def param_order2spin(p_dp, order, mix):
@@ -221,22 +217,22 @@ def param_order2spin(p_dp, order, mix):
     """
     s_ds = {}
 
-    s_ds['x0'] = 0.5 * (p_dp['a11'] + p_dp['a22'])
+    s_ds["x0"] = 0.5 * (p_dp["a11"] + p_dp["a22"])
 
-    if order == 'quad' and mix:
-        s_ds['x2'] = 0.5 * (p_dp['q111'] + p_dp['q122'])
-        s_ds['y2'] = 0.5 * (p_dp['q211'] - p_dp['q222'])
-        s_ds['x-2'] = 0.25 * (p_dp['q111'] - p_dp['q122'] + p_dp['q212'])
-        s_ds['y-2'] = 0.25 * (p_dp['q211'] - p_dp['q222'] - p_dp['q112'])
+    if order == "quad" and mix:
+        s_ds["x2"] = 0.5 * (p_dp["q111"] + p_dp["q122"])
+        s_ds["y2"] = 0.5 * (p_dp["q211"] - p_dp["q222"])
+        s_ds["x-2"] = 0.25 * (p_dp["q111"] - p_dp["q122"] + p_dp["q212"])
+        s_ds["y-2"] = 0.25 * (p_dp["q211"] - p_dp["q222"] - p_dp["q112"])
 
-    s_ds['x4'] = 0.5 * (p_dp['a11'] - p_dp['a22'])
+    s_ds["x4"] = 0.5 * (p_dp["a11"] - p_dp["a22"])
 
     if mix:
-        s_ds['y4'] = p_dp['a12']
+        s_ds["y4"] = p_dp["a12"]
 
-    if order == 'quad' and mix:
-        s_ds['x6'] = 0.25 * (p_dp['q111'] - p_dp['q122'] - p_dp['q212'])
-        s_ds['y6'] = 0.25 * (p_dp['q211'] - p_dp['q222'] + p_dp['q112'])
+    if order == "quad" and mix:
+        s_ds["x6"] = 0.25 * (p_dp["q111"] - p_dp["q122"] - p_dp["q212"])
+        s_ds["y6"] = 0.25 * (p_dp["q211"] - p_dp["q222"] + p_dp["q112"])
 
     return s_ds
 
@@ -261,7 +257,7 @@ def xi_star_gal_tc(
     Cross-correlation between galaxy and star ellipticities.
 
     """
-    unit = 'degrees'
+    unit = "degrees"
 
     cat_gal = treecorr.Catalog(
         ra=ra_gal,
@@ -270,7 +266,7 @@ def xi_star_gal_tc(
         g2=e2_gal,
         w=w_gal,
         ra_units=unit,
-        dec_units=unit
+        dec_units=unit,
     )
     cat_star = treecorr.Catalog(
         ra=ra_star,
@@ -279,16 +275,16 @@ def xi_star_gal_tc(
         g2=e2_star,
         w=w_star,
         ra_units=unit,
-        dec_units=unit
+        dec_units=unit,
     )
 
     TreeCorrConfig = {
-        'ra_units': unit,
-        'dec_units': unit,
-        'sep_units': 'arcminutes',
-        'min_sep': theta_min_amin,
-        'max_sep': theta_max_amin,
-        'nbins': n_theta
+        "ra_units": unit,
+        "dec_units": unit,
+        "sep_units": "arcminutes",
+        "min_sep": theta_min_amin,
+        "max_sep": theta_max_amin,
+        "nbins": n_theta,
     }
     ng = treecorr.GGCorrelation(TreeCorrConfig)
 
@@ -353,7 +349,7 @@ def correlation_12_22(
         e2_2,
         theta_min_amin=theta_min_amin,
         theta_max_amin=theta_max_amin,
-        n_theta=n_theta
+        n_theta=n_theta,
     )
     r_corr_22 = xi_star_gal_tc(
         ra_2,
@@ -367,7 +363,7 @@ def correlation_12_22(
         e2_2,
         theta_min_amin=theta_min_amin,
         theta_max_amin=theta_max_amin,
-        n_theta=n_theta
+        n_theta=n_theta,
     )
 
     return r_corr_12, r_corr_22
@@ -400,16 +396,12 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     )
     complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
-    alpha_leak = (
-        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
-        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
+    alpha_leak = (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) / (
+        r_corr_pp.xip - np.abs(complex_psf) ** 2
     )
-    sig_alpha_leak = (
-        np.abs(alpha_leak)
-        * np.sqrt(
-            (np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip) ** 2
-            + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip) ** 2
-        )
+    sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
+        (np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip) ** 2
+        + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip) ** 2
     )
 
     return alpha_leak, sig_alpha_leak
