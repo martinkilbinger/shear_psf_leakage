@@ -11,6 +11,8 @@
 
 """
 
+import os
+
 import numpy as np
 import matplotlib.pylab as plt
 from lmfit import minimize, Parameters
@@ -58,6 +60,98 @@ def print_stats(msg, stats_file, verbose=False):
 
     if verbose:
         print(msg)
+
+
+def open_fits_or_npy(path, hdu_no=1):                                           
+    """Open FITS OR NPY.                                                        
+                                                                                
+    Open FITS or numpy binary file.                                             
+                                                                                
+    Parameters                                                                  
+    ----------                                                                  
+    path : str                                                                  
+        path to input binary file                                               
+    hdu_no : int, optional                                                      
+        HDU number, default is 1                                                
+
+    Raises
+    ------
+    ValueError
+        if file extension not valid, i.e. neither ``.fits`` nor ``.npy``
+                                                                                
+    Returns                                                                     
+    -------                                                                     
+    FITS.rec or numpy.ndarray                                                   
+        data                                                                    
+                                                                                
+    """                                                                         
+    filename, file_extension = os.path.splitext(path)                           
+    if file_extension in ['.fits', '.cat']:                                     
+        hdu_list = fits.open(path)                                              
+        data = hdu_list[hdu_no].data                                            
+    elif file_extension == '.npy':                                              
+        data = np.load(path)                                                    
+    else:                                                                       
+        raise ValueError(f'Invalid file extension \'{file_extension}\'')        
+                                                                                
+    return data
+
+
+def cut_data(data, cut, verbose=False):                                         
+    """Cut Data.                                                                
+                                                                                
+    Cut data according to selection criteria list.                              
+                                                                                
+    Parameters                                                                  
+    ----------                                                                  
+    data : numpy,ndarray                                                        
+        input data                                                              
+    cut : str                                                                   
+        selection criteria expressions, white-space separated                   
+    verbose : bool, optional                                                    
+        verbose output if `True`, default is `False`                            
+                                                                                
+    Raises                                                                      
+    ------                                                                      
+    ValueError :                                                                
+        if cut expression is not valid                                          
+                                                                                
+    Returns                                                                     
+    -------                                                                     
+    numpy.ndarray                                                               
+        data after cuts                                                         
+                                                                                
+    """                                                                         
+    if cut is None:                                                             
+        if verbose:                                                             
+            print('No cuts applied to input galaxy catalogue')                  
+                                                                                
+        return data                                                             
+                                                                                
+    cut_list = cut.split(' ')                                                   
+                                                                                
+    for cut in cut_list:                                                        
+        res = re.match(r'(\w+)([<>=!]+)(\w+)', cut)                             
+        if res is None:                                                         
+            raise ValueError(f'cut \'{cut}\' has incorrect syntax')             
+        if len(res.groups()) != 3:                                              
+            raise ValueError(                                                   
+                f'cut criterium \'{cut}\' does not match syntax '               
+                '\'field rel val\''                                             
+            )                                                                   
+        field, rel, val = res.groups()                                          
+                                                                                
+        cond = 'data[\'{}\']{}{}'.format(field, rel, val)                       
+                                                                                
+        if verbose:                                                             
+            print(f'Applying cut \'{cond}\' to input galaxy catalogue')         
+                                                                                
+        data = data[np.where(eval(cond))]                                       
+                                                                                
+    if verbose:                                                                 
+        print(f'Using {len(data)} galaxies after cuts.')                        
+                                                                                
+    return data
 
 
 def func_bias_2d_full(params, x1, x2, order='lin', mix=False):

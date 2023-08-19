@@ -21,7 +21,7 @@ import matplotlib.pylab as plt
 
 from cs_util import canfar
 
-from shear_psf_leakage.run_object import run_leakage_object
+import shear_psf_leakage.run_object as run
 # -
 
 # ## Set input parameters
@@ -77,7 +77,7 @@ canfar.download(
 # ## Compute leakage
 
 # Create leakage instance
-obj = run_object.LeakageObject()
+obj = run.LeakageObject()
 
 # Set instance parameters, copy from above
 for key in params_in:

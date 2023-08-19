@@ -20,9 +20,8 @@
 import os
 import matplotlib.pylab as plt
 
-from sp_validation import cat
-from sp_validation import io
-from sp_validation import run
+improt shear_psf_leakage.run_scale as run
+from shear_psf_leakage.leakage import *
 # -
 
 # ## Set input parameters
@@ -90,7 +89,7 @@ params = obj._params
 # Prepare output
 if not os.path.exists(params["output_dir"]):
     os.mkdir(params["output_dir"])
-obj._stats_file = io.open_stats_file(params["output_dir"], "stats_file_leakage.txt") 
+obj._stats_file = open_stats_file(params["output_dir"], "stats_file_leakage.txt") 
 
 # #### Prepare input
 
@@ -98,10 +97,10 @@ obj._stats_file = io.open_stats_file(params["output_dir"], "stats_file_leakage.t
 dat_shear = obj.read_shear_cat()
 
 # Apply cuts to galaxy catalogue if required                            
-dat_shear = cat.cut_data(dat_shear, params["cut"], params["verbose"])
+dat_shear = cut_data(dat_shear, params["cut"], params["verbose"])
 
 # Read star catalogue                                                   
-dat_PSF = io.open_fits_or_npy(                                          
+dat_PSF = open_fits_or_npy(                                          
     params["input_path_PSF"],                                           
     hdu_no=params["hdu_psf"],                                           
 ) 
