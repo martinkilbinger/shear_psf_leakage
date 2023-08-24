@@ -1,6 +1,6 @@
 """RUN.
 
-This module sets up a run of a sp_validation script, for now leakage_scale.
+This module sets up a run of the scale-dependent leakage calculations.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
 
@@ -360,11 +360,11 @@ class LeakageScale:
         # Check parameter validity
         self.check_params()
 
-        # Read input data
-        self.read_data()
-
         # Prepare output
         self.prepare_output()
+
+        # Read input data
+        self.read_data()
 
         # compute auto- and cross-correlation functions including alpha
         self.compute_corr_gp_pp_alpha()
