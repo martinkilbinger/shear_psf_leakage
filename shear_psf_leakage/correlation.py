@@ -396,12 +396,13 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     )
     complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
-    alpha_leak = (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) / (
-        r_corr_pp.xip - np.abs(complex_psf) ** 2
+    alpha_leak = (
+        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
+        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
-        (np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip) ** 2
-        + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip) ** 2
+        r_corr_gp.varxip / r_corr_gp.xip ** 2
+        + r_corr_pp.varxip / r_corr_pp.xip ** 2
     )
 
     return alpha_leak, sig_alpha_leak
