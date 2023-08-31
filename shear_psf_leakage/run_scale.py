@@ -12,6 +12,7 @@ from optparse import OptionParser
 import numpy as np
 import pandas as pd
 from astropy.io import fits
+from astropy import units
 
 from cs_util import logging
 from cs_util import plots
@@ -85,8 +86,9 @@ def get_theo_xi(theta, dndz_path):
 
     """
     z, nz, _ = cs_cat.read_dndz(dndz_path)
-    cosmo = cs_cos.get_cosmo_planck()
-    xi_p, xi_m = cs_cos.xipm_theo(theta, cosmo, z, nz)
+    cosmo = cs_cos.get_cosmo_default()
+    theta_deg = theta * units.deg
+    xi_p, xi_m = cs_cos.xipm_theo(theta_deg, cosmo, z, nz)
 
     return xi_p, xi_m
 
@@ -114,7 +116,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     cols = [theta, alpha_leak, sig_alpha_leak]
     names = ["# theta[arcmin]", "alpha", "sig_alpha"]
     fname = f"{output_dir}/alpha_leakage_{sh}.txt"
-    write_ascii_table_file(cols, names, fname)
+    cs_cat.write_ascii_table_file(cols, names, fname)
 
 
 def save_xi_sys(
@@ -173,7 +175,7 @@ def save_xi_sys(
         "xi_-_theo",
     ]
     fname = f"{output_dir}/xi_sys_{sh}.txt"
-    write_ascii_table_file(cols, names, fname)
+    cs_cat.write_ascii_table_file(cols, names, fname)
 
 
 class LeakageScale:
@@ -854,7 +856,7 @@ class LeakageScale:
         self.compute_xi_sys()
 
         # Compute theoretical model for the 2PCF
-        xi_p_theo, xi_m_theo = get_theo_xi_planck(
+        xi_p_theo, xi_m_theo = get_theo_xi(
             self.r_corr_gp.meanr, self._params["dndz_path"]
         )
 
