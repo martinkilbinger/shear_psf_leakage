@@ -633,34 +633,16 @@ class LeakageScale:
         Compute galaxy - PSF systematics correlation function.
 
         """
-        # MKDEBUG TODO: check equation for error computation
+        C_sys_p = self.r_corr_gp.xip ** 2 / self.r_corr_pp.xip
+        C_sys_m = self.r_corr_gp.xim ** 2 / self.r_corr_pp.xim
 
-        C_sys_p = self.r_corr_gp.xip**2 / self.r_corr_pp.xip
-        C_sys_m = self.r_corr_gp.xim**2 / self.r_corr_pp.xim
+        term_gp = (2 / self.r_corr_gp.xip) ** 2 * self.r_corr_gp.varxip
+        term_pp = (1 / self.r_corr_pp.xip) ** 2 * self.r_corr_pp.varxip 
+        C_sys_std_p = np.abs(C_sys_p) * np.sqrt( term_gp + term_pp)
 
-        C_sys_std_p = np.abs(C_sys_p) * np.sqrt(
-            (
-                (
-                    (2 * self.r_corr_gp.xip**2 * np.sqrt(self.r_corr_gp.varxip))
-                    / self.r_corr_gp.xip
-                )
-                / self.r_corr_gp.xip**2
-            )
-            ** 2
-            + (np.sqrt(self.r_corr_pp.varxip) / self.r_corr_pp.xip) ** 2
-        )
-
-        C_sys_std_m = np.abs(C_sys_m) * np.sqrt(
-            (
-                (
-                    (2 * self.r_corr_gp.xim**2 * np.sqrt(self.r_corr_gp.varxim))
-                    / self.r_corr_gp.xim
-                )
-                / self.r_corr_gp.xim**2
-            )
-            ** 2
-            + (np.sqrt(self.r_corr_pp.varxim) / self.r_corr_pp.xim) ** 2
-        )
+        term_gp = (2 / self.r_corr_gp.xim) ** 2 * self.r_corr_gp.varxim
+        term_pp = (1 / self.r_corr_pp.xim) ** 2 * self.r_corr_pp.varxim 
+        C_sys_std_m = np.abs(C_sys_m) * np.sqrt( term_gp + term_pp)
 
         self.C_sys_p = C_sys_p
         self.C_sys_m = C_sys_m
