@@ -9,23 +9,26 @@ authors = [
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9,<3.13"
+cmake = "^3.27.2"
+swig = "^4.1.1"
+scipy = "^1.11.2"
+pyyaml = "^6.0.1"
 cs-util = "^0.0.5"
 lmfit = "^1.2.2"
-TreeCorr = "^4.3.3"
+treecorr = "^4.3.3"
 uncertainties = "^3.1.7"
 matplotlib = "^3.7.2"
-stats = "^0.1.2-alpha.0"
-jupytext = "^1.15.0"
+stats = "^0.1.2a0"
 jupyter = "^1.0.0"
-pandas = "^2.0.3"
+jupytext = "^1.15.1"
+pandas = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
 pydocstyle = "^6.3.0"
 pytest-cov = "^4.1.0"
 black = "^23.7.0"
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

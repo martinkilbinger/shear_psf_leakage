@@ -12,7 +12,7 @@ def main(argv=None):
 
     """
     if argv is None:
-        argv = sys.argv[1:]
+        argv = sys.argv[0:]
     run_leakage_scale(*argv)
 
     return 0

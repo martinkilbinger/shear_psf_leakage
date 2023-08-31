@@ -207,6 +207,7 @@ class LeakageScale:
             self._params[key] = getattr(options, key)
 
         # del options ?
+        del options
 
         # Save calling command
         logging.log_command(args)
