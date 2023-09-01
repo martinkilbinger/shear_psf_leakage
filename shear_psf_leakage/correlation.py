@@ -12,11 +12,9 @@
 
 import numpy as np
 
-
-from sp_validation.plot_style import *
-from sp_validation import util
-
 import treecorr
+
+from . import leakage
 
 
 def func_bias_lin_1d(params, x_data):
@@ -109,7 +107,7 @@ def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
     v1, v2 = np.meshgrid(x1, x2, indexing="ij")
 
     # Compute both components y1, y2 over the meash
-    y1, y2 = util.func_bias_2d(params, v1, v2, order=order, mix=mix)
+    y1, y2 = corr.func_bias_2d(params, v1, v2, order=order, mix=mix)
 
     return y1, y2
 
@@ -155,8 +153,12 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
         raise IndexError("Length of both data components has to be equal")
 
     # Get model 1D y1 and y2 components
-    y1_model, y2_model = util.func_bias_2d(
-        params, x1_data, x2_data, order=order, mix=mix
+    y1_model, y2_model = leakage.func_bias_2d(
+        params,
+        x1_data,
+        x2_data,
+        order=order,
+        mix=mix,
     )
 
     # Compute residuals between data and model
@@ -396,13 +398,11 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     )
     complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
-    alpha_leak = (
-        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
-        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
+    alpha_leak = (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) / (
+        r_corr_pp.xip - np.abs(complex_psf) ** 2
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
-        r_corr_gp.varxip / r_corr_gp.xip ** 2
-        + r_corr_pp.varxip / r_corr_pp.xip ** 2
+        r_corr_gp.varxip / r_corr_gp.xip**2 + r_corr_pp.varxip / r_corr_pp.xip**2
     )
 
     return alpha_leak, sig_alpha_leak

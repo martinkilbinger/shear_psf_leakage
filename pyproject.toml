@@ -10,7 +10,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-cs-util = "^0.0.4"
+cs-util = "^0.0.5"
 lmfit = "^1.2.2"
 TreeCorr = "^4.3.3"
 uncertainties = "^3.1.7"
