@@ -81,14 +81,27 @@ def parse_options(p_def, short_options, types, help_strings):
 def get_theo_xi(theta, dndz_path):
     """Get Theo Xi.
 
-    Return theoretical prediction of the shear 2PCF using a Planck
+    Computes theoretical prediction of the shear 2PCF using a Planck
     best-fit cosmology.
+
+    Parameters
+    ----------
+    theta : list
+        angular scales, type is astropy.units.Quantity
+    dndz_path : str
+        input file path for redshift distribution
+
+    Returns
+    -------
+    numpy.ndarray                                                               
+        xi_+                                                                    
+    numpy.ndarray                                                               
+        xi_-
 
     """
     z, nz, _ = cs_cat.read_dndz(dndz_path)
     cosmo = cs_cos.get_cosmo_default()
-    theta_deg = theta * units.deg
-    xi_p, xi_m = cs_cos.xipm_theo(theta_deg, cosmo, z, nz)
+    xi_p, xi_m = cs_cos.xipm_theo(theta, cosmo, z, nz)
 
     return xi_p, xi_m
 
@@ -864,8 +877,11 @@ class LeakageScale:
         self.compute_xi_sys()
 
         # Compute theoretical model for the 2PCF
+
+        # Treecorr output scales are in arc minutes
+        theta = self.r_corr_gp.meanr * units.arcmin
         xi_p_theo, xi_m_theo = get_theo_xi(
-            self.r_corr_gp.meanr, self._params["dndz_path"]
+            theta, self._params["dndz_path"]
         )
 
         # Plot
