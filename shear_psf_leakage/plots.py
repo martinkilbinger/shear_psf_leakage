@@ -36,7 +36,9 @@ def equi_num_bins(values, n_bin):
 
     """
     xeqn = np.interp(
-        np.linspace(0, len(values), n_bin + 1), np.arange(len(values)), np.sort(values)
+        np.linspace(0, len(values), n_bin + 1),
+        np.arange(len(values)),
+        np.sort(values),
     )
 
     return xeqn
@@ -147,8 +149,16 @@ def set_labels(p_dp, order, mix):
     """
     # Affine parameters
     label = {
-        "A": (f'$a_{{11}}={p_dp["a11"]: .2ugL}$' + "\n" + f'$c_1={p_dp["c1"]: .2ugL}$'),
-        "D": (f'$a_{{22}}={p_dp["a22"]: .2ugL}$' + "\n" + f'$c_2={p_dp["c2"]: .2ugL}$'),
+        "A": (
+            f'$a_{{11}}={p_dp["a11"]: .2ugL}$'
+            + "\n"
+            + f'$c_1={p_dp["c1"]: .2ugL}$'
+        ),
+        "D": (
+            f'$a_{{22}}={p_dp["a22"]: .2ugL}$'
+            + "\n"
+            + f'$c_2={p_dp["c2"]: .2ugL}$'
+        ),
     }
     if order == "quad":
         # Add quadratic parameters
@@ -316,7 +326,9 @@ def plot_corr_2d(
         colors = prop_cycle.by_key()["color"]
 
     # Compute binned data for pretty plotting.
-    x_bin, y_bin, err_bin = compute_bins_func_2d(x, y, n_bin, mix, weights=weights)
+    x_bin, y_bin, err_bin = compute_bins_func_2d(
+        x, y, n_bin, mix, weights=weights
+    )
 
     # Initialise mosaic figure
     figure_mosaic = """
