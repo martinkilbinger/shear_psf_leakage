@@ -12,6 +12,7 @@ from optparse import OptionParser
 import numpy as np
 import pandas as pd
 from astropy.io import fits
+from astropy import units
 
 from cs_util import logging
 from cs_util import plots
@@ -80,12 +81,26 @@ def parse_options(p_def, short_options, types, help_strings):
 def get_theo_xi(theta, dndz_path):
     """Get Theo Xi.
 
-    Return theoretical prediction of the shear 2PCF using a Planck
+    Computes theoretical prediction of the shear 2PCF using a Planck
     best-fit cosmology.
+
+    Parameters
+    ----------
+    theta : list
+        angular scales, type is astropy.units.Quantity
+    dndz_path : str
+        input file path for redshift distribution
+
+    Returns
+    -------
+    numpy.ndarray                                                               
+        xi_+                                                                    
+    numpy.ndarray                                                               
+        xi_-
 
     """
     z, nz, _ = cs_cat.read_dndz(dndz_path)
-    cosmo = cs_cos.get_cosmo_planck()
+    cosmo = cs_cos.get_cosmo_default()
     xi_p, xi_m = cs_cos.xipm_theo(theta, cosmo, z, nz)
 
     return xi_p, xi_m
@@ -114,7 +129,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     cols = [theta, alpha_leak, sig_alpha_leak]
     names = ["# theta[arcmin]", "alpha", "sig_alpha"]
     fname = f"{output_dir}/alpha_leakage_{sh}.txt"
-    write_ascii_table_file(cols, names, fname)
+    cs_cat.write_ascii_table_file(cols, names, fname)
 
 
 def save_xi_sys(
@@ -173,7 +188,7 @@ def save_xi_sys(
         "xi_-_theo",
     ]
     fname = f"{output_dir}/xi_sys_{sh}.txt"
-    write_ascii_table_file(cols, names, fname)
+    cs_cat.write_ascii_table_file(cols, names, fname)
 
 
 class LeakageScale:
@@ -267,16 +282,23 @@ class LeakageScale:
             "ra_star_col": (
                 "right ascension column name in star catalogue, default={}"
             ),
-            "dec_star_col": ("declination column name in star catalogue, default={}"),
-            "e1_PSF_star_col": ("e1 PSF column name in star catalogue, default={}"),
-            "e2_PSF_star_col": ("e2 PSF column name in star catalogue, default={}"),
+            "dec_star_col": (
+                "declination column name in star catalogue, default={}"
+            ),
+            "e1_PSF_star_col": (
+                "e1 PSF column name in star catalogue, default={}"
+            ),
+            "e2_PSF_star_col": (
+                "e2 PSF column name in star catalogue, default={}"
+            ),
             "dndz_path": (
                 "path to galaxy redshift distribution file, for xi_sys ratio"
             ),
             "output_dir": "output_directory, default={}",
             "sh": "shape measurement method, default={}",
             "close_pair_tolerance": (
-                "tolerance angle for close objects in star catalogue," + " default={}"
+                "tolerance angle for close objects in star catalogue,"
+                + " default={}"
             ),
             "close_pair_mode": (
                 "mode for close objects in star catalogue, allowed are"
@@ -512,7 +534,9 @@ class LeakageScale:
                 )
 
                 for col in dat_PSF.dtype.names:
-                    dat_PSF_proc[col] = np.append(dat_PSF_proc[col], dat_PSF_mult[col])
+                    dat_PSF_proc[col] = np.append(
+                        dat_PSF_proc[col], dat_PSF_mult[col]
+                    )
             elif mode == "remove":
                 n_rem = len(idx_mult)
                 leakage.print_stats(
@@ -605,7 +629,9 @@ class LeakageScale:
         )
 
         # Check consistency of angular scales
-        if any(np.abs(r_corr_gp.meanr - r_corr_pp.meanr) / r_corr_gp.meanr > 0.1):
+        if any(
+            np.abs(r_corr_gp.meanr - r_corr_pp.meanr) / r_corr_gp.meanr > 0.1
+        ):
             print("Warning: angular scales not consistent")
 
         # Set instance variables
@@ -634,34 +660,16 @@ class LeakageScale:
         Compute galaxy - PSF systematics correlation function.
 
         """
-        # MKDEBUG TODO: check equation for error computation
-
         C_sys_p = self.r_corr_gp.xip**2 / self.r_corr_pp.xip
         C_sys_m = self.r_corr_gp.xim**2 / self.r_corr_pp.xim
 
-        C_sys_std_p = np.abs(C_sys_p) * np.sqrt(
-            (
-                (
-                    (2 * self.r_corr_gp.xip**2 * np.sqrt(self.r_corr_gp.varxip))
-                    / self.r_corr_gp.xip
-                )
-                / self.r_corr_gp.xip**2
-            )
-            ** 2
-            + (np.sqrt(self.r_corr_pp.varxip) / self.r_corr_pp.xip) ** 2
-        )
+        term_gp = (2 / self.r_corr_gp.xip) ** 2 * self.r_corr_gp.varxip
+        term_pp = (1 / self.r_corr_pp.xip) ** 2 * self.r_corr_pp.varxip
+        C_sys_std_p = np.abs(C_sys_p) * np.sqrt(term_gp + term_pp)
 
-        C_sys_std_m = np.abs(C_sys_m) * np.sqrt(
-            (
-                (
-                    (2 * self.r_corr_gp.xim**2 * np.sqrt(self.r_corr_gp.varxim))
-                    / self.r_corr_gp.xim
-                )
-                / self.r_corr_gp.xim**2
-            )
-            ** 2
-            + (np.sqrt(self.r_corr_pp.varxim) / self.r_corr_pp.xim) ** 2
-        )
+        term_gp = (2 / self.r_corr_gp.xim) ** 2 * self.r_corr_gp.varxim
+        term_pp = (1 / self.r_corr_pp.xim) ** 2 * self.r_corr_pp.varxim
+        C_sys_std_m = np.abs(C_sys_m) * np.sqrt(term_gp + term_pp)
 
         self.C_sys_p = C_sys_p
         self.C_sys_m = C_sys_m
@@ -683,7 +691,8 @@ class LeakageScale:
         ylabel = r"$\alpha(\theta)$"
         title = self._params["sh"]
         out_path = (
-            f"{self._params['output_dir']}" + f"/alpha_leakage_{self._params['sh']}.png"
+            f"{self._params['output_dir']}"
+            + f"/alpha_leakage_{self._params['sh']}.png"
         )
         xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
         ylim = self._params["leakage_alpha_ylim"]
@@ -721,10 +730,14 @@ class LeakageScale:
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
             msg = f"{self._params['sh']}: <|xi_sys_{symb}|> = {mean}"
-            leakage.print_stats(msg, self._stats_file, verbose=self._params["verbose"])
+            leakage.print_stats(
+                msg, self._stats_file, verbose=self._params["verbose"]
+            )
 
         ylim = self._params["leakage_xi_sys_ylim"]
-        out_path = f"{self._params['output_dir']}/xi_sys_{self._params['sh']}.pdf"
+        out_path = (
+            f"{self._params['output_dir']}/xi_sys_{self._params['sh']}.pdf"
+        )
         plots.plot_data_1d(
             theta,
             xi,
@@ -739,7 +752,9 @@ class LeakageScale:
         )
 
         ylim = self._params["leakage_xi_sys_log_ylim"]
-        out_path = f"{self._params['output_dir']}/xi_sys_log_{self._params['sh']}.pdf"
+        out_path = (
+            f"{self._params['output_dir']}/xi_sys_log_{self._params['sh']}.pdf"
+        )
         plots.plot_data_1d(
             theta,
             xi,
@@ -779,17 +794,25 @@ class LeakageScale:
 
         theta = [self.r_corr_gp.meanr] * 2
         xi = [self.C_sys_p / xi_p_theo, self.C_sys_m / xi_m_theo]
-        yerr = [self.C_sys_std_p / xi_p_theo, self.C_sys_std_m / xi_m_theo]
+        yerr = [
+            self.C_sys_std_p / np.abs(xi_p_theo),
+            self.C_sys_std_m / np.abs(xi_m_theo),
+        ]
 
         comp_arr = [0, 1]
         symb_arr = ["+", "-"]
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
-            msg = f"{self._params['sh']}: <|xi_sys_{symb}| / xi_{symb}> = {mean}"
-            leakage.print_stats(msg, self._stats_file, verbose=self._params["verbose"])
+            msg = (
+                f"{self._params['sh']}: <|xi_sys_{symb}| / xi_{symb}> = {mean}"
+            )
+            leakage.print_stats(
+                msg, self._stats_file, verbose=self._params["verbose"]
+            )
 
         out_path = (
-            f"{self._params['output_dir']}" + f"/xi_sys_{self._params['sh']}_ratio.pdf"
+            f"{self._params['output_dir']}"
+            + f"/xi_sys_{self._params['sh']}_ratio.pdf"
         )
 
         ylim = [0, 0.5]
@@ -854,8 +877,11 @@ class LeakageScale:
         self.compute_xi_sys()
 
         # Compute theoretical model for the 2PCF
-        xi_p_theo, xi_m_theo = get_theo_xi_planck(
-            self.r_corr_gp.meanr, self._params["dndz_path"]
+
+        # Treecorr output scales are in arc minutes
+        theta = self.r_corr_gp.meanr * units.arcmin
+        xi_p_theo, xi_m_theo = get_theo_xi(
+            theta, self._params["dndz_path"]
         )
 
         # Plot
