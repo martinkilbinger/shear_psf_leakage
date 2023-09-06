@@ -395,6 +395,12 @@ class LeakageScale:
         # alpha leakage
         self.do_alpha()
 
+        # compute auto- and cross-correlation functions including alpha
+        self.compute_corr_gp_pp_alpha_matrix()
+
+        # alpha matrix leakage
+        self.do_alpha_matrix()
+
         # xi_sys function
         self.do_xi_sys()
 
@@ -595,25 +601,56 @@ class LeakageScale:
 
         return dat_PSF_proc
 
+    def get_cat_fields(self, cat_type):
+        """Get Cat Fields.
+
+        Get catalogue fields for correlation.
+
+        Parameters
+        ----------
+        cat_type : str
+            catalogue type, allowed are "gal" and "star"
+
+        Return
+        list
+            ra
+        list
+            dec
+        list
+            e1
+        list
+            e2
+        list
+            weights; `None` if cat_type is "star"
+
+        """
+        if cat_type == "gal":
+            ra = self.dat_shear["RA"]
+            dec = self.dat_shear["Dec"]
+            e1 = self.dat_shear[self._params["e1_col"]]
+            e2 = self.dat_shear[self._params["e2_col"]]
+            weights = self.dat_shear["w"]
+        elif cat_type == "star":
+            ra = self.dat_PSF[self._params["ra_star_col"]]
+            dec = self.dat_PSF[self._params["dec_star_col"]]
+            e1 = self.dat_PSF[self._params["e1_PSF_star_col"]]
+            e2 = self.dat_PSF[self._params["e2_PSF_star_col"]]
+            weights = None
+
+        return ra, dec, e1, e2, weights
+
+
     def compute_corr_gp_pp_alpha(self):
         """Compute Corr GP PP Alpha.
 
         Compute and plot scale-dependent PSF leakage functions.
 
         """
-        ra = self.dat_shear["RA"]
-        dec = self.dat_shear["Dec"]
-        e1_gal = self.dat_shear[self._params["e1_col"]]
-        e2_gal = self.dat_shear[self._params["e2_col"]]
-        weights = self.dat_shear["w"]
-
-        ra_star = self.dat_PSF[self._params["ra_star_col"]]
-        dec_star = self.dat_PSF[self._params["dec_star_col"]]
-        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
-        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+        ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        ra_star, dec_star, e1_star, e2_star, _ = self.get_cat_fields("star")
 
         # Correlation functions
-        r_corr_gp, r_corr_pp = corr.correlation_12_22(
+        r_corr_gp, r_corr_pp = corr.correlation_ab_bb(
             ra,
             dec,
             e1_gal,
@@ -629,14 +666,57 @@ class LeakageScale:
         )
 
         # Check consistency of angular scales
-        if any(
-            np.abs(r_corr_gp.meanr - r_corr_pp.meanr) / r_corr_gp.meanr > 0.1
-        ):
-            print("Warning: angular scales not consistent")
+        corr.check_consistency_scales(r_corr_gp, r_corr_pp)
 
         # Set instance variables
         self.r_corr_gp = r_corr_gp
         self.r_corr_pp = r_corr_pp
+
+    def compute_corr_gp_pp_alpha_matrix(self):
+        """Compute Corr GP PP Alpha Matrix.
+
+        Compute and plot scale-dependent PSF leakage matrix.
+
+        """
+        ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        ra_star, dec_star, e1_star, e2_star, _ = self.get_cat_fields("star")
+
+        # Correlation functions
+        r_corr_gp_m, r_corr_pp_m = corr.correlation_ab_bb_matrix(
+            ra,
+            dec,
+            e1_gal,
+            e2_gal,
+            weights,
+            ra_star,
+            dec_star,
+            e1_star,
+            e2_star,
+            theta_min_amin=self._params["theta_min_amin"],
+            theta_max_amin=self._params["theta_max_amin"],
+            n_theta=self._params["n_theta"],
+        )
+
+        # Check consistency of angular scales
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                corr.check_consistency_scales(
+                    r_corr_gp_m[idx][jdx],
+                    r_corr_pp_m[idx][jdx],
+                )
+                if idx != 0 and jdx != 0:
+                    corr.check_consistency_scales(
+                        r_corr_gp_m[0][0],
+                        r_corr_gp_m[idx][jdx],
+                    )
+                    corr.check_consistency_scales(
+                        r_corr_pp_m[0][0],
+                        r_corr_pp_m[idx][jdx],
+                    )
+
+        self._r_corr_gp_m = r_corr_gp_m
+        self._r_corr_pp_m = r_corr_pp_m
+                
 
     def compute_alpha_mean(self):
         """Compute Alpha Mean.
@@ -865,6 +945,30 @@ class LeakageScale:
             self.sig_alpha_leak,
             self._params["sh"],
             self._params["output_dir"],
+        )
+
+    def do_alpha_matrix(self):
+        """Do Alpha Matrix.
+
+        Compute, plot, and save alpha leakage matrix.
+        """
+        # Get input catalogues for averages
+        e1_gal = self.dat_shear[self._params["e1_col"]]
+        e2_gal = self.dat_shear[self._params["e2_col"]]
+        weights = self.dat_shear["w"]
+
+        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
+        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+
+        # Compute alpha leakage function
+        self.alpha_leak_m = corr.alpha_matrix(
+            self._r_corr_gp_m,
+            self._r_corr_pp_m,
+            e1_gal,
+            e2_gal,
+            weights,
+            e1_star,
+            e2_star,
         )
 
     def do_xi_sys(self):
