@@ -548,9 +548,16 @@ def alpha_matrix(
             xi_gp_m[idx][jdx] = r_corr_gp_m[idx][jdx].xip
             xi_pp_m[idx][jdx] = r_corr_pp_m[idx][jdx].xip
 
-    xi_pp_m_inv = np.linalg.inv(xi_pp_m)
+    xi_pp_m_inv = np.zeros((2, 2, n_theta))
+    for ndx in range(n_theta):
+        xi_pp_m_inv[:, :, ndx] = np.linalg.inv(xi_pp_m[:, :, ndx])
 
-    alpha_leak_m = np.dot(xi_gp_m - e_g * e_p.transpose(), xi_pp_m_inv)
+    alpha_leak_m = np.zeros((2, 2, n_theta))
+    for ndx in range(n_theta):
+        alpha_leak_m[:, :, ndx] = np.dot(
+            xi_gp_m[:, :, ndx] - e_g * e_p.transpose(),
+            xi_pp_m_inv[:, :, ndx]
+        )
 
     return alpha_leak_m
 
