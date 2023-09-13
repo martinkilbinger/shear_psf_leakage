@@ -12,10 +12,7 @@
 
 import numpy as np
 
-
-from shear_psf_leakage import leakage
-
-import treecorr
+from . import leakage
 
 
 def func_bias_lin_1d(params, x_data):
@@ -71,6 +68,7 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     return residuals
 
 
+
 def loss_bias_2d(params, x_data, y_data, err, order, mix):
     """Loss Bias 2D.
 
@@ -113,7 +111,11 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
 
     # Get model 1D y1 and y2 components
     y1_model, y2_model = leakage.func_bias_2d(
-        params, x1_data, x2_data, order=order, mix=mix
+        params,
+        x1_data,
+        x2_data,
+        order=order,
+        mix=mix,
     )
 
     # Compute residuals between data and model
@@ -353,13 +355,11 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     )
     complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
-    alpha_leak = (
-        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
-        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
+    alpha_leak = (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) / (
+        r_corr_pp.xip - np.abs(complex_psf) ** 2
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
-        r_corr_gp.varxip / r_corr_gp.xip ** 2
-        + r_corr_pp.varxip / r_corr_pp.xip ** 2
+        r_corr_gp.varxip / r_corr_gp.xip**2 + r_corr_pp.varxip / r_corr_pp.xip**2
     )
 
     return alpha_leak, sig_alpha_leak
