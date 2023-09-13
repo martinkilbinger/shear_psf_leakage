@@ -11,6 +11,8 @@ def main(argv=None):
     Main program.
 
     """
+    if argv is None:
+        argv = sys.argv[0:]
     run_leakage_scale(*argv)
 
     return 0

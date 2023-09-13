@@ -13,8 +13,7 @@
 import numpy as np
 
 
-from sp_validation.plot_style import *
-from sp_validation import util
+from shear_psf_leakage import leakage
 
 import treecorr
 
@@ -72,48 +71,6 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     return residuals
 
 
-def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
-    """Func Bias 2D Full.
-
-    Function of 2D bias model evaluated on full 2D grid.
-
-    Parameters
-    ----------
-    params : lmfit.Parameters
-        fit parameters
-    x1 : list of float
-        first component of x-values
-    x2 : list of float
-        second component of x-values
-    order : str, optional
-        order of fit, default is 'lin'
-    mix : bool, optional
-        mixing between components, default is `False`
-
-    Returns
-    -------
-    2D np.array of float
-        first component the 2D model y1(x1, x2) on the (x1, x2)-grid
-    2D np.array of float
-        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid
-
-    """
-    len1 = len(x1)
-    len2 = len(x2)
-
-    # Initialise both components y1, y2 as 2D arrays
-    y1 = np.zeros(shape=(len1, len2))
-    y2 = np.zeros(shape=(len1, len2))
-
-    # Create 2D mesh for input x1, x2 values
-    v1, v2 = np.meshgrid(x1, x2, indexing="ij")
-
-    # Compute both components y1, y2 over the meash
-    y1, y2 = util.func_bias_2d(params, v1, v2, order=order, mix=mix)
-
-    return y1, y2
-
-
 def loss_bias_2d(params, x_data, y_data, err, order, mix):
     """Loss Bias 2D.
 
@@ -155,7 +112,7 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
         raise IndexError("Length of both data components has to be equal")
 
     # Get model 1D y1 and y2 components
-    y1_model, y2_model = util.func_bias_2d(
+    y1_model, y2_model = leakage.func_bias_2d(
         params, x1_data, x2_data, order=order, mix=mix
     )
 
