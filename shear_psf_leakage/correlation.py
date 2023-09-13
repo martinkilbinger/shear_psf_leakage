@@ -11,6 +11,7 @@
 """
 
 import numpy as np
+import treecorr
 
 from . import leakage
 
