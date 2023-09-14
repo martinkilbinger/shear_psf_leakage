@@ -792,13 +792,13 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "cs-util"
-version = "0.0.5"
+version = "0.0.6"
 description = ""
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "cs_util-0.0.5-py3-none-any.whl", hash = "sha256:de5b6c42b1b86d5b2ce33f0879ace7da073ab3789c461da7993f6a1a4993e856"},
-    {file = "cs_util-0.0.5.tar.gz", hash = "sha256:716baa29e7ea74f44471ef56be631df9eebdc439ed781c9901cfe9e8f172e164"},
+    {file = "cs_util-0.0.6-py3-none-any.whl", hash = "sha256:d0c2059822cc3fbfa373e5e8491121c3e7dd6e3abe3008a98aefc3b8cf5ad420"},
+    {file = "cs_util-0.0.6.tar.gz", hash = "sha256:8b2a29a27fe689097bf9f53c8ed6be60bf8fcca72c24fab311cead0024ca12dd"},
 ]
 
 [package.dependencies]
@@ -3484,18 +3484,18 @@ files = [
 
 [[package]]
 name = "traitlets"
-version = "5.9.0"
+version = "5.10.0"
 description = "Traitlets Python configuration system"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "traitlets-5.9.0-py3-none-any.whl", hash = "sha256:9e6ec080259b9a5940c797d58b613b5e31441c2257b87c2e795c5228ae80d2d8"},
-    {file = "traitlets-5.9.0.tar.gz", hash = "sha256:f6cde21a9c68cf756af02035f72d5a723bf607e862e7be33ece505abf4a3bad9"},
+    {file = "traitlets-5.10.0-py3-none-any.whl", hash = "sha256:417745a96681fbb358e723d5346a547521f36e9bd0d50ba7ab368fff5d67aa54"},
+    {file = "traitlets-5.10.0.tar.gz", hash = "sha256:f584ea209240466e66e91f3c81aa7d004ba4cf794990b0c775938a1544217cd1"},
 ]
 
 [package.extras]
 docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
-test = ["argcomplete (>=2.0)", "pre-commit", "pytest", "pytest-mock"]
+test = ["argcomplete (>=3.0.3)", "mypy (>=1.5.1)", "pre-commit", "pytest (>=7.0,<7.5)", "pytest-mock", "pytest-mypy-testing"]
 
 [[package]]
 name = "treecorr"
@@ -3759,4 +3759,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "ea87128c585c0c076c2c4147f4ba6a6a5766e958988c8afce67bda7fff0c6daf"
+content-hash = "38e0c04e3af9bcecb8fc3391324602b3008fba1860a91e43a313dd0c072de928"
