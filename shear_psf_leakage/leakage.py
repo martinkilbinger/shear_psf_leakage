@@ -17,6 +17,7 @@ import numpy as np
 import matplotlib.pylab as plt
 from lmfit import minimize, Parameters
 from uncertainties import ufloat
+from astropy.io import fits
 
 from .plot_style import *
 from . import plots
@@ -163,9 +164,9 @@ def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
     params : lmfit.Parameters
         fit parameters
     x1 : list
-        first component of x-values
+        first component of x-values, float
     x2 : list
-        second component of x-values
+        second component of x-values, float
     order : str, optional
         order of fit, default is 'lin'
     mix : bool, optional
@@ -174,9 +175,11 @@ def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
     Returns
     -------
     np.array
-        first component the 2D model y1(x1, x2) on the (x1, x2)-grid
+        first component the 2D model y1(x1, x2) on the (x1, x2)-grid;
+        2D array of float
     np.array
-        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid
+        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid;
+        2D array of float
 
     """
     len1 = len(x1)
