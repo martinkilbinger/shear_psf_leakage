@@ -609,10 +609,15 @@ class LeakageScale:
         return ra, dec, e1, e2, weights
 
 
-    def compute_corr_gp_pp_alpha(self):
+    def compute_corr_gp_pp_alpha(self, output_base_path=None):
         """Compute Corr GP PP Alpha.
 
         Compute and plot scale-dependent PSF leakage functions.
+
+        Parameters
+        ----------
+        out_path : str, optional                                                    
+                output file path; default is ``None`` (no file written)
 
         """
         ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
@@ -632,6 +637,7 @@ class LeakageScale:
             theta_min_amin=self._params["theta_min_amin"],
             theta_max_amin=self._params["theta_max_amin"],
             n_theta=self._params["n_theta"],
+            output_base_path=output_base_path,
         )
 
         # Check consistency of angular scales
@@ -1035,6 +1041,13 @@ class LeakageScale:
             self._params["output_dir"],
         )
 
+    def save_r_corr_ab(self):
+        """Save R Corr AB.
+
+        Save correlation function.
+
+        """
+
     def save_alpha(self):
         """Save Alpha.
 
@@ -1059,7 +1072,6 @@ class LeakageScale:
                 cols.append(self.alpha_leak_m[idx][jdx])
                 names.append(rf"alpha_{{{idx+1}{jdx+1}}}")
         fname = f"{self._params['output_dir']}/alpha_leakage_matrix.txt"
-        print("MKDEBUG", cols, names, "MKDEBUG")
         cs_cat.write_ascii_table_file(cols, names, fname)
 
 

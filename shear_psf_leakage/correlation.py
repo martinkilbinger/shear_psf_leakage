@@ -208,6 +208,7 @@ def xi_a_b(
     theta_min_amin=2,
     theta_max_amin=200,
     n_theta=20,
+    out_path=None,
 ):
     """Xi A B.
 
@@ -241,6 +242,8 @@ def xi_a_b(
         minimum angular scale in arc minutes; default is 200
     n_theta : int, optional
         number of angular scales; default is 20
+    out_path : str, optional
+        output file path; default is ``None`` (no file written)
 
     Returns
     -------
@@ -281,6 +284,9 @@ def xi_a_b(
 
     gg.process(cat_a, cat_b)
 
+    if output_path:
+        gg.write(output_path)
+
     return gg
 
 
@@ -297,6 +303,7 @@ def correlation_ab_bb(
     theta_min_amin=2,
     theta_max_amin=200,
     n_theta=20,
+    output_base_path=None,
 ):
     """Correlation ab bb.
 
@@ -321,6 +328,8 @@ def correlation_ab_bb(
         maximum angular scale in arcmin, default is 200
     n_theta : int, optional
         number of angular scales, default is 20
+    out_base_path : str, optional
+        output file base path; default is ``None`` (no files written)
 
     Returns
     -------
@@ -328,6 +337,13 @@ def correlation_ab_bb(
         correlations ab, and bb
 
     """
+    if output_base_path:
+        output_path_ab = f"{output_base_path}_a_b.txt"
+        output_path_aa = f"{output_base_path}_a_a.txt"
+    else:
+        output_path_ab = None
+        output_path_aa = None
+
     r_corr_ab = xi_a_b(
         ra_a,
         dec_a,
@@ -341,6 +357,7 @@ def correlation_ab_bb(
         theta_min_amin=theta_min_amin,
         theta_max_amin=theta_max_amin,
         n_theta=n_theta,
+        output_path=output_path_ab,
     )
     r_corr_bb = xi_a_b(
         ra_b,
@@ -355,6 +372,7 @@ def correlation_ab_bb(
         theta_min_amin=theta_min_amin,
         theta_max_amin=theta_max_amin,
         n_theta=n_theta,
+        output_path=output_path_aa,
     )
 
     return r_corr_ab, r_corr_bb
