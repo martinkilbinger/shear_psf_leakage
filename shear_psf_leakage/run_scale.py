@@ -947,10 +947,15 @@ class LeakageScale:
             labels=labels,
         )
 
-    def do_alpha(self):
+    def do_alpha(self, fast=False):
         """Do Alpha.
 
         Compute, plot, and save alpha leakage function.
+
+        fast: bool, optional                                                        
+            omits (time-consuming) calculation of mean ellipticity and neglects     
+            those small terms if True; default is ``False``
+
         """
         # Get input catalogues for averages
         e1_gal = self.dat_shear[self._params["e1_col"]]
@@ -969,6 +974,7 @@ class LeakageScale:
             weights,
             e1_star,
             e2_star,
+            fast=fast,
         )
         self.compute_alpha_mean()
 

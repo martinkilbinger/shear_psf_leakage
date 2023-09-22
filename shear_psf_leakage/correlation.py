@@ -211,7 +211,7 @@ def xi_a_b(
     theta_min_amin=2,
     theta_max_amin=200,
     n_theta=20,
-    out_path=None,
+    output_path=None,
 ):
     """Xi A B.
 
@@ -245,7 +245,7 @@ def xi_a_b(
         minimum angular scale in arc minutes; default is 200
     n_theta : int, optional
         number of angular scales; default is 20
-    out_path : str, optional
+    output_path : str, optional
         output file path; default is ``None`` (no file written)
 
     Returns
@@ -485,7 +485,7 @@ def correlation_ab_bb_matrix(
     return xi_ab, xi_bb
 
 
-def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
+def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star, fast=False):
     """Alpha.
 
     Compute scale-dependent PSF leakage alpha.
@@ -500,6 +500,9 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
         galaxy weights
     e1_star, e2_star : array of float
         galaxy ellipticities
+    fast: bool, optional
+        omits (time-consuming) calculation of mean ellipticity and neglects
+        those small terms if True; default is ``False``
 
     Returns
     -------
@@ -507,15 +510,22 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
         mean and std of alpha
 
     """
-    complex_gal = (
-        np.average(e1_gal, weights=weights_gal)
-        + np.average(e2_gal, weights=weights_gal) * 1j
-    )
-    complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
+    if not fast:
+        complex_gal = (
+            np.average(e1_gal, weights=weights_gal)
+            + np.average(e2_gal, weights=weights_gal) * 1j
+        )
+        complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
+        mean_in_numer = np.real(np.conj(complex_gal) * complex_psf)
+        mean_in_denom = np.abs(complex_psf) ** 2
+    else:
+        mean_in_numer = 0
+        mean_in_denom =  0
 
     alpha_leak = (
-        r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)
-    ) / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
+        (r_corr_gp.xip - mean_in_numer)
+        / (r_corr_pp.xip - mean_in_denom)
+    )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
         r_corr_gp.varxip / r_corr_gp.xip**2
         + r_corr_pp.varxip / r_corr_pp.xip**2
