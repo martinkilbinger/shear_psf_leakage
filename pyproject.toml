@@ -4,7 +4,7 @@ version = "0.1.5"
 description = "PSF leakage for shear catalogue data"
 authors = [
 	"Martin Kilbinger <martin.kilbinger@cea.fr>",
-	"Clara Bonini <clara.bonini.t.bd>",
+	"Clara Bonini <clara.bonini@universite-paris-saclay.fr>",
 ]
 readme = "README.md"
 
