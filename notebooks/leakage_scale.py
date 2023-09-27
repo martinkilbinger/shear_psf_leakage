@@ -269,8 +269,8 @@ plt.semilogx(obj.r_corr_gp.meanr, t_sym + t_asym, '.', label=r"$\alpha$ sym + as
 
 plt.semilogx(obj.r_corr_gp.meanr, obj.alpha_leak * 2, ':', label=r"$2 \alpha$")
 
-plt.legend()
-plt.ylim(-0.25, 0.25)
+plt.legend(bbox_to_anchor=(1.2, 0.5))
+_ = plt.ylim(-0.25, 0.25)
 # -
 
 
