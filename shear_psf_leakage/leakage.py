@@ -35,6 +35,7 @@ def open_stats_file(directory, file_name):
         directory
     file_name : string
         file name
+
     """
     stats_file = open("{}/{}".format(directory, file_name), "w")
 
@@ -63,7 +64,7 @@ def print_stats(msg, stats_file, verbose=False):
         print(msg)
 
 
-def open_fits_or_npy(path, hdu_no=1):
+def open_fits_or_npy(path, hdu_no=1, verbose=False):
     """Open FITS OR NPY.
 
     Open FITS or numpy binary file.
@@ -74,6 +75,8 @@ def open_fits_or_npy(path, hdu_no=1):
         path to input binary file
     hdu_no : int, optional
         HDU number, default is 1
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
 
     Raises
     ------
@@ -94,6 +97,9 @@ def open_fits_or_npy(path, hdu_no=1):
         data = np.load(path)
     else:
         raise ValueError(f"Invalid file extension '{file_extension}'")
+
+    if verbose:
+        print(f"{len(data)} objects found in {file_extension} file")
 
     return data
 

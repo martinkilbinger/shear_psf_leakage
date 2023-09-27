@@ -223,7 +223,7 @@ class LeakageScale:
             "theta_max_amin": 300,
             "n_theta": 20,
             "leakage_alpha_ylim": [-0.03, 0.1],
-            "leakage_xi_sys_ylim": [-4e5, 5e5],
+            "leakage_xi_sys_ylim": [-4e-5, 5e-5],
             "leakage_xi_sys_log_ylim": [2e-13, 5e-5],
         }
 
@@ -731,14 +731,18 @@ class LeakageScale:
         self.C_sys_std_p = C_sys_std_p
         self.C_sys_std_m = C_sys_std_m
 
-    def plot_alpha_leakage(self):
+    def plot_alpha_leakage(self, close_fig=True):
         """Plot Alpha Leakage.
 
         Plot scale-dependent leakage function alpha(theta)
 
-        """
-        plot_dir_leakage = self._params["output_dir"]
+        Parameters
+        -----------
+        close_fig : bool, optional                                                  
+            closes figure if ``True``; set this parameter to ``False`` for
+            notebook display; default is ``True``
 
+        """
         theta = [self.r_corr_gp.meanr]
         alpha_theta = [self.alpha_leak]
         yerr = [self.sig_alpha_leak]
@@ -762,6 +766,7 @@ class LeakageScale:
             xlog=True,
             xlim=xlim,
             ylim=ylim,
+            close_fig=close_fig,
         )
 
     def plot_alpha_leakage_matrix(self):
@@ -770,8 +775,6 @@ class LeakageScale:
         Plot scale-dependent leakage matrix alpha.
 
         """
-        plot_dir_leakage = self._params["output_dir"]
-
         theta = []
         alpha_theta = []
         labels = []
@@ -825,11 +828,16 @@ class LeakageScale:
             labels=labels,
         )
 
-
-    def plot_xi_sys(self):
+    def plot_xi_sys(self, close_fig=True):
         """Plot Xi Sys.
 
         Plot galaxy - PSF systematics correlation function.
+
+        Parameters
+        -----------
+        close_fig : bool, optional                                                  
+            closes figure if ``True``; set this parameter to ``False`` for
+            notebook display; default is ``True``
 
         """
         labels = ["$\\xi^{\\rm sys}_+$", "$\\xi^{\\rm sys}_-$"]
@@ -866,6 +874,7 @@ class LeakageScale:
             xlog=True,
             ylim=ylim,
             labels=labels,
+            close_fig=close_fig,
         )
 
         ylim = self._params["leakage_xi_sys_log_ylim"]
@@ -884,9 +893,10 @@ class LeakageScale:
             ylog=True,
             ylim=ylim,
             labels=labels,
+            close_fig=close_fig,
         )
 
-    def plot_xi_sys_ratio(self, xi_p_theo, xi_m_theo):
+    def plot_xi_sys_ratio(self, xi_p_theo, xi_m_theo, close_fig=True):
         """Plot Xi Sys Ratio.
 
         Plot xi_sys relative to theoretical model of cosmological
@@ -898,6 +908,9 @@ class LeakageScale:
             theoretical model of xi+
         xi_m_theo : list
             theoretical model of xi-
+        close_fig : bool, optional                                                  
+            closes figure if ``True``; set this parameter to ``False`` for
+            notebook display; default is ``True``
 
         """
         labels = [
@@ -945,6 +958,7 @@ class LeakageScale:
             xlog=True,
             ylim=ylim,
             labels=labels,
+            close_fig=close_fig,
         )
 
     def do_alpha(self, fast=False):
@@ -952,6 +966,8 @@ class LeakageScale:
 
         Compute, plot, and save alpha leakage function.
 
+        Parameters
+        ----------
         fast: bool, optional                                                        
             omits (time-consuming) calculation of mean ellipticity and neglects     
             those small terms if True; default is ``False``
@@ -988,6 +1004,7 @@ class LeakageScale:
         """Do Alpha Matrix.
 
         Compute, plot, and save alpha leakage matrix.
+
         """
         # Get input catalogues for averages
         e1_gal = self.dat_shear[self._params["e1_col"]]
@@ -998,7 +1015,7 @@ class LeakageScale:
         e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
 
         # Compute alpha leakage function
-        self.alpha_leak_m = corr.alpha_matrix(
+        alpha_leak_m, Xi_gp_m, Xi_pp_m, Xi_pp_m_inv = corr.alpha_matrix(
             self.r_corr_gp_m,
             self.r_corr_pp_m,
             e1_gal,
@@ -1007,6 +1024,10 @@ class LeakageScale:
             e1_star,
             e2_star,
         )
+        self.alpha_leak_m = alpha_leak_m
+        self.Xi_gp_m = Xi_gp_m
+        self.Xi_pp_m = Xi_pp_m
+        self.Xi_pp_m_inv = Xi_pp_m_inv
 
         # Plot
         self.plot_alpha_leakage_matrix()

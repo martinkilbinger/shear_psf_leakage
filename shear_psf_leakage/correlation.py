@@ -69,7 +69,6 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     return residuals
 
 
-
 def loss_bias_2d(params, x_data, y_data, err, order, mix):
     """Loss Bias 2D.
 
@@ -481,11 +480,19 @@ def correlation_ab_bb_matrix(
                 n_theta=n_theta,
             )
 
-
     return xi_ab, xi_bb
 
 
-def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star, fast=False):
+def alpha(
+    r_corr_gp,
+    r_corr_pp,
+    e1_gal,
+    e2_gal,
+    weights_gal,
+    e1_star,
+    e2_star,
+    fast=False,
+):
     """Alpha.
 
     Compute scale-dependent PSF leakage alpha.
@@ -511,20 +518,22 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star, f
 
     """
     if not fast:
+        # <e^g>
         complex_gal = (
             np.average(e1_gal, weights=weights_gal)
             + np.average(e2_gal, weights=weights_gal) * 1j
         )
+        # <e^p>
         complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
         mean_in_numer = np.real(np.conj(complex_gal) * complex_psf)
         mean_in_denom = np.abs(complex_psf) ** 2
     else:
+        # Set mean ellipticities to zero for faster computation
         mean_in_numer = 0
-        mean_in_denom =  0
+        mean_in_denom = 0
 
-    alpha_leak = (
-        (r_corr_gp.xip - mean_in_numer)
-        / (r_corr_pp.xip - mean_in_denom)
+    alpha_leak = (r_corr_gp.xip - mean_in_numer) / (
+        r_corr_pp.xip - mean_in_denom
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
         r_corr_gp.varxip / r_corr_gp.xip**2
@@ -540,6 +549,8 @@ def alpha_matrix(
     """Alpha Matrix.
 
     Compute scale-dependent PSF leakage alpha matrix.
+
+    TODO: transform to LeakageScale class function.
 
     Parameters
     ----------
@@ -558,12 +569,15 @@ def alpha_matrix(
         alpha, 2x2 matrix
 
     """
+    # <e^g>
     e_g = np.matrix(
         [
             np.average(e1_gal, weights=weights_gal),
             np.average(e2_gal, weights=weights_gal),
         ]
     )
+
+    # <e^p>
     e_p = np.matrix(
         [
             np.mean(e1_star),
@@ -572,6 +586,8 @@ def alpha_matrix(
     )
 
     n_theta = r_corr_gp_m[0][0].nbins
+
+    # Set correlation function matrices
     xi_gp_m = np.zeros((2, 2, n_theta))
     xi_pp_m = np.zeros((2, 2, n_theta))
     for idx in (0, 1):
@@ -579,18 +595,29 @@ def alpha_matrix(
             xi_gp_m[idx][jdx] = r_corr_gp_m[idx][jdx].xip
             xi_pp_m[idx][jdx] = r_corr_pp_m[idx][jdx].xip
 
+    # Set centered correlation function matrices
+    Xi_gp_m = np.zeros((2, 2, n_theta))
+    Xi_pp_m = np.zeros((2, 2, n_theta))
+    for ndx in range(n_theta):
+        Xi_gp_m[:, :, ndx] = xi_gp_m[:, :, ndx] - np.dot(e_g.transpose(), e_p)
+        Xi_pp_m[:, :, ndx] = xi_pp_m[:, :, ndx] - np.dot(e_p.transpose(), e_p)
+
+    # Compute inverse for PSF auto-correlation matrices
     xi_pp_m_inv = np.zeros((2, 2, n_theta))
     for ndx in range(n_theta):
         xi_pp_m_inv[:, :, ndx] = np.linalg.inv(xi_pp_m[:, :, ndx])
 
+    Xi_pp_m_inv = np.zeros((2, 2, n_theta))
+    for ndx in range(n_theta):
+        Xi_pp_m_inv[:, :, ndx] = np.linalg.inv(Xi_pp_m[:, :, ndx])
+
     alpha_leak_m = np.zeros((2, 2, n_theta))
     for ndx in range(n_theta):
         alpha_leak_m[:, :, ndx] = np.dot(
-            xi_gp_m[:, :, ndx] - e_g * e_p.transpose(),
-            xi_pp_m_inv[:, :, ndx]
+            Xi_gp_m[:, :, ndx], Xi_pp_m_inv[:, :, ndx]
         )
 
-    return alpha_leak_m
+    return alpha_leak_m, Xi_gp_m, Xi_pp_m, Xi_pp_m_inv
 
 
 def check_consistency_scales(xi_a, xi_b):
@@ -608,7 +635,5 @@ def check_consistency_scales(xi_a, xi_b):
 
     """
 
-    if any(
-        np.abs(xi_a.meanr - xi_b.meanr) / xi_a.meanr > 0.1
-    ):
+    if any(np.abs(xi_a.meanr - xi_b.meanr) / xi_a.meanr > 0.1):
         print("Warning: angular scales not conr_corr_gpsistent")
