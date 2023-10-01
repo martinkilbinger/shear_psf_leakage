@@ -394,7 +394,7 @@ def correlation_ab_bb_matrix(
     theta_max_amin=200,
     n_theta=20,
 ):
-    """Correlation 12 22 Matrix.
+    """Correlation ab bb Matrix.
 
     Shear correlation function matrices between two samples a and b.
     Computes the xi_ab and xi_bb matrices.
@@ -435,7 +435,7 @@ def correlation_ab_bb_matrix(
     ell_a = np.empty(shape=(2, len(e1_a)))
     ell_b = np.empty(shape=(2, len(e1_b)))
 
-    # We know that xi_+ = xi_tt + xi_xx = xi_11 + xi_22.
+    # We know that xi_+ = xi_tt + xi_xx = xi_11 + xi_22
     # To only get one component "xi_11", we need to set
     # the other to zero.
     # xi_ab_11 = <e1_a e1_b>; e2_a = e2_b = 0
@@ -536,88 +536,11 @@ def alpha(
         r_corr_pp.xip - mean_in_denom
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
-        r_corr_gp.varxip / r_corr_gp.xip**2
-        + r_corr_pp.varxip / r_corr_pp.xip**2
+        r_corr_gp.varxip / r_corr_gp.xip ** 2
+        + r_corr_pp.varxip / r_corr_pp.xip ** 2
     )
 
     return alpha_leak, sig_alpha_leak
-
-
-def alpha_matrix(
-    r_corr_gp_m, r_corr_pp_m, e1_gal, e2_gal, weights_gal, e1_star, e2_star
-):
-    """Alpha Matrix.
-
-    Compute scale-dependent PSF leakage alpha matrix.
-
-    TODO: transform to LeakageScale class function.
-
-    Parameters
-    ----------
-    r_corr_gp_m, r_corr_pp_m : correlations
-        correlations galaxy-star, star-star
-    e1_gal, e2_gal : array of float
-        galaxy ellipticities
-    weights_gal : array of float
-        galaxy weights
-    e1_star, e2_star : array of float
-        galaxy ellipticities
-
-    Returns
-    -------
-    alpha : numpy.ndarray
-        alpha, 2x2 matrix
-
-    """
-    # <e^g>
-    e_g = np.matrix(
-        [
-            np.average(e1_gal, weights=weights_gal),
-            np.average(e2_gal, weights=weights_gal),
-        ]
-    )
-
-    # <e^p>
-    e_p = np.matrix(
-        [
-            np.mean(e1_star),
-            np.mean(e2_star),
-        ]
-    )
-
-    n_theta = r_corr_gp_m[0][0].nbins
-
-    # Set correlation function matrices
-    xi_gp_m = np.zeros((2, 2, n_theta))
-    xi_pp_m = np.zeros((2, 2, n_theta))
-    for idx in (0, 1):
-        for jdx in (0, 1):
-            xi_gp_m[idx][jdx] = r_corr_gp_m[idx][jdx].xip
-            xi_pp_m[idx][jdx] = r_corr_pp_m[idx][jdx].xip
-
-    # Set centered correlation function matrices
-    Xi_gp_m = np.zeros((2, 2, n_theta))
-    Xi_pp_m = np.zeros((2, 2, n_theta))
-    for ndx in range(n_theta):
-        Xi_gp_m[:, :, ndx] = xi_gp_m[:, :, ndx] - np.dot(e_g.transpose(), e_p)
-        Xi_pp_m[:, :, ndx] = xi_pp_m[:, :, ndx] - np.dot(e_p.transpose(), e_p)
-
-    # Compute inverse for PSF auto-correlation matrices
-    xi_pp_m_inv = np.zeros((2, 2, n_theta))
-    for ndx in range(n_theta):
-        xi_pp_m_inv[:, :, ndx] = np.linalg.inv(xi_pp_m[:, :, ndx])
-
-    Xi_pp_m_inv = np.zeros((2, 2, n_theta))
-    for ndx in range(n_theta):
-        Xi_pp_m_inv[:, :, ndx] = np.linalg.inv(Xi_pp_m[:, :, ndx])
-
-    alpha_leak_m = np.zeros((2, 2, n_theta))
-    for ndx in range(n_theta):
-        alpha_leak_m[:, :, ndx] = np.dot(
-            Xi_gp_m[:, :, ndx], Xi_pp_m_inv[:, :, ndx]
-        )
-
-    return alpha_leak_m, Xi_gp_m, Xi_pp_m, Xi_pp_m_inv
 
 
 def check_consistency_scales(xi_a, xi_b):

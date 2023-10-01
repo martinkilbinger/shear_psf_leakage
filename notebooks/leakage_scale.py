@@ -22,6 +22,7 @@
 
 # +
 import os
+import sys
 import matplotlib.pylab as plt
 from astropy import units
 
@@ -31,46 +32,36 @@ import shear_psf_leakage.run_scale as run
 from shear_psf_leakage.leakage import *
 # -
 
-# ## Set input parameters
-
-params_in = {}
-
-# ### Input catalogues
-
-# +
-# Data directory
-data_dir = "."
-params_in["data_dir"] = data_dir
-
-# Input galaxy shear catalogue
-params_in["input_path_shear"] = f"{data_dir}/unions_shapepipe_extended_2022_W3_v1.0.3.fits"
-
-# Input star/PSF catalogue
-params_in["input_path_PSF"] = f"{data_dir}/unions_shapepipe_psf_2022_W3_v1.0.3.fits"
-
-# Input galaxy redshift distribution (for theoretical model of xi_pm)
-params_in["dndz_path"] = f"{data_dir}/dndz_SP_A.txt"
-# -
-
-# ### Other parameters
-
-# +
-# PSF ellipticty column names
-params_in["e1_PSF_star_col"] = "E1_PSF_HSM"
-params_in["e2_PSF_star_col"] = "E2_PSF_HSM"
-
-# Set verbose output
-params_in["verbose"] = True
-# -
-
 # ## Compute leakage
 
 # Create leakage instance
 obj = run.LeakageScale()
 
-# Set instance parameters, copy from above
-for key in params_in:
-    obj._params[key] = params_in[key]
+
+# ## Set input parameters
+
+params_in_path = "params_leakage_scale.py"
+if os.path.exists(params_in_path):
+    print(f"Reading configuration script {params_in_path}")
+
+    with open(params_in_path) as f:
+        exec(f.read())
+
+    # Set instance parameters, copy from above
+    for key in params_in:
+        obj._params[key] = params_in[key]
+
+else:
+    print(f"Configuration script {params_in_path} not found, asking for user input")
+
+    for key in obj._params:
+        msg = f"{key}? [{obj._params[key]}] "
+        val_user = input(msg)
+        if val_user != "":
+            obj._params[key] = val_user
+
+
+print(obj._params)
 
 # + [markdown] jp-MarkdownHeadingCollapsed=true
 # ### Run
@@ -155,7 +146,7 @@ obj.plot_xi_sys(close_fig=False)
 # Theoretical model for xi_pm
 xi_p_theo, xi_m_theo = run.get_theo_xi(
     obj.r_corr_gp.meanr * units.arcmin,
-    params["dndz_path"],
+    obj._params["dndz_path"],
 )
 
 # obj Plot ratio
@@ -163,37 +154,12 @@ obj.plot_xi_sys_ratio(xi_p_theo, xi_m_theo, close_fig=False)
 
 obj.compute_corr_gp_pp_alpha_matrix()
 
-obj.do_alpha_matrix()
-
-# +
-e1_gal = obj.dat_shear[obj._params["e1_col"]]                         
-e2_gal = obj.dat_shear[obj._params["e2_col"]]                         
-weights_gal = obj.dat_shear["w"]                                           
-                                                                                
-e1_star = obj.dat_PSF[obj._params["e1_PSF_star_col"]]                 
-e2_star = obj.dat_PSF[obj._params["e2_PSF_star_col"]] 
-# -
-
-e_g = np.matrix(                                                            
-        [                                                                       
-            np.average(e1_gal, weights=weights_gal),                            
-            np.average(e2_gal, weights=weights_gal),                            
-        ]                                                                       
-    ) 
-e_p = np.matrix(                                                            
-        [                                                                       
-            np.mean(e1_star),                                                   
-            np.mean(e2_star),                                                   
-        ]                                                                       
-    ) 
-print(e_g, e_p)
-
-e_gp = np.dot(e_g.transpose(), e_p)
-e_pp = np.dot(e_p.transpose(), e_p)
-print(e_pp)
+obj.alpha_matrix()
 
 # +
 # Exact
+
+# TODO Check equation
 r = obj.Xi_pp_m[0][1] ** 2 / (obj.Xi_pp_m[0][0] * obj.Xi_pp_m[1][1])
 
 plt.semilogx(obj.r_corr_gp.meanr, r, label="$r$")
@@ -201,7 +167,7 @@ plt.semilogx(obj.r_corr_gp.meanr, 1 / (1 - r), label="$(1 - r)^{-1}$")
 plt.semilogx(obj.r_corr_gp.meanr, 1 / (-1 + 1/r), label="$(-1 + r^{-1})^{-1}$")
 
 # approximate
-r_fast = obj.r_corr_pp_m[0][1].xip ** 2 / (obj.r_corr_pp_m[0][0].xip * obj.r_corr_pp_m[1][1].xip)
+r_fast = obj.xi_pp_m[0][1] ** 2 / (obj.xi_pp_m[0][0] * obj.xi_pp_m[1][1])
 
 plt.semilogx(obj.r_corr_gp.meanr, r_fast, ":")
 plt.semilogx(obj.r_corr_gp.meanr, 1 / (1 - r_fast), ":",)
@@ -210,6 +176,19 @@ plt.semilogx(obj.r_corr_gp.meanr, 1 / (-1 + 1/r_fast), ":")
 plt.legend()
 
 plt.ylim(-1, 4)
+plt.savefig("r.png")
+
+# +
+# Diagonal elements
+plt.clf()
+plt.semilogx(obj.r_corr_gp.meanr, obj.alpha_leak_m[0][0] + obj.alpha_leak_m[1][1], "-", label=r"$\alpha_{11} + \alpha_{22}$ (spin-0)")
+plt.semilogx(obj.r_corr_gp.meanr, obj.alpha_leak_m[0][0] - obj.alpha_leak_m[1][1], "-", label=r"$\alpha_{11} - \alpha_{22}$ (spin-4)")
+plt.legend()
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+plt.xlim(xlim)
+plt.savefig("alpha_leakage_m_11_pm_22.png")
+
+# -
 
 # +
 # Check alpha_m elements
@@ -271,6 +250,118 @@ plt.semilogx(obj.r_corr_gp.meanr, obj.alpha_leak * 2, ':', label=r"$2 \alpha$")
 
 plt.legend(bbox_to_anchor=(1.2, 0.5))
 _ = plt.ylim(-0.25, 0.25)
+# -
+# #### Consistency relations for scalar leakage
+
+# If the leakage is a scalar function, it can be expressed in three different ways.
+
+# +
+alpha_1 = obj.Xi_gp_m[0][0] / obj.Xi_pp_m[1][1]
+alpha_2 = obj.Xi_gp_m[1][1] / obj.Xi_pp_m[1][1]
+
+alpha_1_std =  np.abs(alpha_1) * np.sqrt(                              
+        obj.xi_std_gp_m[0][0] ** 2 / obj.xi_gp_m[0][0] ** 2                                     
+        + obj.xi_std_pp_m[0][0] ** 2 / obj.xi_pp_m[0][0] ** 2                                   
+    )
+
+alpha_2_std =  np.abs(alpha_2) * np.sqrt(                              
+        obj.xi_std_gp_m[1][1] ** 2 / obj.xi_gp_m[1][1] ** 2                                     
+        + obj.xi_std_pp_m[1][1] ** 2 / obj.xi_pp_m[1][1] ** 2                                   
+    )
+
+# +
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+ylim = obj._params["leakage_alpha_ylim"]
+
+ftheta = 1.05
+theta = [obj.r_corr_gp.meanr / ftheta, obj.r_corr_gp.meanr, obj.r_corr_gp.meanr * ftheta]
+alpha_theta = [obj.alpha_leak, alpha_1, alpha_2]
+yerr = [obj.sig_alpha_leak, alpha_1_std, alpha_2_std]
+labels = [r"$\alpha$", r"$\alpha_1$", r"$\alpha_2$"]
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"$\alpha(\theta)$"
+title = ""
+out_path = f"{obj._params['output_dir']}/alpha_leakage_scalar_consistency.png"
+
+cs_plots.plot_data_1d(
+    theta,
+    alpha_theta,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    ylim=ylim,
+    close_fig=False,
+)
+# -
+
+# If alpha is a scalar, the mixed-component centered cross-correlation functions should be identical.
+
+# +
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+
+Xi_gp_plus = obj.Xi_gp_m[0][0] + obj.Xi_gp_m[1][1]
+Xi_std_gp_plus = np.sqrt(obj.xi_std_gp_m[0][0] ** 2 + obj.xi_std_gp_m[1][1] ** 2)
+
+ftheta = 1.025
+theta = [obj.r_corr_gp.meanr / ftheta, obj.r_corr_gp.meanr, obj.r_corr_gp.meanr * ftheta]
+alpha_theta = [obj.Xi_gp_m[0][1], obj.Xi_gp_m[1][0], Xi_gp_plus]
+yerr = [obj.xi_std_gp_m[0][1], obj.xi_std_gp_m[1][0], Xi_std_gp_plus]
+labels = [r"$\Xi_{12}^{\rm gp}$", r"$\Xi_{21}^{\rm gp}$", r"$\Xi_+^{\rm gp}$"]
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"Centered correlation functions"
+title = ""
+out_path = f"{obj._params['output_dir']}/Xi_mixed_consistency.png"
+
+cs_plots.plot_data_1d(
+    theta,
+    alpha_theta,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    close_fig=False,
+)
+
+# +
+# For comparison, plot the same for the PSF - PSF correlations
+
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+
+Xi_gp_plus = obj.Xi_pp_m[0][0] + obj.Xi_pp_m[1][1]
+Xi_std_gp_plus = np.sqrt(obj.xi_std_pp_m[0][0] ** 2 + obj.xi_std_pp_m[1][1] ** 2)
+
+ftheta = 1.025
+theta = [obj.r_corr_gp.meanr / ftheta, obj.r_corr_gp.meanr, obj.r_corr_gp.meanr * ftheta]
+alpha_theta = [obj.Xi_pp_m[0][1], obj.Xi_pp_m[1][0], Xi_gp_plus]
+yerr = [obj.xi_std_pp_m[0][1], obj.xi_std_pp_m[1][0], Xi_std_gp_plus]
+labels = [r"$\Xi_{12}^{\rm pp}$", r"$\Xi_{21}^{\rm pp}$", r"$\Xi_+^{\rm pp}$"]
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"Centered correlation functions"
+title = ""
+out_path = f"{obj._params['output_dir']}/Xi_pp_mixed_consistency.png"
+
+cs_plots.plot_data_1d(
+    theta,
+    alpha_theta,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    close_fig=False,
+)
 # -
 
 

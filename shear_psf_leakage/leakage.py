@@ -41,7 +41,6 @@ def open_stats_file(directory, file_name):
 
     return stats_file
 
-
 def print_stats(msg, stats_file, verbose=False):
     """Print stats.
 
