@@ -35,11 +35,11 @@ def open_stats_file(directory, file_name):
         directory
     file_name : string
         file name
+
     """
     stats_file = open("{}/{}".format(directory, file_name), "w")
 
     return stats_file
-
 
 def print_stats(msg, stats_file, verbose=False):
     """Print stats.
@@ -63,7 +63,7 @@ def print_stats(msg, stats_file, verbose=False):
         print(msg)
 
 
-def open_fits_or_npy(path, hdu_no=1):
+def open_fits_or_npy(path, hdu_no=1, verbose=False):
     """Open FITS OR NPY.
 
     Open FITS or numpy binary file.
@@ -74,6 +74,8 @@ def open_fits_or_npy(path, hdu_no=1):
         path to input binary file
     hdu_no : int, optional
         HDU number, default is 1
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
 
     Raises
     ------
@@ -94,6 +96,9 @@ def open_fits_or_npy(path, hdu_no=1):
         data = np.load(path)
     else:
         raise ValueError(f"Invalid file extension '{file_extension}'")
+
+    if verbose:
+        print(f"{len(data)} objects found in {file_extension} file")
 
     return data
 
@@ -764,50 +769,6 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     y_model = func_bias_lin_1d(params, x_data)
     residuals = (y_model - y_data) / err
     return residuals
-
-
-def func_bias_2d_full(params, x1, x2, order="lin", mix=False):
-    """Func Bias 2D Full.
-
-    Function of 2D bias model evaluated on full 2D grid.
-
-    Parameters
-    ----------
-    params : lmfit.Parameters
-        fit parameters
-    x1 : list of float
-        first component of x-values
-    x2 : list of float
-        second component of x-values
-    order : str, optional
-        order of fit, default is 'lin'
-    mix : bool, optional
-        mixing between components, default is `False`
-
-    Returns
-    -------
-    numpy.ndarray
-        first component the 2D model y1(x1, x2) on the (x1, x2)-grid;
-        2D array of float
-    numpy.ndarray
-        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid;
-        2D array of float
-
-    """
-    len1 = len(x1)
-    len2 = len(x2)
-
-    # Initialise both components y1, y2 as 2D arrays
-    y1 = np.zeros(shape=(len1, len2))
-    y2 = np.zeros(shape=(len1, len2))
-
-    # Create 2D mesh for input x1, x2 values
-    v1, v2 = np.meshgrid(x1, x2, indexing="ij")
-
-    # Compute both components y1, y2 over the meash
-    y1, y2 = func_bias_2d(params, v1, v2, order=order, mix=mix)
-
-    return y1, y2
 
 
 def loss_bias_2d(params, x_data, y_data, err, order, mix):

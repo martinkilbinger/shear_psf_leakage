@@ -93,9 +93,9 @@ def get_theo_xi(theta, dndz_path):
 
     Returns
     -------
-    numpy.ndarray                                                               
-        xi_+                                                                    
-    numpy.ndarray                                                               
+    numpy.ndarray
+        xi_+
+    numpy.ndarray
         xi_-
 
     """
@@ -106,32 +106,6 @@ def get_theo_xi(theta, dndz_path):
     return xi_p, xi_m
 
 
-# MKDEBUG TODO: make class function
-def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
-    """Save Alpha.
-
-    Save scale-dependent alpha
-
-    Parameters
-    ----------
-    theta : list
-        angular scales
-    alpha_leak : list
-        leakage alpha(theta)
-    sig_alpha_leak : list
-        standard deviation of alpha(theta)
-    sh : str
-        shape measurement method, e.g. 'ngmix'
-    output_dir : str
-        output directory
-
-    """
-    cols = [theta, alpha_leak, sig_alpha_leak]
-    names = ["# theta[arcmin]", "alpha", "sig_alpha"]
-    fname = f"{output_dir}/alpha_leakage_{sh}.txt"
-    cs_cat.write_ascii_table_file(cols, names, fname)
-
-
 def save_xi_sys(
     theta,
     xi_sys_p,
@@ -140,7 +114,6 @@ def save_xi_sys(
     xi_sys_std_m,
     xi_p_theo,
     xi_m_theo,
-    sh,
     output_dir,
 ):
     """Save Xi Sys.
@@ -163,8 +136,6 @@ def save_xi_sys(
         xi+ component of theoretical shear-shear correlation
     xi_m_theo : list
         xi- component of theoretical shear-shear correlation
-    sh : str
-        shape measurement method, e.g. 'ngmix'
     output_dir : str
         output directory
 
@@ -187,7 +158,7 @@ def save_xi_sys(
         "xi_+_theo",
         "xi_-_theo",
     ]
-    fname = f"{output_dir}/xi_sys_{sh}.txt"
+    fname = f"{output_dir}/xi_sys.txt"
     cs_cat.write_ascii_table_file(cols, names, fname)
 
 
@@ -235,8 +206,9 @@ class LeakageScale:
         """
         self._params = {
             "input_path_shear": None,
-            "e1_col": "e1_uncal",
-            "e2_col": "e2_uncal",
+            "e1_col": "e1",
+            "e2_col": "e2",
+            "w_col": None,
             "input_path_PSF": None,
             "hdu_psf": 1,
             "ra_star_col": "RA",
@@ -245,7 +217,6 @@ class LeakageScale:
             "e2_PSF_star_col": "E2_PSF_HSM",
             "dndz_path": None,
             "output_dir": ".",
-            "sh": "ngmix",
             "close_pair_tolerance": None,
             "close_pair_mode": None,
             "cut": None,
@@ -253,7 +224,7 @@ class LeakageScale:
             "theta_max_amin": 300,
             "n_theta": 20,
             "leakage_alpha_ylim": [-0.03, 0.1],
-            "leakage_xi_sys_ylim": [-4e5, 5e5],
+            "leakage_xi_sys_ylim": [-4e-5, 5e-5],
             "leakage_xi_sys_log_ylim": [2e-13, 5e-5],
         }
 
@@ -277,6 +248,7 @@ class LeakageScale:
             "input_path_shear": "input path of the shear catalogue",
             "e1_col": "e1 column name in galaxy catalogue, default={}",
             "e2_col": "e2 column name in galaxy catalogue, default={}",
+            "w_col": "weight column name in galaxy catalogue, default={}",
             "input_path_PSF": "input path of the PSF catalogue",
             "hdu_PSF": "HDU number of PSF catalogue, default={}",
             "ra_star_col": (
@@ -295,7 +267,6 @@ class LeakageScale:
                 "path to galaxy redshift distribution file, for xi_sys ratio"
             ),
             "output_dir": "output_directory, default={}",
-            "sh": "shape measurement method, default={}",
             "close_pair_tolerance": (
                 "tolerance angle for close objects in star catalogue,"
                 + " default={}"
@@ -374,6 +345,13 @@ class LeakageScale:
             self._params["output_dir"], "stats_file_leakage.txt"
         )
 
+        for key in self._params:
+            leakage.print_stats(
+                f"{key}: {self._params[key]}",
+                self._stats_file,
+                False
+            )
+
     def run(self):
         """Run.
 
@@ -394,6 +372,12 @@ class LeakageScale:
 
         # alpha leakage
         self.do_alpha()
+
+        # compute auto- and cross-correlation functions including alpha
+        self.compute_corr_gp_pp_alpha_matrix()
+
+        # alpha matrix leakage
+        self.do_alpha_matrix()
 
         # xi_sys function
         self.do_xi_sys()
@@ -595,25 +579,97 @@ class LeakageScale:
 
         return dat_PSF_proc
 
-    def compute_corr_gp_pp_alpha(self):
+    def get_cat_fields(self, cat_type):
+        """Get Cat Fields.
+
+        Get catalogue fields for correlation.
+
+        Parameters
+        ----------
+        cat_type : str
+            catalogue type, allowed are "gal" and "star"
+
+        Returns
+        -------
+        list
+            ra
+        list
+            dec
+        list
+            e1
+        list
+            e2
+        list
+            weights; `None` if cat_type is "star"
+
+        """
+        if cat_type == "gal":
+            ra = self.dat_shear["RA"]
+            dec = self.dat_shear["Dec"]
+            e1 = self.dat_shear[self._params["e1_col"]]
+            e2 = self.dat_shear[self._params["e2_col"]]
+            if self._params["w_col"] is not None:
+                weights = self.dat_shear[self._params["w_col"]]
+            else:
+                weights = np.ones_like(ra)
+        elif cat_type == "star":
+            ra = self.dat_PSF[self._params["ra_star_col"]]
+            dec = self.dat_PSF[self._params["dec_star_col"]]
+            e1 = self.dat_PSF[self._params["e1_PSF_star_col"]]
+            e2 = self.dat_PSF[self._params["e2_PSF_star_col"]]
+            weights = None
+
+        return ra, dec, e1, e2, weights
+
+    def compute_corr_gp_pp_alpha(self, output_base_path=None):
         """Compute Corr GP PP Alpha.
 
         Compute and plot scale-dependent PSF leakage functions.
 
-        """
-        ra = self.dat_shear["RA"]
-        dec = self.dat_shear["Dec"]
-        e1_gal = self.dat_shear[self._params["e1_col"]]
-        e2_gal = self.dat_shear[self._params["e2_col"]]
-        weights = self.dat_shear["w"]
+        Parameters
+        ----------
+        out_path : str, optional
+                output file path; default is ``None`` (no file written)
 
-        ra_star = self.dat_PSF[self._params["ra_star_col"]]
-        dec_star = self.dat_PSF[self._params["dec_star_col"]]
-        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
-        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+        """
+        ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        ra_star, dec_star, e1_star, e2_star, _ = self.get_cat_fields("star")
 
         # Correlation functions
-        r_corr_gp, r_corr_pp = corr.correlation_12_22(
+        r_corr_gp, r_corr_pp = corr.correlation_ab_bb(
+            ra,
+            dec,
+            e1_gal,
+            e2_gal,
+            weights,
+            ra_star,
+            dec_star,
+            e1_star,
+            e2_star,
+            theta_min_amin=self._params["theta_min_amin"],
+            theta_max_amin=self._params["theta_max_amin"],
+            n_theta=self._params["n_theta"],
+            output_base_path=output_base_path,
+        )
+
+        # Check consistency of angular scales
+        corr.check_consistency_scales(r_corr_gp, r_corr_pp)
+
+        # Set instance variables
+        self.r_corr_gp = r_corr_gp
+        self.r_corr_pp = r_corr_pp
+
+    def compute_corr_gp_pp_alpha_matrix(self):
+        """Compute Corr GP PP Alpha Matrix.
+
+        Compute and plot scale-dependent PSF leakage matrix.
+
+        """
+        ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        ra_star, dec_star, e1_star, e2_star, _ = self.get_cat_fields("star")
+
+        # Correlation functions
+        r_corr_gp_m, r_corr_pp_m = corr.correlation_ab_bb_matrix(
             ra,
             dec,
             e1_gal,
@@ -629,14 +685,24 @@ class LeakageScale:
         )
 
         # Check consistency of angular scales
-        if any(
-            np.abs(r_corr_gp.meanr - r_corr_pp.meanr) / r_corr_gp.meanr > 0.1
-        ):
-            print("Warning: angular scales not consistent")
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                corr.check_consistency_scales(
+                    r_corr_gp_m[idx][jdx],
+                    r_corr_pp_m[idx][jdx],
+                )
+                if idx != 0 and jdx != 0:
+                    corr.check_consistency_scales(
+                        r_corr_gp_m[0][0],
+                        r_corr_gp_m[idx][jdx],
+                    )
+                    corr.check_consistency_scales(
+                        r_corr_pp_m[0][0],
+                        r_corr_pp_m[idx][jdx],
+                    )
 
-        # Set instance variables
-        self.r_corr_gp = r_corr_gp
-        self.r_corr_pp = r_corr_pp
+        self.r_corr_gp_m = r_corr_gp_m
+        self.r_corr_pp_m = r_corr_pp_m
 
     def compute_alpha_mean(self):
         """Compute Alpha Mean.
@@ -648,8 +714,7 @@ class LeakageScale:
             np.average(self.alpha_leak, weights=1 / self.sig_alpha_leak**2)
         )
         leakage.print_stats(
-            f"{self._params['sh']}: Weighted average alpha"
-            + f" = {self.alpha_leak_mean:.3g}",
+            f"Weighted average alpha" + f" = {self.alpha_leak_mean:.3g}",
             self._stats_file,
             verbose=self._params["verbose"],
         )
@@ -676,24 +741,25 @@ class LeakageScale:
         self.C_sys_std_p = C_sys_std_p
         self.C_sys_std_m = C_sys_std_m
 
-    def plot_alpha_leakage(self):
+    def plot_alpha_leakage(self, close_fig=True):
         """Plot Alpha Leakage.
 
         Plot scale-dependent leakage function alpha(theta)
 
-        """
-        plot_dir_leakage = self._params["output_dir"]
+        Parameters
+        -----------
+        close_fig : bool, optional
+            closes figure if ``True``; set this parameter to ``False`` for
+            notebook display; default is ``True``
 
+        """
         theta = [self.r_corr_gp.meanr]
         alpha_theta = [self.alpha_leak]
         yerr = [self.sig_alpha_leak]
         xlabel = r"$\theta$ [arcmin]"
         ylabel = r"$\alpha(\theta)$"
-        title = self._params["sh"]
-        out_path = (
-            f"{self._params['output_dir']}"
-            + f"/alpha_leakage_{self._params['sh']}.png"
-        )
+        title = ""
+        out_path = f"{self._params['output_dir']}" + f"/alpha_leakage.png"
         xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
         ylim = self._params["leakage_alpha_ylim"]
         plots.plot_data_1d(
@@ -707,12 +773,78 @@ class LeakageScale:
             xlog=True,
             xlim=xlim,
             ylim=ylim,
+            close_fig=close_fig,
         )
 
-    def plot_xi_sys(self):
+    def plot_alpha_leakage_matrix(self):
+        """Plot Alpha Leakage Matrix.
+
+        Plot scale-dependent leakage matrix alpha.
+
+        """
+        theta = []
+        alpha_theta = []
+        labels = []
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                theta.append(self.r_corr_gp_m[idx][jdx].meanr)
+                alpha_theta.append(self.alpha_leak_m[idx][jdx])
+                labels.append(rf"$\alpha_{{{idx+1}{jdx+1}}}$")
+        yerr = [np.nan] * 4
+        xlabel = r"$\theta$ [arcmin]"
+        ylabel = r"$\alpha_{ij}(\theta)$"
+        title = ""
+        out_path = f"{self._params['output_dir']}/alpha_leakage_matrix.png"
+        xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
+        ylim = self._params["leakage_alpha_ylim"]
+        plots.plot_data_1d(
+            theta,
+            alpha_theta,
+            yerr,
+            title,
+            xlabel,
+            ylabel,
+            out_path,
+            xlog=True,
+            xlim=xlim,
+            ylim=ylim,
+            labels=labels,
+        )
+
+        theta = [self.r_corr_gp_m[0][0].meanr]
+        alpha_theta = [self.alpha_leak_m[0][0] + self.alpha_leak_m[1][1]]
+        labels = [rf"$\alpha_{{{1}{1}}} + \alpha_{{{2}{2}}}$"]
+        yerr = [np.nan] * 1
+        xlabel = r"$\theta$ [arcmin]"
+        ylabel = r"$\alpha_{ij}(\theta)$"
+        title = ""
+        out_path = f"{self._params['output_dir']}/alpha_leakage_matrix_tr.png"
+        xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
+        ylim = self._params["leakage_alpha_ylim"]
+        plots.plot_data_1d(
+            theta,
+            alpha_theta,
+            yerr,
+            title,
+            xlabel,
+            ylabel,
+            out_path,
+            xlog=True,
+            xlim=xlim,
+            ylim=ylim,
+            labels=labels,
+        )
+
+    def plot_xi_sys(self, close_fig=True):
         """Plot Xi Sys.
 
         Plot galaxy - PSF systematics correlation function.
+
+        Parameters
+        -----------
+        close_fig : bool, optional
+            closes figure if ``True``; set this parameter to ``False`` for
+            notebook display; default is ``True``
 
         """
         labels = ["$\\xi^{\\rm sys}_+$", "$\\xi^{\\rm sys}_-$"]
@@ -729,15 +861,13 @@ class LeakageScale:
         symb_arr = ["+", "-"]
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
-            msg = f"{self._params['sh']}: <|xi_sys_{symb}|> = {mean}"
+            msg = f"<|xi_sys_{symb}|> = {mean}"
             leakage.print_stats(
                 msg, self._stats_file, verbose=self._params["verbose"]
             )
 
         ylim = self._params["leakage_xi_sys_ylim"]
-        out_path = (
-            f"{self._params['output_dir']}/xi_sys_{self._params['sh']}.pdf"
-        )
+        out_path = f"{self._params['output_dir']}/xi_sys.pdf"
         plots.plot_data_1d(
             theta,
             xi,
@@ -749,12 +879,11 @@ class LeakageScale:
             xlog=True,
             ylim=ylim,
             labels=labels,
+            close_fig=close_fig,
         )
 
         ylim = self._params["leakage_xi_sys_log_ylim"]
-        out_path = (
-            f"{self._params['output_dir']}/xi_sys_log_{self._params['sh']}.pdf"
-        )
+        out_path = f"{self._params['output_dir']}/xi_sys_log.pdf"
         plots.plot_data_1d(
             theta,
             xi,
@@ -767,9 +896,10 @@ class LeakageScale:
             ylog=True,
             ylim=ylim,
             labels=labels,
+            close_fig=close_fig,
         )
 
-    def plot_xi_sys_ratio(self, xi_p_theo, xi_m_theo):
+    def plot_xi_sys_ratio(self, xi_p_theo, xi_m_theo, close_fig=True):
         """Plot Xi Sys Ratio.
 
         Plot xi_sys relative to theoretical model of cosmological
@@ -781,6 +911,9 @@ class LeakageScale:
             theoretical model of xi+
         xi_m_theo : list
             theoretical model of xi-
+        close_fig : bool, optional
+            closes figure if ``True``; set this parameter to ``False`` for
+            notebook display; default is ``True``
 
         """
         labels = [
@@ -803,17 +936,12 @@ class LeakageScale:
         symb_arr = ["+", "-"]
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
-            msg = (
-                f"{self._params['sh']}: <|xi_sys_{symb}| / xi_{symb}> = {mean}"
-            )
+            msg = f"<|xi_sys_{symb}| / xi_{symb}> = {mean}"
             leakage.print_stats(
                 msg, self._stats_file, verbose=self._params["verbose"]
             )
 
-        out_path = (
-            f"{self._params['output_dir']}"
-            + f"/xi_sys_{self._params['sh']}_ratio.pdf"
-        )
+        out_path = f"{self._params['output_dir']}" + f"/xi_sys_ratio.pdf"
 
         ylim = [0, 0.5]
 
@@ -828,20 +956,24 @@ class LeakageScale:
             xlog=True,
             ylim=ylim,
             labels=labels,
+            close_fig=close_fig,
         )
 
-    def do_alpha(self):
+    def do_alpha(self, fast=False):
         """Do Alpha.
 
         Compute, plot, and save alpha leakage function.
+
+        Parameters
+        ----------
+        fast: bool, optional
+            omits (time-consuming) calculation of mean ellipticity and neglects
+            those small terms if True; default is ``False``
+
         """
         # Get input catalogues for averages
-        e1_gal = self.dat_shear[self._params["e1_col"]]
-        e2_gal = self.dat_shear[self._params["e2_col"]]
-        weights = self.dat_shear["w"]
-
-        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
-        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+        _, _, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        _, _, e1_star, e2_star, _ = self.get_cat_fields("star")
 
         # Compute alpha leakage function
         self.alpha_leak, self.sig_alpha_leak = corr.alpha(
@@ -852,6 +984,7 @@ class LeakageScale:
             weights,
             e1_star,
             e2_star,
+            fast=fast,
         )
         self.compute_alpha_mean()
 
@@ -859,13 +992,99 @@ class LeakageScale:
         self.plot_alpha_leakage()
 
         # Write to disk
-        save_alpha(
-            self.r_corr_gp.meanr,
-            self.alpha_leak,
-            self.sig_alpha_leak,
-            self._params["sh"],
-            self._params["output_dir"],
+        self.save_alpha()
+
+    def alpha_matrix(self):
+        """Alpha Matrix.
+
+        Compute alpha leakage matrix.
+
+        """
+        _, _, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        _, _, e1_star, e2_star, _ = self.get_cat_fields("star")
+
+        # <e^g>
+        e_g = np.matrix(
+            [
+                np.average(e1_gal, weights=weights),
+                np.average(e2_gal, weights=weights),
+            ]
         )
+
+        # <e^p>
+        e_p = np.matrix(
+            [
+                np.mean(e1_star),
+                np.mean(e2_star),
+            ]
+        )
+
+        n_theta = self._params["n_theta"]
+
+        # Set correlation function matrices
+        self.xi_gp_m = np.zeros((2, 2, n_theta))
+        self.xi_pp_m = np.zeros((2, 2, n_theta))
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                self.xi_gp_m[idx][jdx] = self.r_corr_gp_m[idx][jdx].xip
+                self.xi_pp_m[idx][jdx] = self.r_corr_pp_m[idx][jdx].xip
+
+        # Set centered correlation function matrices
+        self.Xi_gp_m = np.zeros((2, 2, n_theta))
+        self.Xi_pp_m = np.zeros((2, 2, n_theta))
+        for ndx in range(n_theta):
+            self.Xi_gp_m[:, :, ndx] = self.xi_gp_m[:, :, ndx] - np.dot(
+                e_g.transpose(), e_p
+            )
+            self.Xi_pp_m[:, :, ndx] = self.xi_pp_m[:, :, ndx] - np.dot(
+                e_p.transpose(), e_p
+            )
+
+        # Standard deviations
+        self.xi_std_gp_m = np.zeros((2, 2, n_theta))
+        self.xi_std_pp_m = np.zeros((2, 2, n_theta))
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                self.xi_std_gp_m[idx][jdx] = np.sqrt(self.r_corr_gp_m[idx][jdx].varxip)
+                self.xi_std_pp_m[idx][jdx] = np.sqrt(self.r_corr_pp_m[idx][jdx].varxip)
+
+        # TODO: include <e><e>
+
+        # Compute inverse for PSF auto-correlation matrices
+        self.xi_pp_m_inv = np.zeros((2, 2, n_theta))
+        for ndx in range(n_theta):
+            self.xi_pp_m_inv[:, :, ndx] = np.linalg.inv(
+                self.xi_pp_m[:, :, ndx]
+            )
+
+        self.Xi_pp_m_inv = np.zeros((2, 2, n_theta))
+        for ndx in range(n_theta):
+            self.Xi_pp_m_inv[:, :, ndx] = np.linalg.inv(
+                self.Xi_pp_m[:, :, ndx]
+            )
+
+        self.alpha_leak_m = np.zeros((2, 2, n_theta))
+        for ndx in range(n_theta):
+            self.alpha_leak_m[:, :, ndx] = np.dot(
+                self.Xi_gp_m[:, :, ndx], self.Xi_pp_m_inv[:, :, ndx]
+            )
+
+        # TODO: error on alppha_leak_m
+
+    def do_alpha_matrix(self):
+        """Do Alpha Matrix.
+
+        Compute, plot, and save alpha leakage matrix.
+
+        """
+        # Compute
+        self.alpha_matrix()
+
+        # Plot
+        self.plot_alpha_leakage_matrix()
+
+        # Write to disk
+        self.save_alpha_matrix()
 
     def do_xi_sys(self):
         """Do Xi Sys.
@@ -880,9 +1099,7 @@ class LeakageScale:
 
         # Treecorr output scales are in arc minutes
         theta = self.r_corr_gp.meanr * units.arcmin
-        xi_p_theo, xi_m_theo = get_theo_xi(
-            theta, self._params["dndz_path"]
-        )
+        xi_p_theo, xi_m_theo = get_theo_xi(theta, self._params["dndz_path"])
 
         # Plot
         self.plot_xi_sys()
@@ -897,9 +1114,41 @@ class LeakageScale:
             self.C_sys_std_m,
             xi_p_theo,
             xi_m_theo,
-            self._params["sh"],
             self._params["output_dir"],
         )
+
+    def save_r_corr_ab(self):
+        """Save R Corr AB.
+
+        Save correlation function.
+
+        """
+
+    def save_alpha(self):
+        """Save Alpha.
+
+        Save scale-dependent alpha.
+
+        """
+        cols = [self.r_corr_gp.meanr, self.alpha_leak, self.sig_alpha_leak]
+        names = ["# theta[arcmin]", "alpha", "sig_alpha"]
+        fname = f"{self._params['output_dir']}/alpha_leakage.txt"
+        cs_cat.write_ascii_table_file(cols, names, fname)
+
+    def save_alpha_matrix(self):
+        """Save Alpha Matrix.
+
+        Save scale-dependent alpha matrix.
+
+        """
+        cols = [self.r_corr_gp_m[0][0].meanr]
+        names = ["# theta[arcmin]"]
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                cols.append(self.alpha_leak_m[idx][jdx])
+                names.append(rf"alpha_{{{idx+1}{jdx+1}}}")
+        fname = f"{self._params['output_dir']}/alpha_leakage_matrix.txt"
+        cs_cat.write_ascii_table_file(cols, names, fname)
 
 
 def run_leakage_scale(*args):

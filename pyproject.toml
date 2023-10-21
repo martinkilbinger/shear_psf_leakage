@@ -4,7 +4,7 @@ version = "0.1.5"
 description = "PSF leakage for shear catalogue data"
 authors = [
 	"Martin Kilbinger <martin.kilbinger@cea.fr>",
-	"Clara Bonini <clara.bonini.t.bd>",
+	"Clara Bonini <clara.bonini@universite-paris-saclay.fr>",
 ]
 readme = "README.md"
 
@@ -24,6 +24,7 @@ pandas = "^2.0.3"
 camb = "^1.5.0"
 scipy = "1.10.1"
 cs-util = "0.0.6"
+notebook = "5.7.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
