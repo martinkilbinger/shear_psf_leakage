@@ -206,8 +206,9 @@ class LeakageScale:
         """
         self._params = {
             "input_path_shear": None,
-            "e1_col": "e1_uncal",
-            "e2_col": "e2_uncal",
+            "e1_col": "e1",
+            "e2_col": "e2",
+            "w_col": None,
             "input_path_PSF": None,
             "hdu_psf": 1,
             "ra_star_col": "RA",
@@ -247,6 +248,7 @@ class LeakageScale:
             "input_path_shear": "input path of the shear catalogue",
             "e1_col": "e1 column name in galaxy catalogue, default={}",
             "e2_col": "e2 column name in galaxy catalogue, default={}",
+            "w_col": "weight column name in galaxy catalogue, default={}",
             "input_path_PSF": "input path of the PSF catalogue",
             "hdu_PSF": "HDU number of PSF catalogue, default={}",
             "ra_star_col": (
@@ -587,7 +589,8 @@ class LeakageScale:
         cat_type : str
             catalogue type, allowed are "gal" and "star"
 
-        Return
+        Returns
+        -------
         list
             ra
         list
@@ -605,7 +608,10 @@ class LeakageScale:
             dec = self.dat_shear["Dec"]
             e1 = self.dat_shear[self._params["e1_col"]]
             e2 = self.dat_shear[self._params["e2_col"]]
-            weights = self.dat_shear["w"]
+            if self._params["w_col"] is not None:
+                weights = self.dat_shear[self._params["w_col"]]
+            else:
+                weights = np.ones_like(ra)
         elif cat_type == "star":
             ra = self.dat_PSF[self._params["ra_star_col"]]
             dec = self.dat_PSF[self._params["dec_star_col"]]
@@ -966,12 +972,8 @@ class LeakageScale:
 
         """
         # Get input catalogues for averages
-        e1_gal = self.dat_shear[self._params["e1_col"]]
-        e2_gal = self.dat_shear[self._params["e2_col"]]
-        weights = self.dat_shear["w"]
-
-        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
-        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+        _, _, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        _, _, e1_star, e2_star, _ = self.get_cat_fields("star")
 
         # Compute alpha leakage function
         self.alpha_leak, self.sig_alpha_leak = corr.alpha(
@@ -998,25 +1000,22 @@ class LeakageScale:
         Compute alpha leakage matrix.
 
         """
+        _, _, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
+        _, _, e1_star, e2_star, _ = self.get_cat_fields("star")
+
         # <e^g>
         e_g = np.matrix(
             [
-                np.average(
-                    self.dat_shear[self._params["e1_col"]],
-                    weights=self.dat_shear["w"],
-                ),
-                np.average(
-                    self.dat_shear[self._params["e2_col"]],
-                    weights=self.dat_shear["w"],
-                ),
+                np.average(e1_gal, weights=weights),
+                np.average(e2_gal, weights=weights),
             ]
         )
 
         # <e^p>
         e_p = np.matrix(
             [
-                np.mean(self.dat_PSF[self._params["e1_PSF_star_col"]]),
-                np.mean(self.dat_PSF[self._params["e2_PSF_star_col"]]),
+                np.mean(e1_star),
+                np.mean(e2_star),
             ]
         )
 
@@ -1069,6 +1068,8 @@ class LeakageScale:
             self.alpha_leak_m[:, :, ndx] = np.dot(
                 self.Xi_gp_m[:, :, ndx], self.Xi_pp_m_inv[:, :, ndx]
             )
+
+        # TODO: error on alppha_leak_m
 
     def do_alpha_matrix(self):
         """Do Alpha Matrix.

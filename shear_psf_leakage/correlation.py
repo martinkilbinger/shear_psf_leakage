@@ -527,13 +527,19 @@ def alpha(
         complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
         mean_in_numer = np.real(np.conj(complex_gal) * complex_psf)
         mean_in_denom = np.abs(complex_psf) ** 2
+
+        # Check that <e^g> is close to zero if properly calibrated.
+        # Pay attention whether weights are used or not.
+        print("MKDEBUG eg ep", complex_gal, complex_psf)
     else:
         # Set mean ellipticities to zero for faster computation
         mean_in_numer = 0
         mean_in_denom = 0
 
-    alpha_leak = (r_corr_gp.xip - mean_in_numer) / (
-        r_corr_pp.xip - mean_in_denom
+
+    alpha_leak = (
+        (r_corr_gp.xip - mean_in_numer)
+        / (r_corr_pp.xip - mean_in_denom)
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
         r_corr_gp.varxip / r_corr_gp.xip ** 2
