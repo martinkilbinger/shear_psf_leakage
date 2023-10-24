@@ -29,6 +29,7 @@ import os
 import sys
 import matplotlib.pylab as plt
 from astropy import units
+from uncertainties import unumpy
 
 from cs_util import plots as cs_plots
 
@@ -110,60 +111,268 @@ print(
 # +
 # Plot
 
+plt.clf()
+
+theta = obj.get_theta()
+
 # Exact calculation
-r = obj.Xi_pp_m[0][1] ** 2 / (obj.Xi_pp_m[0][0] * obj.Xi_pp_m[1][1])
+r = []
+r_ratio_1 = []
+r_ratio_2 = []
+for ndx in range(len(theta)):
+    my_r = (
+        obj.Xi_pp_ufloat[ndx][0, 1] ** 2
+        / (obj.Xi_pp_ufloat[ndx][0, 0] * obj.Xi_pp_ufloat[ndx][1, 1])
+    )
+    r.append(my_r)
+    r_ratio_1.append(1 / (1 - my_r))
+    r_ratio_2.append(my_r / (1 - my_r)) 
 
-theta = obj.r_corr_gp_m[0][0].meanr
-
-plt.semilogx(theta, r, label="$r$")
-plt.semilogx(theta, 1 / (1 - r), label="$1/(1-r)$")
-plt.semilogx(theta, r / (1 - r), label="$r/(1-r)$")
+print("min max mean r = ", np.min(r), np.max(r), np.mean(r))
 
 # Approximate
 r_fast = obj.xi_pp_m[0][1] ** 2 / (obj.xi_pp_m[0][0] * obj.xi_pp_m[1][1])
 
-plt.semilogx(theta, r_fast, "b:")
-plt.semilogx(theta, 1 / (1 - r_fast), "o:",)
-plt.semilogx(theta, 1 / (1/r_fast - 1), "g:")
+theta_arr = []
+r_arr = []
+dr_arr = []
 
-plt.axhline(color="k", linewidth=0.5)
+n = 6
+ftheta = 1.05
+for idx in range(n):
+    theta_arr.append(theta * ftheta ** (idx - n))
+    
+r_arr.append(unumpy.nominal_values(r))
+r_arr.append(unumpy.nominal_values(r_ratio_1))
+r_arr.append(unumpy.nominal_values(r_ratio_2))
+r_arr.append(r_fast)
+r_arr.append(1 / (1 - r_fast))
+r_arr.append(r_fast / (1 - r_fast))
 
-plt.legend()
-plt.xlabe(r"$\theta$ [arcmin]")
-plt.ylabel(r"$r(\theta)$")
+dr_arr.append(unumpy.std_devs(r))
+dr_arr.append(unumpy.std_devs(r_ratio_1))
+dr_arr.append(unumpy.std_devs(r_ratio_2))
+for idx in range(3):
+    dr_arr.append(np.nan)
 
-plt.ylim(-0.5, 2)
-plt.savefig("r.png")
+labels = ["$r$", "$1/(1-r)$", "$r/(1-r)$", "", "", ""]
+colors = ["blue", "orange", "green", "blue", "orange", "green"]
+linestyles = ["-"] * 3 + ["--"] * 3
+linewidths = [2] * 3 + [1] * 3
+
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"ratios of $r(\theta)$"
+
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+ylim = (-0.5, 2)
+
+out_path = f"{obj._params['output_dir']}/r.png"
+
+title = ""
+
+cs_plots.plot_data_1d(
+    theta_arr,
+    r_arr,
+    dr_arr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    ylim=ylim,
+    colors=colors,
+    linewidths=linewidths,
+    linestyles=linestyles,
+)
 
 # +
-# Plot diagonal elements: Spin-0 and spin-4
+# Plot alpha matrix elements
 
-x0 = 0.5 * ( obj.alpha_leak_m[0][0] + obj.alpha_leak_m[1][1] )
-x4 = 0.5 * ( obj.alpha_leak_m[0][0] - obj.alpha_leak_m[1][1] )
-dx0 = 0.5 * ( obj.alpha_leak_m[0][0] + obj.alpha_leak_m[1][1] )
+theta = obj.get_theta()
 
-plt.clf()
-plt.semilogx(
-    theta,
-    x0,
-    "-",
-    label=r"$x_0 = (\alpha_{11} + \alpha_{22})/2$ (spin-0)"
-)
-plt.semilogx(
-    theta,
-    x4,
-    "-",
-    label=r"$x_4 = (\alpha_{11} - \alpha_{22})/2$ (spin-4)"
-)
-plt.legend()
 xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
-plt.xlim(xlim)
-plt.xlabe(r"$\theta$ [arcmin]")
-plt.ylabel(r"Components of leakage matrix")
+ylim = obj._params["leakage_alpha_ylim"]
 
-plt.savefig("alpha_leakage_m_s0_s4.png")
+n = 4
+ftheta = 1.05
+theta_arr = []
+for idx in (range(n)):
+    theta_arr.append(theta * ftheta ** (idx - n))
+    
+alpha = []
+yerr = []
+labels = []
+for idx in (0, 1):
+    for jdx in (0, 1):   
+        alpha_ufloat = obj.get_alpha_ufloat(idx, jdx)
+        alpha.append(unumpy.nominal_values(alpha_ufloat))
+        yerr.append(unumpy.std_devs(alpha_ufloat))
+        labels.append(rf"$\alpha_{{{idx+1}{jdx+1}}}$")
+
+colors = ["blue", "orange", "orange", "green"]
+linestyles = ["-", "-", "--", "-"]
+markers = ["o", "^", "v", "s"]
+
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"$\alpha_{ij}(\theta)$"
+title = ""
+out_path = f"{obj._params['output_dir']}/alpha_ij.png"
+
+cs_plots.plot_data_1d(
+    theta_arr,
+    alpha,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    ylim=ylim,
+    colors=colors,
+    linestyles=linestyles,
+    markers=markers,
+    close_fig=False,
+)
+
+# +
+# Plot spin elements: Spin-0 and spin-4
+
+x0 = 0.5 * (
+     obj.get_alpha_ufloat(0, 0)
+    + obj.get_alpha_ufloat(1, 1)
+)
+x4 = 0.5 * (
+    obj.get_alpha_ufloat(0, 0)
+    - obj.get_alpha_ufloat(1, 1)
+)
+
+# In theory we have y4 = a_12 = a_21. In practise the leakage matrix is
+# not entirely symmetrical. Let us identify the mean off-diagonal with y4.
+# The difference is in principle the imaginary spin-0 coefficient, which
+# should be zero.
+y4 = 0.5 * (obj.get_alpha_ufloat(0, 1) + obj.get_alpha_ufloat(1, 0))
+y0 = obj.get_alpha_ufloat(1, 0) - obj.get_alpha_ufloat(0, 1)
+
+theta = obj.get_theta()
+
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+ylim = obj._params["leakage_alpha_ylim"]
+
+n = 4
+ftheta = 1.05
+theta_arr = []
+for idx in (range(n)):
+    theta_arr.append(theta * ftheta ** (idx - n))
+
+y_arr = [
+    unumpy.nominal_values(x0),
+    unumpy.nominal_values(x4),
+    unumpy.nominal_values(y4),
+    unumpy.nominal_values(y0),
+]
+dy_arr = [
+    unumpy.std_devs(x0),
+    unumpy.std_devs(x4),
+    unumpy.std_devs(y4),
+    unumpy.std_devs(y0),
+]
+labels = [
+    r"$x_0 = (\alpha_{11} + \alpha_{22})/2$ (spin-0)",
+    r"$x_4 = (\alpha_{11} - \alpha_{22})/2$ (spin-4)",
+    r"$y_4 = (\alpha_{12} + \alpha_{21}) / 2$ (spin-4)",
+    r"$\alpha_{21} - \alpha_{12}$ (spin-0 imaginary)"
+]
+colors = ["blue", "orange", "green", "magenta"]
+markers = ["o", "s", "h", "^"]
+
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"Components of leakage matrix"
+title = ""
+out_path = "alpha_leakage_m_s0_s4.png"
+
+cs_plots.plot_data_1d(
+    theta_arr,
+    y_arr,
+    dy_arr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    ylim=ylim,
+    colors=colors,
+    markers=markers,
+    close_fig=False,
+)
+
+
+# +
+# Plot off-diagonal element: spin-4 and "spin-0 imaginary" part which should vanish
+
+y4 = obj.get_alpha_ufloat(0, 1)
+y4_bis = obj.get_alpha_ufloat(1, 0)
+y0 = 0.5 * (y4_bis - y4)
+
+theta = obj.get_theta()
+
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+ylim = obj._params["leakage_alpha_ylim"]
+
+n = 3
+ftheta = 1.05
+theta_arr = []
+for idx in (range(n)):
+    theta_arr.append(theta * ftheta ** (idx - n))
+    
+y = [
+    unumpy.nominal_values(y4),
+    unumpy.nominal_values(y4_bis),
+    unumpy.nominal_values(y0),
+]
+dy = [
+    unumpy.std_devs(y4),
+    unumpy.std_devs(y4_bis),
+    unumpy.std_devs(y0),
+]
+labels = [
+    r"$\alpha_{12}$ (spin-4)",
+    r"$\alpha_{21}$ (spin-4)",
+    r"$y_0 = (\alpha_{21}-\alpha_{12})/2$ ('spin-0 imag')",
+]
+xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+ylim = obj._params["leakage_alpha_ylim"]
+
+colors = ["orange", "orange", "magenta"]
+markers = ["o", "s", "^"]
+
+xlabel = r"$\theta$ [arcmin]"
+ylabel = r"Components of leakage matrix"
+title = ""
+out_path = "alpha_leakage_m_s4_s4im.png"
+
+cs_plots.plot_data_1d(
+    theta_arr,
+    y_arr,
+    dy_arr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    labels=labels,
+    xlog=True,
+    xlim=xlim,
+    ylim=ylim,
+    colors=colors,
+    markers=markers,
+    close_fig=False,
+)
 # -
-
 
 # The elements of $\alpha$ can be written as
 # \begin{align}
@@ -189,130 +398,6 @@ plt.savefig("alpha_leakage_m_s0_s4.png")
 #         \right) \left| \mat \Xi^\textrm{p,p} \right|^{-1},
 # \end{align}
 
-# +
-# Check alpha_m elements equations (18)
-
-plt.clf()
-
-# a_11
-color = "blue"
-
-plt.semilogx(theta, obj.alpha_leak_m[0][0], "-", color=color, label=r"$\alpha_{11}$")
-
-# Xi_pp determinant
-D = obj.Xi_pp_m[0][0] * obj.Xi_pp_m[1][1] - obj.Xi_pp_m[0][1] * obj.Xi_pp_m[1][0]
-
-a_11 = (
-    (obj.Xi_gp_m[0][0] * obj.Xi_pp_m[1][1]
-    - obj.Xi_gp_m[0][1] * obj.Xi_pp_m[1][0]) / D
-)
-plt.semilogx(theta, a_11, "s", label=r"$a_{11}$", color=color, mfc="none")
-
-a_11_bis = (
-    1 / (1 - r) * obj.Xi_gp_m[0][0] / obj.Xi_pp_m[0][0]
-    - r / (1 - r) * obj.Xi_gp_m[0][1] / obj.Xi_pp_m[0][1]
-)
-plt.semilogx(theta, a_11_bis, "p", label=r"$a_{11}$ bis", color=color, mfc="none")
-
-# a_22
-color = "green"
-
-plt.semilogx(theta, obj.alpha_leak_m[1][1], "--", color=color, label=r"$\alpha_{22}$")
-
-a_22 = (
-    (obj.Xi_gp_m[1][1] * obj.Xi_pp_m[0][0]
-    - obj.Xi_gp_m[1][0] * obj.Xi_pp_m[0][1]) / D
-)
-plt.semilogx(theta, a_22, "d", label=r"$a_{22}$", color=color, mfc="none")
-
-a_22_bis = (
-     1 / (1 - r) * obj.Xi_gp_m[1][1] / obj.Xi_pp_m[1][1]
-    - r / (1 - r) * obj.Xi_gp_m[1][0] / obj.Xi_pp_m[1][0]
-)
-plt.semilogx(theta, a_22_bis, "o", label=r"$a_{22}$ bis", color=color, mfc="none")
-
-plt.legend()
-plt.xlabel(r"$\theta$ [arcmin]")
-plt.ylabel(r"$\alpha_{ii}$")
-
-plt.savefig("alpha_m_11_22_check.png")
-
-
-# +
-plt.clf()
-
-# a_12
-color = "magenta"
-
-plt.semilogx(theta, obj.alpha_leak_m[0][1], "-", color=color, label=r"$\alpha_{12}$")
-
-a_12 = (
-    (-obj.Xi_gp_m[0][0] * obj.Xi_pp_m[0][1]
-    + obj.Xi_gp_m[0][1] * obj.Xi_pp_m[0][0]) / D
-)
-plt.semilogx(theta, a_12, "s", label=r"$a_{12}$", color=color, mfc="none")
-
-a_12_bis = (
-    -r / (1 - r) * obj.Xi_gp_m[0][0] / obj.Xi_pp_m[0][1]
-    + 1 / (1 - r) * obj.Xi_gp_m[0][1] / obj.Xi_pp_m[1][1]
-)
-plt.semilogx(theta, a_12_bis, "p", label=r"$a_{11}$ bis", color=color, mfc="none")
-
-# a_21
-color = "green"
-
-plt.semilogx(theta, obj.alpha_leak_m[1][0], "--", color=color, label=r"$\alpha_{21}$")
-
-a_21 = (
-    (obj.Xi_gp_m[1][0] * obj.Xi_pp_m[1][1]
-    - obj.Xi_gp_m[1][1] * obj.Xi_pp_m[0][1]) / D
-)
-plt.semilogx(theta, a_21, "d", label=r"$a_{22}$", color=color, mfc="none")
-
-a_21_bis = (
-     1 / (1 - r) * obj.Xi_gp_m[1][0] / obj.Xi_pp_m[0][0]
-    - r / (1 - r) * obj.Xi_gp_m[1][1] / obj.Xi_pp_m[0][1]
-)
-plt.semilogx(theta, a_21_bis, "o", label=r"$a_{22}$ bis", color=color, mfc="none")
-
-plt.legend()
-plt.xlabel(r"$\theta$ [arcmin]")
-plt.ylabel(r"$\alpha_{ij}$")
-
-plt.savefig("alpha_m_12_21_check.png")
-
-# +
-# Check alpha_m elements
-
-plt.clf()
-plt.semilogx(theta, obj.alpha_leak_m[0][0] + obj.alpha_leak_m[1][1], "-", label=r"tr $\mathbf{\alpha}$")
-
-plt.semilogx(theta, a_11 + a_22, "s", label=r"$a_{11} + a_{22}$", mfc="none")
-
-#plt.semilogx(theta, a_11_bis + a_22_bis, "p", label=r"$a_{11} + a_{22}$ bis", mfc="none")
-
-t_sym = (
-    obj.Xi_gp_m[0][0] / ( obj.Xi_pp_m[0][0] * (1 - r) )
-    + obj.Xi_gp_m[1][1] / ( obj.Xi_pp_m[1][1] * (1 - r) )
-)
-plt.semilogx(theta, t_sym, 'v', label=r"$\alpha$ sym")
-
-t_asym = (
-    - obj.Xi_gp_m[0][1] / ( obj.Xi_pp_m[0][1] * (-1 + 1/r) )
-    - obj.Xi_gp_m[1][0] / ( obj.Xi_pp_m[1][0] * (-1 + 1/r) )
-)
-plt.semilogx(theta, t_asym, '^', label=r"$\alpha$ asym")
-
-plt.semilogx(theta, t_sym + t_asym, '.', label=r"$\alpha$ sym + asym")
-
-
-plt.semilogx(theta, obj.alpha_leak * 2, ':', label=r"$2 \alpha$")
-
-plt.legend(bbox_to_anchor=(1.2, 0.5))
-_ = plt.ylim(-0.25, 0.25)
-
-plt.savefig("x.png")
-# -
 # #### Consistency relations for scalar leakage
 
 # If the leakage is a scalar function, it can be expressed in three different ways.

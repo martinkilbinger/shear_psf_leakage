@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from astropy.io import fits
 from astropy import units
+from uncertainties import ufloat, unumpy
 
 from cs_util import logging
 from cs_util import plots
@@ -347,9 +348,7 @@ class LeakageScale:
 
         for key in self._params:
             leakage.print_stats(
-                f"{key}: {self._params[key]}",
-                self._stats_file,
-                False
+                f"{key}: {self._params[key]}", self._stats_file, False
             )
 
     def run(self):
@@ -579,6 +578,14 @@ class LeakageScale:
 
         return dat_PSF_proc
 
+    def get_theta(self):
+        """Get Theta.
+
+        Return angular scales.
+
+        """
+        return self.r_corr_gp.meanr
+
     def get_cat_fields(self, cat_type):
         """Get Cat Fields.
 
@@ -701,6 +708,9 @@ class LeakageScale:
                         r_corr_pp_m[idx][jdx],
                     )
 
+        if hasattr(self, "r_corr_gp"):
+            corr.check_consistency_scales(self.r_corr_gp, r_corr_gp_m[0][0])
+
         self.r_corr_gp_m = r_corr_gp_m
         self.r_corr_pp_m = r_corr_pp_m
 
@@ -782,15 +792,21 @@ class LeakageScale:
         Plot scale-dependent leakage matrix alpha.
 
         """
-        theta = []
-        alpha_theta = []
+        theta = self.get_theta()
+        theta_arr = []
+        alpha_arr = []
+        yerr_arr = []
         labels = []
+        ftheta = 1.05
+        n = 4
+        count = 0
         for idx in (0, 1):
             for jdx in (0, 1):
-                theta.append(self.r_corr_gp_m[idx][jdx].meanr)
-                alpha_theta.append(self.alpha_leak_m[idx][jdx])
+                theta_arr.append(theta * ftheta ** (count - n))
+                alpha = self.get_alpha_ufloat(idx, jdx)
+                alpha_arr.append(unumpy.nominal_values(alpha))
+                yerr_arr.append(unumpy.std_devs(alpha))
                 labels.append(rf"$\alpha_{{{idx+1}{jdx+1}}}$")
-        yerr = [np.nan] * 4
         xlabel = r"$\theta$ [arcmin]"
         ylabel = r"$\alpha_{ij}(\theta)$"
         title = ""
@@ -798,33 +814,9 @@ class LeakageScale:
         xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
         ylim = self._params["leakage_alpha_ylim"]
         plots.plot_data_1d(
-            theta,
-            alpha_theta,
-            yerr,
-            title,
-            xlabel,
-            ylabel,
-            out_path,
-            xlog=True,
-            xlim=xlim,
-            ylim=ylim,
-            labels=labels,
-        )
-
-        theta = [self.r_corr_gp_m[0][0].meanr]
-        alpha_theta = [self.alpha_leak_m[0][0] + self.alpha_leak_m[1][1]]
-        labels = [rf"$\alpha_{{{1}{1}}} + \alpha_{{{2}{2}}}$"]
-        yerr = [np.nan] * 1
-        xlabel = r"$\theta$ [arcmin]"
-        ylabel = r"$\alpha_{ij}(\theta)$"
-        title = ""
-        out_path = f"{self._params['output_dir']}/alpha_leakage_matrix_tr.png"
-        xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
-        ylim = self._params["leakage_alpha_ylim"]
-        plots.plot_data_1d(
-            theta,
-            alpha_theta,
-            yerr,
+            theta_arr,
+            alpha_arr,
+            yerr_arr,
             title,
             xlabel,
             ylabel,
@@ -1045,31 +1037,71 @@ class LeakageScale:
         self.xi_std_pp_m = np.zeros((2, 2, n_theta))
         for idx in (0, 1):
             for jdx in (0, 1):
-                self.xi_std_gp_m[idx][jdx] = np.sqrt(self.r_corr_gp_m[idx][jdx].varxip)
-                self.xi_std_pp_m[idx][jdx] = np.sqrt(self.r_corr_pp_m[idx][jdx].varxip)
+                self.xi_std_gp_m[idx][jdx] = np.sqrt(
+                    self.r_corr_gp_m[idx][jdx].varxip
+                )
+                self.xi_std_pp_m[idx][jdx] = np.sqrt(
+                    self.r_corr_pp_m[idx][jdx].varxip
+                )
 
-        # TODO: include <e><e>
+        # TODO: include <e><e> in error computation
 
-        # Compute inverse for PSF auto-correlation matrices
-        self.xi_pp_m_inv = np.zeros((2, 2, n_theta))
+        self.Xi_gp_ufloat = []
+        self.Xi_pp_ufloat = []
+        values = np.zeros((2, 2), dtype=float)
+        stds = np.zeros((2, 2), dtype=float)
         for ndx in range(n_theta):
-            self.xi_pp_m_inv[:, :, ndx] = np.linalg.inv(
-                self.xi_pp_m[:, :, ndx]
+
+            # Set Xi_gp
+            for idx in (0, 1):
+                for jdx in (0, 1):
+                    values[idx, jdx] = self.Xi_gp_m[idx, jdx, ndx]
+                    stds[idx, jdx] = self.xi_std_gp_m[idx][jdx][ndx]
+
+            self.Xi_gp_ufloat.append(unumpy.umatrix(values, stds))
+
+            # Set Xi_pp
+            for idx in (0, 1):
+                for jdx in (0, 1):
+                    values[idx, jdx] = self.Xi_pp_m[idx, jdx, ndx]
+                    stds[idx, jdx] = self.xi_std_pp_m[idx][jdx][ndx]
+
+            self.Xi_pp_ufloat.append(unumpy.umatrix(values, stds))
+
+        # Compute (Xi_pp)^{-1} and alpha
+        self.Xi_pp_inv_ufloat = []
+        self.alpha_leak_ufloat = []
+        for ndx in range(n_theta):
+            self.Xi_pp_inv_ufloat.append(self.Xi_pp_ufloat[ndx].I)
+            self.alpha_leak_ufloat.append(
+                np.dot(self.Xi_gp_ufloat[ndx], self.Xi_pp_inv_ufloat[ndx])
             )
 
-        self.Xi_pp_m_inv = np.zeros((2, 2, n_theta))
-        for ndx in range(n_theta):
-            self.Xi_pp_m_inv[:, :, ndx] = np.linalg.inv(
-                self.Xi_pp_m[:, :, ndx]
-            )
+    def get_alpha_ufloat(self, idx, jdx):
+        """Get Alpha Ufloat.
 
-        self.alpha_leak_m = np.zeros((2, 2, n_theta))
-        for ndx in range(n_theta):
-            self.alpha_leak_m[:, :, ndx] = np.dot(
-                self.Xi_gp_m[:, :, ndx], self.Xi_pp_m_inv[:, :, ndx]
-            )
+        Return alpha leakage matrix element as array over scales.
 
-        # TODO: error on alppha_leak_m
+        Parameters
+        ----------
+        idx : int
+            line index, allowed are 0 or 1
+        jdx : int
+            column index, allowed are 0 or 1
+
+        Returns
+        -------
+        numpy.ndarray
+            matrix element as array over scales, each entry is
+            of type ufloat
+
+        """
+        mat = []
+        n_theta = self._params["n_theta"]
+        for ndx in range(n_theta):
+            mat.append(self.alpha_leak_ufloat[ndx][idx, jdx])
+
+        return np.array(mat)
 
     def do_alpha_matrix(self):
         """Do Alpha Matrix.
@@ -1141,14 +1173,62 @@ class LeakageScale:
         Save scale-dependent alpha matrix.
 
         """
-        cols = [self.r_corr_gp_m[0][0].meanr]
+        cols = [self.get_theta()]
         names = ["# theta[arcmin]"]
         for idx in (0, 1):
             for jdx in (0, 1):
-                cols.append(self.alpha_leak_m[idx][jdx])
+                alpha = self.get_alpha_ufloat(idx, jdx)
+                cols.append(unumpy.nominal_values(alpha))
                 names.append(rf"alpha_{{{idx+1}{jdx+1}}}")
+                cols.append(unumpy.std_devs(alpha))
+                names.append(rf"sigma_alpha_{{{idx+1}{jdx+1}}}")
         fname = f"{self._params['output_dir']}/alpha_leakage_matrix.txt"
         cs_cat.write_ascii_table_file(cols, names, fname)
+
+
+def var_sum(s2a, s2b):
+    """Var Sum.
+
+    Return variance of a + b.
+
+    """
+    s2 = s2a + s2b
+
+    return s2
+
+def var_mult_div(y, a, b, s2a, s2b):
+    """Var Mult Div.
+
+    Return variance of y = a * b or y = a / b.
+
+    """
+    s2 = y ** 2 * (s2a / a ** 2 + s2b / b ** 2)
+
+    return s2
+
+def var_product(a, b, s2a, s2b):
+    """Var Product.
+
+    Return variance of y = a * b.
+
+    """
+    y = a * b
+
+    s2 = var_mult_div(y, a, b, s2a, s2b)
+
+    return s2
+
+def var_ratio(a, b, s2a, s2b):
+    """Var Ratio.
+
+    Return variance of y = a / b.
+
+    """
+    y = a / b
+
+    s2 = var_mult_div(y, a, b, s2a, s2b)
+
+    return s2
 
 
 def run_leakage_scale(*args):
