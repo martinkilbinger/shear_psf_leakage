@@ -81,7 +81,7 @@ def parse_options(p_def, short_options, types, help_strings):
 def get_theo_xi(theta, dndz_path):
     """Get Theo Xi.
 
-    Computes theoretical prediction of the shear 2PCF using a Planck
+    Return theoretical prediction of the shear 2PCF using a Planck
     best-fit cosmology.
 
     Parameters
@@ -102,6 +102,7 @@ def get_theo_xi(theta, dndz_path):
     z, nz, _ = cs_cat.read_dndz(dndz_path)
     cosmo = cs_cos.get_cosmo_default()
     xi_p, xi_m = cs_cos.xipm_theo(theta, cosmo, z, nz)
+    
 
     return xi_p, xi_m
 
@@ -129,7 +130,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     cols = [theta, alpha_leak, sig_alpha_leak]
     names = ["# theta[arcmin]", "alpha", "sig_alpha"]
     fname = f"{output_dir}/alpha_leakage_{sh}.txt"
-    cs_cat.write_ascii_table_file(cols, names, fname)
+    write_ascii_table_file(cols, names, fname)
 
 
 def save_xi_sys(
@@ -188,7 +189,7 @@ def save_xi_sys(
         "xi_-_theo",
     ]
     fname = f"{output_dir}/xi_sys_{sh}.txt"
-    cs_cat.write_ascii_table_file(cols, names, fname)
+    write_ascii_table_file(cols, names, fname)
 
 
 class LeakageScale:

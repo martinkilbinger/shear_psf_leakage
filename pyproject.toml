@@ -25,7 +25,9 @@ pandas = "^2.1.0"
 camb = "^1.5.0"
 
 # MKDEBUG TODO: cs_util -> 0.0.6
-cs-util = {path = "../cs_util"}
+#cs-util = {path = "../cs_util"}
+cs-util = "^0.0.5"
+docker = "^6.1.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
