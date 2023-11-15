@@ -166,7 +166,7 @@ class Catalogs():
                 g1 = self.dat_psf[self._params["e1_star_col"]] * (size_star - size_psf)/size_psf
                 g2 = self.dat_psf[self._params["e2_star_col"]] * (size_star - size_psf)/size_psf
 
-            return ra, dec, g1, g2, weights
+        return ra, dec, g1, g2, weights
     
     def build_catalog(self, cat_type, key, npatch=None, square_size=False):
         """
@@ -229,7 +229,25 @@ class Catalogs():
         Print the keys of the element stored in self.catalogs_dict
         """
         for key in self.catalogs_dict.keys():
-            print(key)   
+            print(key)
+
+    def get_cat(self, key):
+        """
+        get_cat
+
+        Return the catalogue stored with the given key
+
+        Parameters
+        ----------
+        key : str
+            The key used to identify the catalogue in the dictionary
+
+        Returns
+        -------
+        treecorr.Catalog
+            The requested treecorr.Catalog
+        """ 
+        return self.catalogs_dict[key]
 
 
 class RhoStat():
@@ -250,7 +268,7 @@ class RhoStat():
                 "sep_units": "arcmin",
                 "min_sep": 0.1,
                 "max_sep": 100,
-                "n_bins": 20,
+                "nbins": 20,
                 "var_method": "jackknife"
             }
         else:
@@ -319,17 +337,17 @@ class RhoStat():
         if self.verbose:
             print("Computation of the rho statistics in progress...")
         rho_0 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_0.process(self.catalogs['psf_'+catalog_id], self.catalogs['psf_'+catalog_id])
+        rho_0.process(self.catalogs.get_cat('psf_'+catalog_id), self.catalogs.get_cat('psf_'+catalog_id))
         rho_1 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_1.process(self.catalogs['psf_error_'+catalog_id], self.catalogs['psf_error_'+catalog_id])
+        rho_1.process(self.catalogs.get_cat('psf_error_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
         rho_2 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_2.process(self.catalogs['psf_'+catalog_id], self.catalogs['psf_error_'+catalog_id])
+        rho_2.process(self.catalogs.get_cat('psf_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
         rho_3 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_3.process(self.catalogs['psf_size_error_'+catalog_id], self.catalogs['psf_size_error_'+catalog_id])
+        rho_3.process(self.catalogs.get_cat('psf_size_error_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
         rho_4 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_4.process(self.catalogs['psf_error_'+catalog_id], self.catalogs['psf_size_error_'+catalog_id])
+        rho_4.process(self.catalogs.get_cat('psf_error_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
         rho_5 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_5.process(self.catalogs['psf_'+catalog_id], self.catalogs['psf_size_error_'+catalog_id])
+        rho_5.process(self.catalogs.get_cat('psf_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
 
         self.rho_stats = Table(
             [
@@ -388,11 +406,14 @@ class RhoStat():
             )
         )
 
+        if self.verbose:
+            print("Done...")
+
         self.save_rho_stats(filename) #A bit dirty just because of consistency of the datatype :/
         self.load_rho_stats(filename)
 
     def save_rho_stats(self, filename):
-        self.rho_stats.writeto(filename, format='fits')
+        self.rho_stats.write(filename, format='fits', overwrite=True)
 
     def load_rho_stats(self, filename):
         self.rho_stats = fits.getdata(filename)
@@ -414,7 +435,7 @@ class TauStat():
     Class to compute the tau statistics (Gatti 2022) of a PSF and gal catalogue.
     """
 
-    def __init__(self, params, output, treecorr_config=None, catalogs=None, verbose=False):
+    def __init__(self, params=None, output=None, treecorr_config=None, catalogs=None, verbose=False):
 
         if catalogs is None:
             self.catalogs = Catalogs(params, output)
@@ -428,7 +449,7 @@ class TauStat():
                 "sep_units": "arcmin",
                 "min_sep": 0.1,
                 "max_sep": 100,
-                "n_bins": 20,
+                "nbins": 20,
                 "var_method": "jackknife"
             }
         else:
@@ -494,11 +515,11 @@ class TauStat():
         if self.verbose:
             print("Computation of the tau statistics in progress...")
         tau_0 = treecorr.GGCorrelation(self._treecorr_config)
-        tau_0.process(self.catalogs['gal_'+catalog_id], self.catalogs['psf_'+catalog_id])
+        tau_0.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_'+catalog_id))
         tau_2 = treecorr.GGCorrelation(self._treecorr_config)
-        tau_2.process(self.catalogs['gal_'+catalog_id], self.catalogs['psf_error_'+catalog_id])
+        tau_2.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
         tau_5 = treecorr.GGCorrelation(self._treecorr_config)
-        tau_5.process(self.catalogs['gal_'+catalog_id], 'psf_size_error_'+catalog_id)
+        tau_5.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
 
         self.tau_stats = Table(
             [
@@ -506,6 +527,7 @@ class TauStat():
                 tau_0.xip,
                 tau_0.varxip,
                 tau_0.xim,
+                tau_0.varxim,
                 tau_2.xip,
                 tau_2.varxip,
                 tau_2.xim,
@@ -532,11 +554,14 @@ class TauStat():
             )
         )
 
+        if self.verbose:
+            print("Done...")
+
         self.save_tau_stats(filename) #A bit dirty just because of consistency of the datatype :/
         self.load_tau_stats(filename)
 
     def save_tau_stats(self, filename):
-        self.tau_stats.writeto(filename, format='fits')
+        self.tau_stats.write(filename, format='fits', overwrite=True)
 
     def load_tau_stats(self, filename):
         self.tau_stats = fits.getdata(filename)
