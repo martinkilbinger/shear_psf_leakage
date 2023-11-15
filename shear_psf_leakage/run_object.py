@@ -499,10 +499,17 @@ class LeakageObject:
 
         return e, weights
 
-    def PSF_leakage(self):
+    def PSF_leakage(self, mix=True, order="lin"):
         """PSF Leakage.
 
         Compute and plot object-by-object PSF spin-consistent leakage relations.
+
+        Parameters
+        ----------
+        mix : bool, optional
+            Component mixing (spin-consistent); default is ``True``
+        order : str, optional
+            regression order; allowed are "lin" (default) and "quad"
 
         """
         # Set options for plotting
@@ -530,31 +537,30 @@ class LeakageObject:
         ]
 
         # Fit consistent spin-2 2D model
-        mix = True
-        for order in ["lin", "quad"]:
-            out_path = (
-                f"{self._params['output_dir']}"
-                + "/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
-            )
-            par_best_fit = leakage.corr_2d(
-                x_arr[:2],
-                e,
-                weights=weights,
-                xlabel_arr=xlabel_arr[:2],
-                ylabel_arr=ylabel_arr,
-                order=order,
-                mix=mix,
-                title=f"{order} {mix}",
-                n_bin=n_bin,
-                out_path=out_path,
-                colors=colors,
-                stats_file=self._stats_file,
-                verbose=self._params["verbose"],
-            )
-            fp_best_fit = open(f"{out_path}.json", "w")
-            par_best_fit.dump(fp_best_fit)
+        out_path = (
+            f"{self._params['output_dir']}"
+            + f"/PSF_e_vs_e_gal_{order-{order}_mix-{mix}"
+        )
+        par_best_fit = leakage.corr_2d(
+            x_arr[:2],
+            e,
+            weights=weights,
+            xlabel_arr=xlabel_arr[:2],
+            ylabel_arr=ylabel_arr,
+            order=order,
+            mix=mix,
+            title=f"{order} {mix}",
+            n_bin=n_bin,
+            out_path=out_path,
+            colors=colors,
+            stats_file=self._stats_file,
+            verbose=self._params["verbose"],
+        )
+        fp_best_fit = open(f"{out_path}.json", "w")
+        _par_best_fit.dump(fp_best_fit)
 
         # Fit separate 1D models, including size
+        # MKDEBUG: to remove, is done by fit_any
         ylabel = r"$e_{1,2}^{\rm gal}$"
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
@@ -636,7 +642,9 @@ class LeakageObject:
 
             if obj._params["PSF_leakage"]:
                 # Object-by-object spin-consistent PSF leakage
-                obj.PSF_leakage()
+
+                for order in ("lin", "quad"):
+                    obj.PSF_leakage(mix=True, order=order)
 
             if obj._params["obs_leakage"]:
                 # Object-by-object dependence of general variables
