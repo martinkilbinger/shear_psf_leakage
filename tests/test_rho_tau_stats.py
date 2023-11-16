@@ -3,7 +3,8 @@ sys.path.append('../shear_psf_leakage')
 
 import numpy as np
 import matplotlib.pyplot as plt
-from rho_tau_stat import RhoStat, TauStat
+from rho_tau_stat import RhoStat, TauStat, PSFErrorFit
+from plots import plot_contours
 
 
 #Run tests on shapepipe V1 and DESY3
@@ -34,6 +35,8 @@ square_sizes = [
     True
 ]
 
+output = '.'
+
 #Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
 params_des = {
     "e1_col": "e1_cal",
@@ -62,6 +65,7 @@ params = [
 colors = ['blue', 'red', 'green'] #Colors for the plot
 catalog_ids = ['SPV1', 'DESY3', 'SPV104'] #Ids of the catalogs
 
+###################################Compute, save and plot the rho statistics############################
 rho_stat_handler = RhoStat(verbose=True) #Create your class to compute, save, load and plot rho_stats
 
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the different catalogs
@@ -77,6 +81,7 @@ filenames = ['rho_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
 
 rho_stat_handler.plot_rho_stats(filenames, colors, catalog_ids, abs=True, savefig='rho_stats.png') #Plot
 
+######################################Compute, save and plot the tau statistics#############################
 tau_stat_handler = TauStat(catalogs=rho_stat_handler.catalogs, verbose=True) #Create your class to compute, save, load and plot tau_stats
 
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the catalogs
@@ -86,8 +91,30 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths
     else:
         tau_stat_handler.catalogs.set_params(param) #Set the parameters
     tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
-    tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits') #Compute and save the tau statistics
+    
+    only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
+    tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p) #Compute and save the tau statistics
 
 
 filenames = ['tau_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
 tau_stat_handler.plot_tau_stats(filenames, colors, catalog_ids, savefig='tau_stats.png', plot_tau_m=False) #Plot
+
+#######################################Fit the error model to rho and tau statistics data##########################
+
+psf_fitter = PSFErrorFit(rho_stat_handler, tau_stat_handler, output)
+
+flat_sample_list = []
+mcmc_result_list = []
+q_list = []
+
+for cat_id in catalog_ids:
+    psf_fitter.load_rho_stat('rho_stats_'+cat_id+'.fits')
+    psf_fitter.load_tau_stat('tau_stats_'+cat_id+'.fits')
+    psf_fitter.load_covariance('cov_'+cat_id+'.npy')
+
+    flat_samples, mcmc_result, q = psf_fitter.run_chain(savefig='mcmc_samples_'+cat_id+'.png')
+    flat_sample_list.append(flat_samples)
+    mcmc_result_list.append(mcmc_result)
+    q_list.append(q)
+
+    psf_fitter.plot_tau_stats_w_model(mcmc_result, 'tau_stats_'+cat_id+'.fits', 'blue', cat_id, savefig='best_fit_'+cat_id+'.png')

@@ -10,6 +10,8 @@ from astropy.io import fits
 from astropy.table import Table
 
 import treecorr
+import emcee
+
 
 def neg_dash(
     ax,
@@ -633,12 +635,10 @@ class RhoStat():
                     )
 
                 ax[i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
-                ax[i].legend(loc='upper right')
+                ax[i].legend(loc='upper right', fontsize='small')
 
         if savefig is not None:
             plt.savefig(self.catalogs._output+'/'+savefig)
-
-
 
 class TauStat():
     """
@@ -713,11 +713,11 @@ class TauStat():
             print("Catalogs successfully built...")
             self.catalogs.show_catalogs()
 
-    def compute_tau_stats(self, catalog_id, filename):
+    def compute_tau_stats(self, catalog_id, filename, save_cov=False, func=None, var_method='jackknife'):
         """
         compute_tau_stats
 
-        Compute the tau statistics of your catalog and save it.
+        Compute the tau statistics of your catalog and save it. Can also compute a covariance related to tau statistics and save it.
 
         Parameters:
         ----------
@@ -726,7 +726,17 @@ class TauStat():
 
         filename : str
             The path where the rho stats will be saved.
+
+        save_cov : bool
+            If True, compute and save a covariance related to tau statistics.
+
+        func : function
+            The function to select the quantity whose covariance is being computed from tau_0, tau_2 and tau_5.
+        
+        var_method: str
+            The method used to compute the covariance. (Default: jackknife)
         """
+
         if self.verbose:
             print("Computation of the tau statistics of "+catalog_id+" in progress...")
         tau_0 = treecorr.GGCorrelation(self._treecorr_config)
@@ -772,6 +782,14 @@ class TauStat():
         if self.verbose:
             print("Done...")
 
+        if save_cov:
+            if self.verbose:
+                print("Computing the covariance...")
+
+            cov = treecorr.estimate_multi_cov([tau_0, tau_2, tau_5], var_method, func)
+
+            np.save(self.catalogs._output+'/'+'cov_'+catalog_id, cov)
+
         self.save_tau_stats(filename) #A bit dirty just because of consistency of the datatype :/
         self.load_tau_stats(filename)
 
@@ -803,6 +821,12 @@ class TauStat():
 
         plot_tau_m : bool
             If True, plot the tau - additionally.
+
+        Return
+        ------
+        fig : Figure
+
+        ax : Axes
         """
 
         nrows=1 + plot_tau_m
@@ -831,9 +855,324 @@ class TauStat():
                     ax[j, i].set_xlabel(xlabel)
                     ax[j, i].set_ylabel(ylabel)
                     ax[j, i].set_xscale('log')
-                    ax[j, i].legend(loc='upper right')
+                    ax[j, i].legend(loc='upper right', fontsize='small')
 
         if savefig is not None:
             plt.savefig(self.catalogs._output+'/'+savefig)
 
-            
+        return fig, ax
+
+class PSFErrorFit():
+    """
+    PSFErrorFit
+
+    This class uses rho and tau statistics data to fit parameters alpha, beta and eta in the psf error model
+    (Gatti et al. 2022). It includes methods to plot the best fit value and the tau statistics as well as
+    as the systematic error for different catalogs.
+    A Likelihood-Based Inference is used assuming a Gaussian likelihood.
+    """
+
+    def __init__(self, rho_stat_handler, tau_stat_handler, data_directory):
+
+        self.rho_stat_handler = rho_stat_handler
+        self.tau_stat_handler = tau_stat_handler
+        print("Class created. Don't forget to load your rho and tau statistics and define your prior and your likelihood.")
+        self.cov = None
+        self.log_prior = self.init_log_prior()
+
+        def log_likelihood(theta, y, inv_cov):
+            y_model = self.model(theta)
+            d = y_model -y
+            return -0.5 * d.T@inv_cov@d
+        
+        self.log_likelihood = log_likelihood
+        self.data_directory = data_directory
+
+        self.rho_stat_handler.catalogs._output = self.data_directory #Change the path to the specified data directory
+        self.tau_stat_handler.catalogs._output = self.data_directory
+
+    def set_data_directory(self, data_directory):
+        """
+        set_data_directory
+
+        Sets the value of the data directory to `data_directory`
+
+        Parameters
+        ----------
+        data_directory : str
+            The new data directory.
+        """
+        self.data_directory = data_directory
+
+
+    def load_rho_stat(self, filename):
+        """
+        load_rho_stats
+
+        Load a file containing the rho stats in the RhoStat class.
+        Be aware that the theta points should match those of the TauStat class.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file containing the rho statistics.
+        """
+        self.rho_stat_handler.load_rho_stats(filename)
+
+    def load_tau_stat(self, filename):
+        """
+        load_tau_stat
+
+        Load a file containing the tau stats in the TauStat class.
+        Be aware that the theta points should match those of the RhoStat class.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file containing the rho statistics.
+        """
+        self.tau_stat_handler.load_tau_stats(filename)
+
+    def load_covariance(self, filename):
+        """
+        load_covariance
+
+        Load a covariance matrix to run the inference.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file containing the covariance matrix.
+        """
+        self.cov = np.load(self.data_directory+'/'+filename)
+
+    def init_log_prior(self, low_alpha=-2.0, high_alpha=2.0, low_beta=-10.0, high_beta=10.0, low_eta=-20.0, high_eta=20.0):
+        """
+        init_log_prior
+
+        Initialise the prior used in the inference. A flat prior is used for all parameters.
+        The bounds can be specified.
+
+        Parameters
+        ----------
+        low_alpha : float
+            Lower bound on alpha prior (Default: -2.0).
+
+        high_alpha : float
+            Upper bound on alpha prior (Default: 2.0).
+
+        low_beta : float
+            Lower bound on beta prior (Default: -10.0).
+
+        high_beta : float
+            Upper bound on beta prior (Default: 10.0).
+
+        low_eta : float
+            Lower bound on eta prior (Default: -20.0).
+
+        high_eta : float
+            Upper bound on eta prior (Default: 20.0).
+
+        Returns
+        -------
+        function
+            Store in the attribute `log_prior` of the class a function that returns the value of the log_prior
+            given a set of parameters theta.
+        """
+        def log_prior(theta):
+            alpha, beta, eta = theta
+            if low_alpha <= alpha <= high_alpha and low_beta <= beta <= high_beta and low_eta <=eta <= high_eta:
+                return 0.0
+            return -np.inf
+        
+        self.log_prior = log_prior
+
+    def model(self, theta):
+        """
+        model
+
+        Implements the systematic error. It outputs the tau+ statistics given the rho statistics and a set of parameters theta.
+
+        Parameters
+        ----------
+
+        theta : tuple
+            Parameters (alpha, beta, eta) of the model.
+
+        Returns
+        -------
+        np.array
+            A flattened array containing the tau+ statistics.
+        """
+        alpha, beta, eta = theta
+
+        rhos = self.rho_stats_handler.rho_stats
+        tau_0_p = alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"] + eta * rhos["rho_5_p"]
+        tau_2_p = alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"] + eta * rhos["rho_4_p"]
+        tau_5_p = alpha * rhos["rho_5_p"] + beta * rhos["rho_4_p"] + eta * rhos["rho_3_p"]
+
+        model_output = np.array([
+            tau_0_p,
+            tau_2_p,
+            tau_5_p
+        ])
+
+        return model_output.flatten()
+    
+    def log_probability(self, theta, y, inv_cov):
+        """
+        log_probability
+
+        Computes the log probability given a set of parameters, input, output and the inverse of the covariance matrix
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta) of the model.
+
+        y : np.array
+            Output data containing the tau statistics to be fitted.
+
+        inv_cov : np.array
+            Inverse of the covariane matrix.
+        """
+
+        lp = self.prior(theta)
+        if not np.isfinite(lp):
+            return -np.inf
+        return lp + self.log_likelihood(theta, y, inv_cov)
+
+    def run_chain(self, init=np.array([0.0,0.0,0.0]), nwalkers=124, nsamples=10000, discard=300, thin=100, verbose=True, savefig=None):
+        """
+        run_chain
+
+        Run an MCMC analysis to fit the parameters alpha, beta and eta using rho and tau statistics.
+        Emcee package is used to run the inference.
+
+        Parameters
+        ----------
+        init : np.array
+            Initial value of the parameters. An additional random noise will be added. (Default: [0,0,0])
+        
+        nwalkers : int
+            Number of walkers used in the Ensemble Sampler (See emcee documentation). (Default: 124)
+
+        nsamples : int
+            Number of samples to draw (Default: 10000).
+
+        discard : int
+            Number of samples discarded in the burn-in phase (Default: 300).
+
+        thin : int
+            Number of samples thinned out (Default: 100).
+
+        verbose : bool
+            If True, prints several informations.
+
+        Returns
+        -------
+
+        np.array:
+            Array of samples obtained from the MCMC analysis.
+
+        np.array:
+            Best-fit values of the parameters
+
+        np.array:
+            Error bars at the 68% confidence level.
+        """
+        ndim = 3
+        assert (self.rho_stat_handler.rho_stats is not None), ("Please load rho statistics data.") #Check if data was loaded
+        assert (self.tau_stat_handler.tau_stats is not None), ("Please load tau statistics data.")
+        assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
+        #Check that the abssiss are the same
+
+        assert (self.cov is not None), ("Please load a covariance matrix")
+
+        inv_cov = np.linalg.inv(self.cov)
+        output = np.array([
+            self.tau_stat_handler.tau_stats["tau_0_p"],
+            self.tau_stat_handler.tau_stats["tau_2_p"],
+            self.tau_stat_handler.tau_stats["tau_5_p"]
+        ]).flatten()
+
+        init += 1e-3*np.random.randn(nwalkers, ndim)
+
+        sampler = emcee.EnsembleSampler(
+            nwalkers, ndim, self.log_probability, args=(output, inv_cov)
+        )
+
+        print("Run MCMC analysis...")
+        sampler.run_mcmc(init, nsamples, progress=verbose)
+        print("Done")
+
+        tau = sampler.get_autocorr_time()
+
+        if verbose:
+            print("Autocorrelation-time:")
+            print(tau)
+
+        labels = [r"$\alpha$", r"$\beta$", r"$\eta$"]
+
+        if savefig is not None:
+            fig, axes = plt.subplots(3, figsize=(10, 7), sharex=True) #Result completely unconstrained. have another look at the covariance matrix
+            samples = sampler.get_chain()
+            for i in range(ndim):
+                ax = axes[i]
+                ax.plot(samples[:, :, i], "k", alpha=0.3)
+                ax.set_xlim(0, len(samples))
+                ax.set_ylabel(labels[i])
+                ax.yaxis.set_label_coords(-0.1, 0.5)
+
+                axes[-1].set_xlabel("step number");
+        
+            plt.savefig(self.data_directory+'/'+savefig)
+
+        flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
+        mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
+        q = np.diff(mcmc_result, axis=0)
+        if verbose:
+            print(f"Number of samples: {flat_samples.Shape[0]}\n")
+
+            print("Parameters constraints")
+            print("----------------------")
+            for i in range(ndim):
+                print('Parameter: '+labels[i]+f'={mcmc_result[1, i]:.4f}^+{q[0, i]:.4f}_{q[1, i]:.4f}')
+
+            print(f"Max log_likelihood: {self.log_likelihood(mcmc_result[1,:], output, inv_cov)}")
+
+        return flat_samples, mcmc_result, q
+    
+    def plot_tau_stats_w_model(self, theta, filename, color, catalog_id, savefig=None):
+        """
+        plot_tau_stats_w_model
+
+        Plot the tau statistics with the value in theta as parameters.
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta).
+        filename : str
+            Name of the file containing the tau statistics. Take care to load the corresponding rho statistics before.
+        color : str
+            Color of the tau statistics lines.
+        catalog_id : str
+            A catalog id for the legend
+        savefig : str
+            If not None, save the figure with the given filename.
+        """
+
+        fig, ax = self.tau_stat_handler.plot_tau_stats([filename], [color], [catalog_id], plot_tau_m=False)
+
+        assert (self.rho_stat_handler.rho_stats is not None), ("Please load rho statistics data.") #Check if data was loaded
+        assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
+
+        taus = self.model(theta).reshape(3, -1)
+        
+        for i in range(3):
+            ax[0, i].plot(self.tau_stat_handler.tau_stats["theta"], taus[i], color='red', label='Model')
+            ax[0, i].leend(loc='upper right', fontsize='small')
+
+        if savefig is not None:
+            plt.savefig(self.data_directory+'/'+savefig)
