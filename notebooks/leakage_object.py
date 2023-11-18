@@ -36,8 +36,10 @@ params_in = {}
 # ### Paths
 
 # +
+# Patch name
+patch = "W3"
 # Input galaxy shear catalogue
-params_in["input_path_shear"] = "unions_shapepipe_extended_2022_W3_v1.0.3.fits"
+params_in["input_path_shear"] = f"unions_shapepipe_extended_2022_{patch}_v1.0.3.fits"
 
 # Output directory
 params_in["output_dir"] = "leakage_object"
@@ -53,7 +55,7 @@ params_in["PSF_leakage"] = True
 params_in["obs_leakage"] = True
 
 # Other input parameters
-params_in["cols"] = "RA Dec e1_PSF fwhm_PSF w mag snr"
+params_in["cols"] = "RA Dec e1_PSF e2_PSF fwhm_PSF w mag snr"
 
 # Ratio between two input columns
 params_in["cols_ratio"] = "mag_snr"
@@ -70,9 +72,9 @@ params_in["e2_PSF_col"] = "e2_PSF"
 params_in["verbose"] = True
 # -
 
-# ### Retrieve test catalogue from VOspace if not yet downloade
+# ### Retrieve test catalogue from VOspace if not yet downloaded
 
-vos_dir = "vos:cfis/XXXX/"
+vos_dir = f"vos:cfis/weak_lensing/DataReleases/v1.0/ShapePipe/{patch}"
 canfar.download(
     f"{vos_dir}/{params_in['input_path_shear']}",
     params_in["input_path_shear"],
