@@ -127,10 +127,10 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
     return x_bin, y_bin, err_bin
 
 
-def set_labels(p_dp, order, mix):
-    """Set Label.
+def set_labels(p_dp, order, mix, par_ground_truth=None):
+    """Set Labels.
 
-    Set labels for plot of 2D fit
+    Set labels for plot of 2D fit.
 
     Parameters
     ----------
@@ -143,46 +143,59 @@ def set_labels(p_dp, order, mix):
 
     Returns
     -------
-    dict :
+    dict
         label strings
 
     """
     # Affine parameters
-    label = {
-        "A": (
-            f'$a_{{11}}={p_dp["a11"]: .2ugL}$'
-            + "\n"
-            + f'$c_1={p_dp["c1"]: .2ugL}$'
-        ),
-        "D": (
-            f'$a_{{22}}={p_dp["a22"]: .2ugL}$'
-            + "\n"
-            + f'$c_2={p_dp["c2"]: .2ugL}$'
-        ),
-    }
+    label = {}
+
+    # Linear parameters
+    label["A"] = f'$a_{{11}}={p_dp["a11"]: .2ugL}$'
+    label["D"] = f'$a_{{22}}={p_dp["a22"]: .2ugL}$'
+    if par_ground_truth:
+        label["A"] = f"{label['A']} ({par_ground_truth['a11'].value})"
+        label["D"] = f"{label['D']} ({par_ground_truth['a22'].value})"
+    
+    # Constant parameters
+    label["A"] = label["A"] + "\n" + f'$c_1={p_dp["c1"]: .2ugL}$'
+    label["D"] = label["D"] + "\n" + f'$c_2={p_dp["c2"]: .2ugL}$'
+    if par_ground_truth:
+        label["A"] = f"{label['A']} ({par_ground_truth['c1'].value})"
+        label["D"] = f"{label['D']} ({par_ground_truth['c2'].value})"
+
     if order == "quad":
         # Add quadratic parameters
-        label["A"] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + "\n" + label["A"]
-        label["D"] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + "\n" + label["D"]
+        label_q111 = f'$q_{{111}}={p_dp["q111"]: .2ugL}$'
+        label_q222 = f'$q_{{222}}={p_dp["q222"]: .2ugL}$'
+        if par_ground_truth:
+            label_q111 = f"{label_q111} ({par_ground_truth['q111'].value})"
+            label_q222 = f"{label_q222} ({par_ground_truth['q222'].value})"
+        label["A"] = label_q111 + "\n" + label["A"]
+        label["D"] = label_q222 + "\n" + label["D"]
     if mix:
-        # Add mixture parameters
+        # Mixed linear parameters
         label["B"] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
-        label["C"] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
+        label["C"] = f'$a_{{21}}={p_dp["a21"]: .2ugL}$'
+        if par_ground_truth:
+            label["B"] = f"{label['B']} ({par_ground_truth['a12'].value})"
+            label["C"] = f"{label['C']} ({par_ground_truth['a21'].value})"
+
+        # Mixed quadratic parameters
         if order == "quad":
-            label["B"] = (
-                f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
-                + "\n"
-                + f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
-                + "\n"
-                + label["B"]
-            )
-            label["C"] = (
-                f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
-                + "\n"
-                + f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
-                + "\n"
-                + label["C"]
-            )
+            label_q211 = f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
+            label_q212 = f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
+            label_q122 = f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
+            label_q112 = f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
+
+            if par_ground_truth:
+                label_q211 = f"{label_q211} ({par_ground_truth['q211'].value})"
+                label_q212 = f"{label_q212} ({par_ground_truth['q212'].value})"
+                label_q122 = f"{label_q122} ({par_ground_truth['q122'].value})"
+                label_q112 = f"{label_q112} ({par_ground_truth['q112'].value})"
+
+            label["B"] = label_q211 + "\n" + label_q212 + "\n" + label["B"]
+            label["C"] = label_q122 + "\n" + label_q112 + "\n" + label["C"]
 
     return label
 
@@ -238,7 +251,7 @@ def plot_bar_spin(par, s_ground_truth, output_path=None):
         alpha=0.5,
         ecolor="black",
         capsize=8,
-        width=0.8,
+        width=0.7,
         color=col,
     )
     xlim = ax.get_xlim()
@@ -284,7 +297,8 @@ def plot_corr_2d(
     mix,
     xlabel_arr,
     ylabel_arr,
-    y_ground_truth=None,
+    plot_all_points=False,
+    par_ground_truth=None,
     title=None,
     colors=None,
     out_path=None,
@@ -305,14 +319,18 @@ def plot_corr_2d(
         results of the minization
     n_bin : double, optional, default=30
         number of points onto which data are binned
+    p_dp : dict
+        Best-fit and std of input parameter
     order : str
         order of fit
     mix : bool
-        mixing of components if True
+        mixing of components if ``True``
     xlabel_arr, ylabel_arr : list of str
         x-and y-axis labels
-    y_ground_truth : 2D np.array, optional
-        ground truth model values (y1, y2) for plotting, default is `None`
+    plot_all_points : bool, optional
+        plot all individual data points if ``True``; default is ``False``
+    par_ground_truth : 2D np.array, optional
+        ground truth model values (y1, y2) for plotting, default is ``None``
     title : string, optional, default=''
         plot title
     colors : array(m) of string, optional, default=None
@@ -342,6 +360,14 @@ def plot_corr_2d(
     y_model_all[0], y_model_all[1] = leakage.func_bias_2d_full(
         res.params, x_bin[0], x_bin[1], order=order, mix=mix
     )
+
+    if par_ground_truth:
+        y_gt_all = np.zeros(shape=(2, n_bin, n_bin))
+        y_gt_mean = np.zeros(shape=(2, n_bin))
+        y_gt_all[0], y_gt_all[1] = leakage.func_bias_2d_full(
+            par_ground_truth, x_bin[0], x_bin[1], order=order, mix=mix
+        )
+
     # Compute means and standard deviations
     y_model_mean = np.zeros(shape=(2, n_bin))
     y_model_upper = np.zeros(shape=(2, n_bin))
@@ -351,6 +377,9 @@ def plot_corr_2d(
         std = y_model_all[comp].std(axis=ax)
         y_model_upper[comp] = y_model_mean[comp] + std
         y_model_lower[comp] = y_model_mean[comp] - std
+
+        if par_ground_truth:
+            y_gt_mean[comp] = y_gt_all[comp].mean(axis=ax)
 
     # Set up quantities to plot in each panel
     xb = {}
@@ -364,6 +393,8 @@ def plot_corr_2d(
     col = {}
     xl = {}
     yl = {}
+    yall = {}
+    xall = {}
 
     # Set component for each panel.
     # x: 0 in A, B; 1 in C, D
@@ -392,12 +423,16 @@ def plot_corr_2d(
         dy[p] = err_bin[panel_comp_y[p]][panel_comp_x[p]]
         col[p] = colors[panel_comp_y[p]]
 
-        if y_ground_truth:
-            xgt[p] = x[panel_comp_x[p]]
-            ygt[p] = y_ground_truth[panel_comp_y[p]]
+        if par_ground_truth:
+            xgt[p] = x_bin[panel_comp_x[p]]
+            ygt[p] = y_gt_mean[panel_comp_y[p]]
+
+        if plot_all_points:
+            xall[p] = x[panel_comp_x[p]]
+            yall[p] = y[panel_comp_y[p]]
 
     # Set plot labels to parameter best-fit + std
-    label = set_labels(p_dp, order, mix)
+    label = set_labels(p_dp, order, mix, par_ground_truth=par_ground_truth)
 
     # Loop over panels
     for p in axes:
@@ -411,9 +446,12 @@ def plot_corr_2d(
             xb[p], ymu[p], yml[p], color=col[p], interpolate=True, alpha=0.3
         )
 
-        # Plot ground-truth model if provided
-        if y_ground_truth:
-            axes[p].plot(xgt[p], ygt[p], ".", c="k", markersize=0.4)
+        # Plot ground-truth binned mean if provided
+        if par_ground_truth:
+            axes[p].plot(xgt[p], ygt[p], ":", c=col[p])
+
+        if plot_all_points:
+            axes[p].plot(xall[p], yall[p], ".", c="k", markersize=0.4)
 
         # Plot binned data with error bars
         axes[p].errorbar(xb[p], yd[p], yerr=dy[p], c=col[p], fmt=".")

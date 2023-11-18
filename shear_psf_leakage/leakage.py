@@ -251,8 +251,9 @@ def func_bias_2d(params, x1_data, x2_data, order="lin", mix=False):
     if mix:
         # Add linear mixing part
         a12 = params["a12"].value
+        a21 = params["a21"].value
         y1_model += a12 * x2_data
-        y2_model += a12 * x1_data
+        y2_model += a21 * x1_data
 
         if order == "quad":
             # Add quadratic mixing part
@@ -862,7 +863,7 @@ def corr_2d(
     title="",
     colors=None,
     out_path=None,
-    y_ground_truth=None,
+    plot_all_points=False,
     par_ground_truth=None,
     stats_file=None,
     verbose=False,
@@ -896,9 +897,8 @@ def corr_2d(
         output file for statistics
     out_path : str, optional, default=None
         output file path, if not given, plot is not saved to file
-    y_ground_truth : numpy.ndarray, optional
-        ground truth model values (y1, y2) for plotting (2D array),
-        default is `None`;
+    plot_all_points : bool, optional
+        plot all individual data points if ``True``; default is ``False``
     par_ground_truth : dict, optional
         ground truth parameter, for plotting, default is `None`
     verbose : bool, optional, default=False
@@ -927,8 +927,9 @@ def corr_2d(
         params.add(p_affine, value=0.0)
 
     if mix:
-        # Linear mixing pararmeter
+        # Linear mixing pararmeters
         params.add("a12", value=0.0)
+        params.add("a21", value=0.0)
 
     if order == "quad":
         # Quadratic parameters
@@ -997,7 +998,8 @@ def corr_2d(
         mix,
         xlabel_arr,
         ylabel_arr,
-        y_ground_truth=y_ground_truth,
+        plot_all_points=plot_all_points,
+        par_ground_truth=par_ground_truth,
         title=title,
         colors=colors,
         out_path=out_path,
@@ -1039,7 +1041,8 @@ def param_order2spin(p_dp, order, mix):
     s_ds["x4"] = 0.5 * (p_dp["a11"] - p_dp["a22"])
 
     if mix:
-        s_ds["y4"] = p_dp["a12"]
+        s_ds["y4"] = 0.5 * (p_dp["a12"] + p_dp["a21"])
+        s_ds["y0"] = 0.5 * (-p_dp["a12"] + p_dp["a21"])
 
     if order == "quad" and mix:
         s_ds["x6"] = 0.25 * (p_dp["q111"] - p_dp["q122"] - p_dp["q212"])
