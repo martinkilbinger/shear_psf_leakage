@@ -447,6 +447,7 @@ class LeakageObject:
             "a11": -0.4,
             "a22": 0.3,
             "a12": 0.3,
+            "a21": 0.25,
             "c1": 0.2,
             "c2": -0.3,
         }
@@ -476,7 +477,7 @@ class LeakageObject:
                     n_bin=n_bin,
                     out_path=out_path,
                     colors=colors,
-                    y_ground_truth=[y1, y2],
+                    plot_all_points=True,
                     par_ground_truth=p_gt,
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
@@ -534,7 +535,7 @@ class LeakageObject:
         for order in ["lin", "quad"]:
             out_path = (
                 f"{self._params['output_dir']}"
-                + "/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
+                + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
             )
             par_best_fit = leakage.corr_2d(
                 x_arr[:2],
