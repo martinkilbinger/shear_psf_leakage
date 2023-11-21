@@ -35,7 +35,7 @@ square_sizes = [
     True
 ]
 
-output = '.'
+output = 'output_n_patch_100'
 
 #Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
 params_des = {
@@ -51,7 +51,7 @@ params_des = {
     "PSF_size": "piff_T",
     "star_size": "obs_T",
     "output_dir": ".",
-    "patch_number": 150,
+    "patch_number": 100,
     "ra_units": "deg",
     "dec_units": "deg" 
 }
@@ -76,15 +76,14 @@ colors = ['blue', 'red', 'green'] #Colors for the plot
 catalog_ids = ['SPV1', 'DESY3', 'SPV104'] #Ids of the catalogs
 
 ###################################Compute, save and plot the rho statistics############################
-rho_stat_handler = RhoStat(output='./output_n_patch_150', verbose=True) #Create your class to compute, save, load and plot rho_stats
-
+rho_stat_handler = RhoStat(output=output, verbose=True) #Create your class to compute, save, load and plot rho_stats
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the different catalogs
 
     try:
         rho_stat_handler.load_rho_stats('rho_stats_'+cat_id+'.fits')
     except FileNotFoundError:
         if param is None:
-            rho_stat_handler.catalogs.params_default()
+            rho_stat_handler.catalogs.params_default(output)
         else:
             rho_stat_handler.catalogs.set_params(param) #Set the right parameters
         rho_stat_handler.build_cat_to_compute_rho(path_psf, catalog_id=cat_id, square_size=square_size, mask=mask) #Build the different catalogs
@@ -103,13 +102,13 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths
         tau_stat_handler.load_tau_stats('tau_stats_'+cat_id+'.fits')
     except FileNotFoundError:
         if param is None:
-            tau_stat_handler.catalogs.params_default()
+            tau_stat_handler.catalogs.params_default(output)
         else:
             tau_stat_handler.catalogs.set_params(param) #Set the parameters
         tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
         
         only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
-        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p) #Compute and save the tau statistics
+        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='jackknife') #Compute and save the tau statistics
 
 
 filenames = ['tau_stats_'+cat_id+'.fits' for cat_id in catalog_ids]

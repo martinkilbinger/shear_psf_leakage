@@ -174,8 +174,8 @@ class Catalogs():
 
     def __init__(self, params=None, output=None):
         #set default parameters
-        if (params is None) or (output is None): 
-            self.params_default()
+        if (params is None): 
+            self.params_default(output)
         else:
             self.set_params(params, output)
 
@@ -183,7 +183,7 @@ class Catalogs():
         self.dat_shear = None
         self.dat_psf = None
 
-    def params_default(self):
+    def params_default(self, output=None):
         """
         Params Default.
 
@@ -217,7 +217,10 @@ class Catalogs():
             "dec_units": "deg" 
         }
 
-        self._output = "."
+        if output is not None:
+            self._output = output
+        else:
+            self._output="."
 
     def set_params(self, params=None, output=None):
         """
@@ -414,7 +417,6 @@ class Catalogs():
         """ 
         return self.catalogs_dict[key]
 
-
 class RhoStat():
     """
     RhoStat
@@ -440,21 +442,6 @@ class RhoStat():
             self._treecorr_config = treecorr_config
 
         self.verbose = verbose
-    
-
-    def check_params(self):
-        """Check Params.
-
-        Check whether parameter values are valid.
-
-        Raises
-        ------
-        ValueError
-            if a parameter value is not valid
-
-        """
-        pass
-        #TO DO
 
     def build_cat_to_compute_rho(self, path_cat_star, catalog_id='', square_size=False, mask=False):
         """
@@ -1191,9 +1178,7 @@ class PSFErrorFit():
 
         
         """
-        alpha, beta, eta = theta
-
-        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*alpha*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
+        xi_sys = self.compute_xi_sys(theta)
 
         plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, label=r'$\xi_{\rm sys, +}$ '+cat_id)
 
@@ -1205,3 +1190,24 @@ class PSFErrorFit():
         if savefig:
             plt.savefig('xi_sys.png')
 
+    def compute_xi_sys(self, theta):
+        """
+        compute_xi_sys
+
+        Compute the systematic error on the cross-correlation given parameters (alpha, beta, eta)
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta) used to compute the systematic error
+
+        Return
+        ------
+        np.array
+            xi_sys
+        """
+
+        alpha, beta, eta = theta
+
+        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*alpha*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
+        return xi_sys
