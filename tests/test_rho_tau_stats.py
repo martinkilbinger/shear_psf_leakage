@@ -51,9 +51,19 @@ params_des = {
     "PSF_size": "piff_T",
     "star_size": "obs_T",
     "output_dir": ".",
-    "patch_number": 120,
+    "patch_number": 150,
     "ra_units": "deg",
     "dec_units": "deg" 
+}
+
+treecorr_config = {
+                "ra_units": "deg",
+                "dec_units": "deg",
+                "sep_units": "arcmin",
+                "min_sep": 0.1,
+                "max_sep": 100,
+                "nbins": 20,
+                "var_method": "jackknife"
 }
 
 params = [
@@ -66,16 +76,19 @@ colors = ['blue', 'red', 'green'] #Colors for the plot
 catalog_ids = ['SPV1', 'DESY3', 'SPV104'] #Ids of the catalogs
 
 ###################################Compute, save and plot the rho statistics############################
-rho_stat_handler = RhoStat(verbose=True) #Create your class to compute, save, load and plot rho_stats
+rho_stat_handler = RhoStat(output='./output_n_patch_150', verbose=True) #Create your class to compute, save, load and plot rho_stats
 
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the different catalogs
 
-    if param is None:
-        rho_stat_handler.catalogs.params_default()
-    else:
-        rho_stat_handler.catalogs.set_params(param) #Set the right parameters
-    rho_stat_handler.build_cat_to_compute_rho(path_psf, catalog_id=cat_id, square_size=square_size, mask=mask) #Build the different catalogs
-    rho_stat_handler.compute_rho_stats(cat_id, 'rho_stats_'+cat_id+'.fits') #Compute and save the rho statistics
+    try:
+        rho_stat_handler.load_rho_stats('rho_stats_'+cat_id+'.fits')
+    except FileNotFoundError:
+        if param is None:
+            rho_stat_handler.catalogs.params_default()
+        else:
+            rho_stat_handler.catalogs.set_params(param) #Set the right parameters
+        rho_stat_handler.build_cat_to_compute_rho(path_psf, catalog_id=cat_id, square_size=square_size, mask=mask) #Build the different catalogs
+        rho_stat_handler.compute_rho_stats(cat_id, 'rho_stats_'+cat_id+'.fits') #Compute and save the rho statistics
 
 filenames = ['rho_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
 
@@ -86,14 +99,17 @@ tau_stat_handler = TauStat(catalogs=rho_stat_handler.catalogs, verbose=True) #Cr
 
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the catalogs
 
-    if param is None:
-        tau_stat_handler.catalogs.params_default()
-    else:
-        tau_stat_handler.catalogs.set_params(param) #Set the parameters
-    tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
-    
-    only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
-    tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p) #Compute and save the tau statistics
+    try:
+        tau_stat_handler.load_tau_stats('tau_stats_'+cat_id+'.fits')
+    except FileNotFoundError:
+        if param is None:
+            tau_stat_handler.catalogs.params_default()
+        else:
+            tau_stat_handler.catalogs.set_params(param) #Set the parameters
+        tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
+        
+        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
+        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p) #Compute and save the tau statistics
 
 
 filenames = ['tau_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
@@ -117,4 +133,17 @@ for cat_id in catalog_ids:
     mcmc_result_list.append(mcmc_result)
     q_list.append(q)
 
-    psf_fitter.plot_tau_stats_w_model(mcmc_result, 'tau_stats_'+cat_id+'.fits', 'blue', cat_id, savefig='best_fit_'+cat_id+'.png')
+    psf_fitter.plot_tau_stats_w_model(mcmc_result[1], 'tau_stats_'+cat_id+'.fits', 'blue', cat_id, savefig='best_fit_'+cat_id+'.png')
+
+
+plot_contours(flat_sample_list, names=['x0', 'x1', 'x2'], labels=['alpha', 'beta', 'eta'], savefig='contours_tau_stat.png',
+    legend_labels=catalog_ids, legend_loc='upper right', contour_colors=colors, markers={'x0':0, 'x1':1, 'x2':1}
+)
+
+plt.figure(figsize=(15, 6))
+
+for mcmc_result, cat_id, color in zip(mcmc_result_list, catalog_ids, colors):
+    psf_fitter.load_rho_stat('rho_stats_'+cat_id+'.fits')
+    psf_fitter.plot_xi_sys(mcmc_result[1], cat_id, color)
+plt.legend()
+plt.savefig('xi_sys.png')

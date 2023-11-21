@@ -660,7 +660,7 @@ class TauStat():
                 "dec_units": "deg",
                 "sep_units": "arcmin",
                 "min_sep": 0.1,
-                "max_sep": 200,
+                "max_sep": 100,
                 "nbins": 20,
                 "var_method": "jackknife"
             }
@@ -831,7 +831,7 @@ class TauStat():
 
         nrows=1 + plot_tau_m
 
-        fig, ax = plt.subplots(nrows=nrows, ncols=3, figsize=(15,9))
+        fig, ax = plt.subplots(nrows=nrows, ncols=3, figsize=(15,6))
 
         if nrows==1:
             ax = ax.reshape(1, 3)
@@ -878,7 +878,7 @@ class PSFErrorFit():
         self.tau_stat_handler = tau_stat_handler
         print("Class created. Don't forget to load your rho and tau statistics and define your prior and your likelihood.")
         self.cov = None
-        self.log_prior = self.init_log_prior()
+        self.init_log_prior()
 
         def log_likelihood(theta, y, inv_cov):
             y_model = self.model(theta)
@@ -1006,7 +1006,7 @@ class PSFErrorFit():
         """
         alpha, beta, eta = theta
 
-        rhos = self.rho_stats_handler.rho_stats
+        rhos = self.rho_stat_handler.rho_stats
         tau_0_p = alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"] + eta * rhos["rho_5_p"]
         tau_2_p = alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"] + eta * rhos["rho_4_p"]
         tau_5_p = alpha * rhos["rho_5_p"] + beta * rhos["rho_4_p"] + eta * rhos["rho_3_p"]
@@ -1037,7 +1037,7 @@ class PSFErrorFit():
             Inverse of the covariane matrix.
         """
 
-        lp = self.prior(theta)
+        lp = self.log_prior(theta)
         if not np.isfinite(lp):
             return -np.inf
         return lp + self.log_likelihood(theta, y, inv_cov)
@@ -1096,7 +1096,7 @@ class PSFErrorFit():
             self.tau_stat_handler.tau_stats["tau_5_p"]
         ]).flatten()
 
-        init += 1e-3*np.random.randn(nwalkers, ndim)
+        init = init + 1e-3*np.random.randn(nwalkers, ndim)
 
         sampler = emcee.EnsembleSampler(
             nwalkers, ndim, self.log_probability, args=(output, inv_cov)
@@ -1132,7 +1132,7 @@ class PSFErrorFit():
         mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
         q = np.diff(mcmc_result, axis=0)
         if verbose:
-            print(f"Number of samples: {flat_samples.Shape[0]}\n")
+            print(f"Number of samples: {flat_samples.shape[0]}\n")
 
             print("Parameters constraints")
             print("----------------------")
@@ -1171,8 +1171,37 @@ class PSFErrorFit():
         taus = self.model(theta).reshape(3, -1)
         
         for i in range(3):
-            ax[0, i].plot(self.tau_stat_handler.tau_stats["theta"], taus[i], color='red', label='Model')
-            ax[0, i].leend(loc='upper right', fontsize='small')
+            factor = np.ones_like(self.tau_stat_handler.tau_stats["theta"]) if i==0 else self.tau_stat_handler.tau_stats["theta"]
+            ax[0, i].plot(self.tau_stat_handler.tau_stats["theta"], taus[i]*factor, color='red', label='Model')
+            ax[0, i].legend(loc='upper right', fontsize='small')
 
         if savefig is not None:
             plt.savefig(self.data_directory+'/'+savefig)
+
+    def plot_xi_sys(self, theta, cat_id, color, savefig=None):
+        """
+        plot_xi_sys
+
+        Plot the systematic error on the corss-correlation given parameters (alpha, beta, eta)
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta) used to compute the systematic error.
+
+        
+        """
+        alpha, beta, eta = theta
+
+        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*alpha*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
+
+        plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, label=r'$\xi_{\rm sys, +}$ '+cat_id)
+
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel(r"$\theta$ [arcmin]")
+        plt.ylabel(r"$\xi_{\rm PSF, sys}$")
+
+        if savefig:
+            plt.savefig('xi_sys.png')
+
