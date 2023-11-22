@@ -211,7 +211,6 @@ class Catalogs():
             "star_size": "SIGMA_STAR_HSM",
             "PSF_flag": "FLAG_PSF_HSM",
             "star_flag": "FLAG_STAR_HSM",
-            "output_dir": ".",
             "patch_number": 120,
             "ra_units": "deg",
             "dec_units": "deg" 
@@ -319,8 +318,10 @@ class Catalogs():
             else:
                 size_star = self.dat_psf[self._params["star_size"]]**2 if square_size else  self.dat_psf[self._params["star_size"]]
                 size_psf = self.dat_psf[self._params["PSF_size"]]**2 if square_size else  self.dat_psf[self._params["PSF_size"]]
-                g1 = self.dat_psf[self._params["e1_star_col"]] * (size_star - size_psf)/size_psf
-                g2 = self.dat_psf[self._params["e2_star_col"]] * (size_star - size_psf)/size_psf
+                g1 = self.dat_psf[self._params["e1_star_col"]] * (size_star - size_psf)/size_star
+                g1 -= g1.mean()
+                g2 = self.dat_psf[self._params["e2_star_col"]] * (size_star - size_psf)/size_star
+                g2 -= g2.mean()
 
         return ra, dec, g1, g2, weights
     
@@ -496,7 +497,7 @@ class RhoStat():
         rho_1 = treecorr.GGCorrelation(self._treecorr_config)
         rho_1.process(self.catalogs.get_cat('psf_error_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
         rho_2 = treecorr.GGCorrelation(self._treecorr_config)
-        rho_2.process(self.catalogs.get_cat('psf_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
+        rho_2.process(self.catalogs.get_cat('psf_error_'+catalog_id), self.catalogs.get_cat('psf_'+catalog_id))
         rho_3 = treecorr.GGCorrelation(self._treecorr_config)
         rho_3.process(self.catalogs.get_cat('psf_size_error_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
         rho_4 = treecorr.GGCorrelation(self._treecorr_config)
@@ -622,7 +623,7 @@ class RhoStat():
                     )
 
                 ax[i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
-                ax[i].legend(loc='upper right', fontsize='small')
+                ax[i].legend(loc='best', fontsize='small')
 
         if savefig is not None:
             plt.savefig(self.catalogs._output+'/'+savefig)
@@ -842,7 +843,7 @@ class TauStat():
                     ax[j, i].set_xlabel(xlabel)
                     ax[j, i].set_ylabel(ylabel)
                     ax[j, i].set_xscale('log')
-                    ax[j, i].legend(loc='upper right', fontsize='small')
+                    ax[j, i].legend(loc='best', fontsize='small')
 
         if savefig is not None:
             plt.savefig(self.catalogs._output+'/'+savefig)
@@ -1165,7 +1166,7 @@ class PSFErrorFit():
         if savefig is not None:
             plt.savefig(self.data_directory+'/'+savefig)
 
-    def plot_xi_sys(self, theta, cat_id, color, savefig=None):
+    def plot_xi_sys(self, theta, cat_id, color, savefig=None, alpha=1):
         """
         plot_xi_sys
 
@@ -1179,8 +1180,10 @@ class PSFErrorFit():
         
         """
         xi_sys = self.compute_xi_sys(theta)
-
-        plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, label=r'$\xi_{\rm sys, +}$ '+cat_id)
+        if alpha < 1:
+            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, alpha=alpha)
+        else:
+            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, alpha=alpha, label=r'$\xi_{\rm sys, +}$ '+cat_id)
 
         plt.xscale('log')
         plt.yscale('log')
@@ -1209,5 +1212,5 @@ class PSFErrorFit():
 
         alpha, beta, eta = theta
 
-        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*alpha*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
+        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*beta*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
         return xi_sys
