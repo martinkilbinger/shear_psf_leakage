@@ -288,15 +288,16 @@ class Catalogs():
                                            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error'.")
         
         if cat_type=="gal":
-            assert self.dat_shear is not None, ("Check you read the shear catalogs correctly.")
-            ra = self.dat_shear[self._params["ra_col"]]
-            dec = self.dat_shear[self._params["dec_col"]]
-            g1 = self.dat_shear[self._params["e1_col"]] - self.dat_shear[self._params["e1_col"]].mean()
-            g2 = self.dat_shear[self._params["e2_col"]] - self.dat_shear[self._params["e2_col"]].mean()
             if self._params["w_col"] is not None:
                 weights = self.dat_shear[self._params["w_col"]]
             else:
                 weights = np.ones.like(ra)
+            assert self.dat_shear is not None, ("Check you read the shear catalogs correctly.")
+            ra = self.dat_shear[self._params["ra_col"]]
+            dec = self.dat_shear[self._params["dec_col"]]
+            g1 = self.dat_shear[self._params["e1_col"]] - np.average(self.dat_shear[self._params["e1_col"]], weights=weights)
+            g2 = self.dat_shear[self._params["e2_col"]] - np.average(self.dat_shear[self._params["e2_col"]], weights=weights)
+            
         else:
             assert self.dat_psf is not None, ("Check you read the shear catalogs correctly.")
             #Add a mask?

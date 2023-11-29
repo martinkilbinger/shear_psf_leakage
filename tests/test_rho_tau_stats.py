@@ -11,31 +11,37 @@ from plots import plot_contours
 
 #First specify  the paths to your data
 paths_gal = [
-    "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.1.fits",
+    #"/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits",
+    "/automnt/n23data1/fhervas/shapepipe_clean_uppercut/unions_shapepipe_extended_2022_v1.0.4.fits",
     "/home/mkilbing/astro/data/DES/DES_Y3_cut.fits",
-    "/home/hervas/n23_fhervas/shapepipe_clean_uppercut/unions_shapepipe_extended_2022_v1.0.4_theli_4096.fits"
+    "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_extended_2022_v1.3_mtheli8k.fits",
+    #"/n17data/mkilbing/astro/data/CFIS/v0.0/shapepipe_1500_goldshape_v1.fits"
 ]
+
 paths_psf = [
     "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits",
     "/home/mkilbing/astro/data/DES/psf_y3a1-v29.fits",
-    "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits"
+    "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_psf_2022_v1.0.2_mtheli8k.fits",
+    #"/n17data/sguerrini/star_cat.fits"
 ]
 
 #Specify if you want to mask some data using flags
 masks = [
     True,
     False,
-    True
+    True,
+    #True
 ]
 
 #Specify is the sizes have to be squared. It can depend on the catalog.
 square_sizes = [
     True,
     False,
-    True
+    True,
+    #True
 ]
 
-output = 'output_n_patch_150'
+output = 'v1.3_mask_comparison'
 
 #Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
 params_des = {
@@ -50,7 +56,26 @@ params_des = {
     "e2_star_col": "obs_e2",
     "PSF_size": "piff_T",
     "star_size": "obs_T",
-    "patch_number": 150,
+    "patch_number": 120,
+    "ra_units": "deg",
+    "dec_units": "deg" 
+}
+
+params_axel = {
+    "e1_col": "g1",
+    "e2_col": "g2",
+    "w_col": "w",
+    "ra_col": "RA",
+    "dec_col": "Dec",
+    "e1_PSF_col": "E1_PSF_HSM",
+    "e2_PSF_col": "E2_PSF_HSM",
+    "e1_star_col": "E1_STAR_HSM",
+    "e2_star_col": "E2_STAR_HSM",
+    "PSF_size": "SIGMA_PSF_HSM",
+    "star_size": "SIGMA_STAR_HSM",
+    "PSF_flag": "FLAG_PSF_HSM",
+    "star_flag": "FLAG_STAR_HSM",
+    "patch_number": 120,
     "ra_units": "deg",
     "dec_units": "deg" 
 }
@@ -68,16 +93,18 @@ treecorr_config = {
 params = [
     None,
     params_des,
-    None
+    None,
+    #params_axel
 ]
 
 colors = ['blue', 'red', 'green'] #Colors for the plot
-catalog_ids = ['SPV1', 'DESY3', 'SPV1.3'] #Ids of the catalogs
+catalog_ids = ['SPV1.3_wo_mask', 'DESY3', 'SPV1.3_w_mask'] #Ids of the catalogs
 
+print(paths_gal)
+print(paths_psf)
 ###################################Compute, save and plot the rho statistics############################
 rho_stat_handler = RhoStat(output=output, verbose=True) #Create your class to compute, save, load and plot rho_stats
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the different catalogs
-
     try:
         rho_stat_handler.load_rho_stats('rho_stats_'+cat_id+'.fits')
     except FileNotFoundError:
@@ -105,7 +132,10 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths
         else:
             tau_stat_handler.catalogs.set_params(param, output) #Set the parameters
         tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
-        
+        if 'psf_'+cat_id not in tau_stat_handler.catalogs.catalogs_dict.keys():
+            tau_stat_handler.build_cat_to_compute_tau(path_psf, cat_type='psf', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
+
+
         only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
         tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='jackknife') #Compute and save the tau statistics
 
