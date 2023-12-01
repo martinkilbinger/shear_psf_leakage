@@ -12,6 +12,8 @@
 import numpy as np
 from scipy import stats
 from matplotlib import pylab as plt
+import getdist
+from getdist import plots, MCSamples
 
 from shear_psf_leakage import leakage
 
@@ -430,3 +432,25 @@ def plot_corr_2d(
     # Save figure
     if out_path:
         plt.savefig(f"{out_path}.png", bbox_inches="tight")
+
+def plot_contours(sample_list, names, labels, savefig=None, **kwargs):
+    """
+    plot_contours
+
+    Plot a corner plot with getdist for given samples.
+
+    Parameters
+    ----------
+    sample_list : list
+        A list containing np.array with samples in each entry.
+    names : list str
+        Names of the variable (See getdist documentation)
+    labels : list str
+        Labels of the parameters
+    """
+    sample_list = [MCSamples(samples=samps, names=names, labels=labels) for samps in sample_list]
+    g = plots.get_subplot_plotter()
+    g.triangle_plot(sample_list, filled=True, **kwargs)
+
+    if savefig is not None:
+        plt.savefig(savefig)
