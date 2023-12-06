@@ -326,7 +326,7 @@ class Catalogs():
 
         return ra, dec, g1, g2, weights
     
-    def build_catalog(self, cat_type, key, npatch=None, square_size=False, mask=False):
+    def build_catalog(self, cat_type, key, npatch=None, patch_centers=None, square_size=False, mask=False):
         """
         build_catalogue
 
@@ -365,16 +365,28 @@ class Catalogs():
         else:
             mask_arr = np.array([True for i in ra])
 
-        cat = treecorr.Catalog(
-            ra=ra[mask_arr],
-            dec=dec[mask_arr],
-            g1=g1[mask_arr],
-            g2=g2[mask_arr],
-            w=weights,
-            ra_units=self._params["ra_units"],
-            dec_units=self._params["dec_units"],
-            npatch=npatch
-        )
+        if patch_centers is None:
+            cat = treecorr.Catalog(
+                ra=ra[mask_arr],
+                dec=dec[mask_arr],
+                g1=g1[mask_arr],
+                g2=g2[mask_arr],
+                w=weights,
+                ra_units=self._params["ra_units"],
+                dec_units=self._params["dec_units"],
+                npatch=npatch
+            )
+        else:
+            cat = treecorr.Catalog(
+                ra=ra[mask_arr],
+                dec=dec[mask_arr],
+                g1=g1[mask_arr],
+                g2=g2[mask_arr],
+                w=weights,
+                ra_units=self._params["ra_units"],
+                dec_units=self._params["dec_units"],
+                patch_centers=patch_centers
+            )
 
         self.catalogs_dict.update(
             {key: cat}
@@ -470,8 +482,9 @@ class RhoStat():
             print("Building catalogs...")
 
         self.catalogs.build_catalog(cat_type='psf', key='psf_'+catalog_id, square_size=square_size, mask=mask)
-        self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, square_size=square_size, mask=mask)
-        self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, square_size=square_size, mask=mask)
+        patch_centers = self.catalogs.catalogs_dict['psf_'+catalog_id].patch_centers
+        self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
+        self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
 
         if self.verbose:
             print("Catalogs successfully built...")
@@ -687,8 +700,9 @@ class TauStat():
                 print("Building catalogs...")
 
             self.catalogs.build_catalog(cat_type='psf', key='psf_'+catalog_id, square_size=square_size, mask=mask)
-            self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, square_size=square_size, mask=mask)
-            self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, square_size=square_size, mask=mask)
+            patch_centers = self.catalogs.catalogs_dict['psf_'+catalog_id].patch_centers
+            self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
+            self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
 
         else:
             self.catalogs.read_shear_cat(path_gal=path_cat, path_psf=None)
@@ -696,7 +710,12 @@ class TauStat():
             if self.verbose:
                 print("Building catalog...")
             
-            self.catalogs.build_catalog(cat_type='gal', key='gal_'+catalog_id)
+            try:
+                patch_centers = self.catalogs.catalogs_dict['psf_'+catalog_id].patch_centers
+            except KeyError:
+                print("Warning, you should build psf catalog before galaxy catalog.")
+                patch_centers = None
+            self.catalogs.build_catalog(cat_type='gal', key='gal_'+catalog_id, patch_centers=patch_centers)
 
         if self.verbose:
             print("Catalogs successfully built...")
