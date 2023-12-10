@@ -545,7 +545,7 @@ class LeakageObject:
                 ylabel_arr=ylabel_arr,
                 order=order,
                 mix=mix,
-                title=f"{order} {mix}",
+                title="",
                 n_bin=n_bin,
                 out_path=out_path,
                 colors=colors,

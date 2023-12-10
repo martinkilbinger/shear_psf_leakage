@@ -813,7 +813,9 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
         raise IndexError("Length of both data components has to be equal")
 
     # Get model 1D y1 and y2 components
-    y1_model, y2_model = func_bias_2d(params, x1_data, x2_data, order=order, mix=mix)
+    y1_model, y2_model = func_bias_2d(
+        params, x1_data, x2_data, order=order, mix=mix
+    )
 
     # Compute residuals between data and model
     res1 = (y1_model - y1_data) / err
