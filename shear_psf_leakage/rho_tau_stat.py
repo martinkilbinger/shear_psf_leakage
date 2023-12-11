@@ -291,7 +291,7 @@ class Catalogs():
             if self._params["w_col"] is not None:
                 weights = self.dat_shear[self._params["w_col"]]
             else:
-                weights = np.ones.like(ra)
+                weights = np.ones_like(ra)
             assert self.dat_shear is not None, ("Check you read the shear catalogs correctly.")
             ra = self.dat_shear[self._params["ra_col"]]
             dec = self.dat_shear[self._params["dec_col"]]
@@ -575,7 +575,7 @@ class RhoStat():
     def load_rho_stats(self, filename):
         self.rho_stats = fits.getdata(self.catalogs._output+'/'+filename)
 
-    def plot_rho_stats(self, filenames, colors, catalog_ids, abs=True, savefig=None):
+    def plot_rho_stats(self, filenames, colors, catalog_ids, abs=True, savefig=None, legend="each"):
         """
         plot_rho_stats
 
@@ -597,6 +597,9 @@ class RhoStat():
 
         savefig : str
             If not None, saves the figure with the name given in savefig.
+
+        legend : str, optional
+            allowed are "each" (default; legends in each panel), "outside" (legend outside of panels)
         """
 
         fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(15,9))
@@ -624,7 +627,11 @@ class RhoStat():
                     )
 
                 ax[i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
-                ax[i].legend(loc='best', fontsize='small')
+                if legend == "inside":
+                    ax[i].legend(loc='best', fontsize='small')
+
+        if legend == "outside":
+            ax[-1].legend(bbox_to_anchor=(0.5, 1.1))
 
         if savefig is not None:
             plt.savefig(self.catalogs._output+'/'+savefig)
