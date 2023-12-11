@@ -41,9 +41,29 @@ square_sizes = [
     True
 ]
 
-output = '/home/guerrini/rho_tau_stats_output/output_n_patch_120'
+output = '/home/guerrini/rho_tau_stats_output/run_full_debiased_3'
 
 #Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
+params_sp = {
+    "e1_col": "e1",
+    "e2_col": "e2",
+    "w_col": "w",
+    "ra_col": "RA",
+    "dec_col": "Dec",
+    "e1_PSF_col": "E1_PSF_HSM",
+    "e2_PSF_col": "E2_PSF_HSM",
+    "e1_star_col": "E1_STAR_HSM",
+    "e2_star_col": "E2_STAR_HSM",
+    "PSF_size": "SIGMA_PSF_HSM",
+    "star_size": "SIGMA_STAR_HSM",
+    "PSF_flag": "FLAG_PSF_HSM",
+    "star_flag": "FLAG_STAR_HSM",
+    "patch_number": 200,
+    "ra_units": "deg",
+    "dec_units": "deg" 
+}
+
+
 params_des = {
     "e1_col": "e1_cal",
     "e2_col": "e2_cal",
@@ -75,7 +95,7 @@ params_axel = {
     "star_size": "SIGMA_STAR_HSM",
     "PSF_flag": "FLAG_PSF_HSM",
     "star_flag": "FLAG_STAR_HSM",
-    "patch_number": 120,
+    "patch_number": 200,
     "ra_units": "deg",
     "dec_units": "deg" 
 }
@@ -91,9 +111,9 @@ treecorr_config = {
 }
 
 params = [
-    None,
+    params_sp,
     params_des,
-    None,
+    params_sp,
     params_axel
 ]
 
@@ -139,7 +159,7 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths
 
 
         only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
-        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='jackknife') #Compute and save the tau statistics
+        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='bootstrap') #Compute and save the tau statistics
 
 
 filenames = ['tau_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
@@ -153,12 +173,12 @@ flat_sample_list = []
 mcmc_result_list = []
 q_list = []
 
-for cat_id in catalog_ids:
+for cat_id, param in zip(catalog_ids, params):
     psf_fitter.load_rho_stat('rho_stats_'+cat_id+'.fits')
     psf_fitter.load_tau_stat('tau_stats_'+cat_id+'.fits')
     psf_fitter.load_covariance('cov_'+cat_id+'.npy')
 
-    flat_samples, mcmc_result, q = psf_fitter.run_chain(savefig='mcmc_samples_'+cat_id+'.png')
+    flat_samples, mcmc_result, q = psf_fitter.run_chain(savefig='mcmc_samples_'+cat_id+'.png', npatch=param["patch_number"], apply_debias=True)
     flat_sample_list.append(flat_samples)
     mcmc_result_list.append(mcmc_result)
     q_list.append(q)

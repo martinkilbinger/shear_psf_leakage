@@ -1050,7 +1050,7 @@ class PSFErrorFit():
             return -np.inf
         return lp + self.log_likelihood(theta, y, inv_cov)
 
-    def run_chain(self, init=np.array([0.0,0.0,0.0]), nwalkers=124, nsamples=10000, discard=300, thin=100, verbose=True, savefig=None):
+    def run_chain(self, init=np.array([0.0,0.0,0.0]), nwalkers=124, nsamples=10000, discard=300, thin=100, verbose=True, savefig=None, npatch=200, apply_debias=False):
         """
         run_chain
 
@@ -1076,6 +1076,12 @@ class PSFErrorFit():
 
         verbose : bool
             If True, prints several informations.
+
+        npatch : int
+            The number of patches used to perform the inference. (Only used if apply_bias if true, Default: 200)
+
+        apply_debias : bool
+            If True, apply some debiasing of the inverse of the covariance matrix. (Default: False)
 
         Returns
         -------
@@ -1103,6 +1109,9 @@ class PSFErrorFit():
             self.tau_stat_handler.tau_stats["tau_2_p"],
             self.tau_stat_handler.tau_stats["tau_5_p"]
         ]).flatten()
+
+        if apply_debias:
+            inv_cov = (npatch - output.shape[0] - 2)/(npatch-1)*inv_cov
 
         init = init + 1e-3*np.random.randn(nwalkers, ndim)
 
