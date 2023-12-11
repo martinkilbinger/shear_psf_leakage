@@ -574,6 +574,3 @@ cs_plots.plot_data_1d(
     close_fig=False,
 )
 # -
-
-
-

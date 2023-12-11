@@ -19,7 +19,7 @@ pypi.org,
 pip install shear_psf_leakage
 ```
 
-Alternatively, you can use
+Alternatively, you can use TBD
 
 ## Authors
 
