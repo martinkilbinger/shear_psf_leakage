@@ -39,7 +39,7 @@ def neg_dash(
 
     Parameters
     ----------
-    ax : 
+    ax :
         The matplotlib object on which the plot is performed
     x_in : numpy.ndarray
         X-axis inputs
@@ -168,13 +168,13 @@ class Catalogs():
     """
     Catalogs
 
-    Class to build the different treecorr catalogs given a shape catalog that will be 
+    Class to build the different treecorr catalogs given a shape catalog that will be
     used to compute the different statistics
     """
 
     def __init__(self, params=None, output=None):
         #set default parameters
-        if (params is None): 
+        if (params is None):
             self.params_default(output)
         else:
             self.set_params(params, output)
@@ -213,7 +213,7 @@ class Catalogs():
             "star_flag": "FLAG_STAR_HSM",
             "patch_number": 120,
             "ra_units": "deg",
-            "dec_units": "deg" 
+            "dec_units": "deg"
         }
 
         if output is not None:
@@ -248,7 +248,7 @@ class Catalogs():
             self.dat_shear = fits.getdata(path_gal)
         if path_psf is not None:
             self.dat_psf = fits.getdata(path_psf)
-    
+
     def get_cat_fields(self, cat_type, square_size=False):
         """
         Get Cat Fields
@@ -286,7 +286,7 @@ class Catalogs():
 
         assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
                                            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error'.")
-        
+
         if cat_type=="gal":
             if self._params["w_col"] is not None:
                 weights = self.dat_shear[self._params["w_col"]]
@@ -297,7 +297,7 @@ class Catalogs():
             dec = self.dat_shear[self._params["dec_col"]]
             g1 = self.dat_shear[self._params["e1_col"]] - np.average(self.dat_shear[self._params["e1_col"]], weights=weights)
             g2 = self.dat_shear[self._params["e2_col"]] - np.average(self.dat_shear[self._params["e2_col"]], weights=weights)
-            
+
         else:
             assert self.dat_psf is not None, ("Check you read the shear catalogs correctly.")
             #Add a mask?
@@ -305,11 +305,11 @@ class Catalogs():
             ra = self.dat_psf[self._params["ra_col"]]
             dec = self.dat_psf[self._params["dec_col"]]
             weights = None
-            
+
             if cat_type=="psf":
                 g1 = self.dat_psf[self._params["e1_PSF_col"]] - self.dat_psf[self._params["e1_PSF_col"]].mean()
                 g2 = self.dat_psf[self._params["e2_PSF_col"]] - self.dat_psf[self._params["e2_PSF_col"]].mean()
-            
+
             elif cat_type=="psf_error":
                 g1 = (self.dat_psf[self._params["e1_star_col"]] - self.dat_psf[self._params["e1_PSF_col"]])
                 g1 -= g1.mean()
@@ -325,7 +325,7 @@ class Catalogs():
                 g2 -= g2.mean()
 
         return ra, dec, g1, g2, weights
-    
+
     def build_catalog(self, cat_type, key, npatch=None, square_size=False, mask=False):
         """
         build_catalogue
@@ -353,7 +353,7 @@ class Catalogs():
 
         if npatch is None:
             npatch = self._params["patch_number"]
-        
+
         ra, dec, g1, g2, weights = self.get_cat_fields(cat_type, square_size)
 
         if mask:
@@ -416,7 +416,7 @@ class Catalogs():
         -------
         treecorr.Catalog
             The requested treecorr.Catalog
-        """ 
+        """
         return self.catalogs_dict[key]
 
 class RhoStat():
@@ -426,7 +426,13 @@ class RhoStat():
     Class to compute the rho statistics (Rowe 2010) of a PSF catalogue.
     """
 
-    def __init__(self, params=None, output=None, treecorr_config=None, verbose=False):
+    def __init__(
+        self,
+        params=None,
+        output=None,
+        treecorr_config=None,
+        verbose=False
+    ):
 
         self.catalogs = Catalogs(params, output)
 
@@ -585,7 +591,7 @@ class RhoStat():
         ----------
         filenames : list str
             List of the files containing the rho statistics. They can be computed using the method `compute_rho_stats` of this class.
-        
+
         colors : list str
             Color of the plot for the different catalogs. We recommend using different colors for different catalogs for readability.
 
@@ -627,7 +633,7 @@ class RhoStat():
                     #Plot the negative values of the rho-stats in dashed lines
                     neg_dash(
                         ax[i], self.rho_stats['theta'], self.rho_stats['rho_'+str(i)+'_p'], yerr_in=np.sqrt(self.rho_stats['varrho_'+str(i)+'_p']),
-                        vertical_lines=False, rho_nb=str(i), cat_id=cat_id, xlabel=xlabel, ylabel=ylabel, semilogx=True, semilogy=True, capsize=True, color=color
+                        vertical_lines=False, rho_nb=str(i), cat_id=cat_id, xlabel=xlabel, ylabel=ylabel, semilogx=True, semilogy=True, capsize=True, color=color, fmt=".",
                     )
 
                 ax[i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
@@ -709,7 +715,7 @@ class TauStat():
 
             if self.verbose:
                 print("Building catalog...")
-            
+
             self.catalogs.build_catalog(cat_type='gal', key='gal_'+catalog_id)
 
         if self.verbose:
@@ -735,7 +741,7 @@ class TauStat():
 
         func : function
             The function to select the quantity whose covariance is being computed from tau_0, tau_2 and tau_5.
-        
+
         var_method: str
             The method used to compute the covariance. (Default: jackknife)
         """
@@ -812,7 +818,7 @@ class TauStat():
         ----------
         filenames : list str
             List of the files containing the rho statistics. They can be computed using the method `compute_rho_stats` of this class.
-        
+
         colors : list str
             Color of the plot for the different catalogs. We recommend using different colors for different catalogs for readability.
 
@@ -899,7 +905,7 @@ class PSFErrorFit():
             y_model = self.model(theta)
             d = y_model -y
             return -0.5 * d.T@inv_cov@d
-        
+
         self.log_likelihood = log_likelihood
         self.data_directory = data_directory
 
@@ -999,7 +1005,7 @@ class PSFErrorFit():
             if low_alpha <= alpha <= high_alpha and low_beta <= beta <= high_beta and low_eta <=eta <= high_eta:
                 return 0.0
             return -np.inf
-        
+
         self.log_prior = log_prior
 
     def model(self, theta):
@@ -1033,7 +1039,7 @@ class PSFErrorFit():
         ])
 
         return model_output.flatten()
-    
+
     def log_probability(self, theta, y, inv_cov):
         """
         log_probability
@@ -1068,7 +1074,7 @@ class PSFErrorFit():
         ----------
         init : np.array
             Initial value of the parameters. An additional random noise will be added. (Default: [0,0,0])
-        
+
         nwalkers : int
             Number of walkers used in the Ensemble Sampler (See emcee documentation). (Default: 124)
 
@@ -1140,7 +1146,7 @@ class PSFErrorFit():
                 ax.yaxis.set_label_coords(-0.1, 0.5)
 
                 axes[-1].set_xlabel("step number");
-        
+
             plt.savefig(self.data_directory+'/'+savefig)
 
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
@@ -1236,7 +1242,7 @@ class PSFErrorFit():
         q = np.diff(mcmc_result, axis=0)
 
         return mcmc_result, q
-    
+
     def plot_tau_stats_w_model(self, theta, filename, color, catalog_id, savefig=None):
         """
         plot_tau_stats_w_model
@@ -1263,7 +1269,7 @@ class PSFErrorFit():
         assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
 
         taus = self.model(theta).reshape(3, -1)
-        
+
         for i in range(3):
             factor = np.ones_like(self.tau_stat_handler.tau_stats["theta"]) if i==0 else self.tau_stat_handler.tau_stats["theta"]
             ax[0, i].plot(self.tau_stat_handler.tau_stats["theta"], taus[i]*factor, color='red', label='Model')
@@ -1284,7 +1290,7 @@ class PSFErrorFit():
         ----------
         theta : tuple
             Parameters (alpha, beta, eta) used to compute the systematic error.
-        
+
         """
         xi_psf_sys = self.compute_xi_psf_sys(theta)
         if alpha < 1:
@@ -1300,6 +1306,76 @@ class PSFErrorFit():
         if savefig:
             plt.savefig('xi_psf_sys.png')
             plt.close()
+
+
+    def plot_xi_psf_sys_terms(self, cat_id, theta, out_path, yscale="log"):
+
+        ls = ["dotted", "dashed", "dashdot", (-1, (3, 5, 1, 5, 1, 5)), (0, (1, 10)), (0, (5, 5))]
+        color = ["green", "blue", "red", "magenta", "cyan", "orange"]
+
+        plt.figure(figsize=(15, 6))
+
+        #self.plot_xi_psf_sys(theta, cat_id, "black")
+        ang_scales = self.rho_stat_handler.rho_stats["theta"]
+
+        label_pre = [
+            r"$\alpha^2$",
+            r"$\beta^2$",
+            r"$\eta^2$",
+            r"$2 \alpha \beta$",
+            r"$2 \alpha \eta$",
+            r"$2 \beta \eta$",
+        ]
+        xi_sum = np.zeros_like(ang_scales)
+
+        if yscale == "linear":
+            plot_fct = plt.semilogx
+            ylim = [-0.5e-6, 5e-6]
+        else:
+            plot_fct = plt.loglog
+            ylim = [3e-10, 5e-6]
+
+        linewidth_pos = 3
+        linewidth_neg = 1
+
+        xi_psf_sys = self.compute_xi_psf_sys(theta)
+        plot_fct(
+            ang_scales,
+            xi_psf_sys,
+            linestyle="-",
+            linewidth=linewidth_pos,
+            color="black",
+            label=r'$\xi^{\rm PSF}_{\rm sys, +}$ '+ cat_id,
+        )
+
+        for term in range(6):
+            xi_psf_sys_term = self.compute_xi_psf_sys_term(theta, term)
+            xi_sum += xi_psf_sys_term
+            if xi_psf_sys_term[-1] > 0:
+                linewidth = linewidth_pos
+            else:
+                linewidth = linewidth_neg
+            plot_fct(
+                ang_scales,
+                np.abs(xi_psf_sys_term),
+                linestyle=ls[term],
+                linewidth=linewidth,
+                color=color[term],
+                label=fr"{label_pre[term]} $\rho_{term}$",
+            )
+        xi_psf_sys_check = self.compute_xi_psf_sys(theta)
+
+        plot_fct(ang_scales, xi_psf_sys_check, "bo", mfc="none")
+        plot_fct(ang_scales, xi_sum, "bs", mfc="none")
+
+        plt.xlabel(r"$\theta$ [arcmin]")
+        plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
+        plt.legend(loc="best", fontsize="small")
+        plt.ylim(ylim)
+        plt.tight_layout()
+        plt.savefig(out_path, bbox_inches='tight')
+        plt.close()
+
 
     def compute_xi_psf_sys_term(self, theta, term):
         """
@@ -1370,5 +1446,5 @@ class PSFErrorFit():
             #+ 2 * alpha * beta * self.rho_stat_handler.rho_stats["rho_2_p"]
             #+ 2 * alpha * eta * self.rho_stat_handler.rho_stats["rho_5_p"]
             #+ 2 * beta * eta * self.rho_stat_handler.rho_stats["rho_4_p"]
-   
+
         return xi_psf_sys
