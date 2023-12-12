@@ -610,8 +610,12 @@ class RhoStat():
 
             for i in range(6):
                 xlabel=r"$\theta$ [arcmin]" if i>2 else ''
-                ylabel=r"$\rho-$statistics" if (i==0 or i==3) else ''
-                label = fr'$\rho_{i}(\theta)$ '+cat_id
+                if legend == "inside":
+                    ylabel = r"$\rho-$statistics" if (i==0 or i==3) else ''
+                    label = fr'$\rho_{i}(\theta)$ '+cat_id
+                else:
+                    ylabel = rf"$\rho_{i}(\theta)$"
+                    label = fr'$\rho_i$ {cat_id}'
                 if abs:
                     ax[i].errorbar(self.rho_stats['theta'], np.abs(self.rho_stats['rho_'+str(i)+'_p']), yerr=np.sqrt(self.rho_stats['varrho_'+str(i)+'_p']),
                     label=label, color=color, capsize=2)
@@ -631,10 +635,13 @@ class RhoStat():
                     ax[i].legend(loc='best', fontsize='small')
 
         if legend == "outside":
-            ax[-1].legend(bbox_to_anchor=(0.5, 1.1))
+            ax[-1].legend(bbox_to_anchor=(1.5, 0.0), fontsize='small')
 
+        plt.tight_layout()
         if savefig is not None:
-            plt.savefig(self.catalogs._output+'/'+savefig)
+            plt.savefig(self.catalogs._output+'/'+savefig, bbox_inches='tight')
+
+        plt.close()
 
 class TauStat():
     """
@@ -795,7 +802,7 @@ class TauStat():
     def load_tau_stats(self, filename):
         self.tau_stats = fits.getdata(self.catalogs._output+'/'+filename)
 
-    def plot_tau_stats(self, filenames, colors, catalog_ids, savefig=None, plot_tau_m=True):
+    def plot_tau_stats(self, filenames, colors, catalog_ids, savefig=None, plot_tau_m=True, legend="inside"):
         """
         plot_tau_stats
 
@@ -818,6 +825,9 @@ class TauStat():
         plot_tau_m : bool
             If True, plot the tau - additionally.
 
+        legend : str, optional
+            allowed are "each" (default; legends in each panel), "outside" (legend outside of panels)
+
         Return
         ------
         fig : Figure
@@ -837,24 +847,33 @@ class TauStat():
 
             for i in range(3):
                 for j in range(nrows):
-                    xlabel=r"$\theta$ [arcmin]" if (j==nrows-1) else ''
-                    ylabel=r"$\tau-$statistics" if (i==0) else ''
                     p_or_m = 'm' if j else 'p'
                     p_or_m_label = '-' if j else '+'
+                    xlabel=r"$\theta$ [arcmin]" if (j==nrows-1) else ''
+                    if legend == "inside":
+                        ylabel = r"$\tau-$statistics" if (i==0) else ''
+                        label = rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)$ '+cat_id if i==0 else rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)\theta$ '+cat_id
+                    else:
+                        ylabel = r"$\tau_{i}(\theta)$"
+                        label = rf"$\tau_i$ {cat_id}"
                     factor_theta = np.ones_like(self.tau_stats["theta"]) if i==0 else self.tau_stats["theta"]
                     y = self.tau_stats['tau_'+str(int(0.5*i**2+1.5*i))+'_'+p_or_m]*factor_theta
                     yerr_in = np.sqrt(self.tau_stats['vartau_'+str(int(0.5*i**2+1.5*i))+'_'+p_or_m])*factor_theta
-                    label = rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)$ '+cat_id if i==0 else rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)\theta$ '+cat_id
 
                     ax[j, i].errorbar(self.tau_stats["theta"], y, yerr=yerr_in, label=label, color=color, capsize=2)
                     ax[j, i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
                     ax[j, i].set_xlabel(xlabel)
                     ax[j, i].set_ylabel(ylabel)
                     ax[j, i].set_xscale('log')
-                    ax[j, i].legend(loc='best', fontsize='small')
+                    if legend == "inside":
+                        ax[j, i].legend(loc='best', fontsize='small')
 
+        if legend == "outside":
+            ax[-1, -1].legend(bbox_to_anchor=(1.5, 0.0), fontsize='small')
+
+        plt.tight_layout()
         if savefig is not None:
-            plt.savefig(self.catalogs._output+'/'+savefig)
+            plt.savefig(self.catalogs._output+'/'+savefig, bbox_inches='tight')
 
         return fig, ax
 
@@ -1125,8 +1144,10 @@ class PSFErrorFit():
             plt.savefig(self.data_directory+'/'+savefig)
 
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
-        mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
-        q = np.diff(mcmc_result, axis=0)
+        mcmc_result, q = self.get_mcmc_from_samples(flat_samples)
+
+        #mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
+        #q = np.diff(mcmc_result, axis=0)
         if verbose:
             print(f"Number of samples: {flat_samples.shape[0]}\n")
 
@@ -1138,6 +1159,83 @@ class PSFErrorFit():
             print(f"Max log_likelihood: {self.log_likelihood(mcmc_result[1,:], output, inv_cov)}")
 
         return flat_samples, mcmc_result, q
+
+    def get_sample_path(self, catalog_id):
+        """Get Sample Path.
+
+        Return file path of MCMC sample.
+
+        Parameters
+        ----------
+        catalog_id : str
+            ID of the catalog used for this run
+
+        Returns
+        -------
+        str
+            file path
+        """
+        file_path = f"{self.rho_stat_handler.catalogs._output}/samples_{catalog_id}.npy"
+        return file_path
+
+
+    def save_samples(self, flat_samples, catalog_id):
+        """Save Samples.
+
+        Save samples to file.
+
+        Parameters
+        ----------
+        flat_samples : np.array
+            Samples obtained from the MCMC analysis
+        catalog_id : str
+            ID of the catalog used for this run
+
+        """
+        np.save(self.get_sample_path(catalog_id), flat_samples)
+
+    def load_samples(self, catalog_id):
+        """Load Samples.
+
+        Load samples from file.
+
+        Parameters
+        ----------
+        Returns
+        -------
+        np.array
+            Samples obtained from the MCMC analysi
+
+        """
+        file_path = self.get_sample_path(catalog_id)
+        flat_samples = np.load(file_path)
+
+        return flat_samples
+
+
+    def get_mcmc_from_samples(self, flat_samples):
+        """Get MCMC From Samples.
+
+        Return MCMC samples and quanties from samples.
+
+        Parameters
+        ----------
+        flat_samples : np.array
+            Samples obtained from the MCMC analysis
+
+        Returns
+        -------
+        np.array
+            Best-fit values of the parameters
+
+        np.array
+            Error bars at the 68% confidence level.
+
+        """
+        mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
+        q = np.diff(mcmc_result, axis=0)
+
+        return mcmc_result, q
     
     def plot_tau_stats_w_model(self, theta, filename, color, catalog_id, savefig=None):
         """
@@ -1174,36 +1272,77 @@ class PSFErrorFit():
         if savefig is not None:
             plt.savefig(self.data_directory+'/'+savefig)
 
-    def plot_xi_sys(self, theta, cat_id, color, savefig=None, alpha=1):
-        """
-        plot_xi_sys
+        plt.close()
 
-        Plot the systematic error on the corss-correlation given parameters (alpha, beta, eta)
+    def plot_xi_psf_sys(self, theta, cat_id, color, savefig=None, alpha=1):
+        """
+        Plot Xi Psf sys.
+
+        Plot the systematic error on the corss-correlation given parameters (alpha, beta, eta).
 
         Parameters
         ----------
         theta : tuple
             Parameters (alpha, beta, eta) used to compute the systematic error.
-
         
         """
-        xi_sys = self.compute_xi_sys(theta)
+        xi_psf_sys = self.compute_xi_psf_sys(theta)
         if alpha < 1:
-            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, alpha=alpha)
+            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_psf_sys, color=color, capsize=2, alpha=alpha)
         else:
-            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, alpha=alpha, label=r'$\xi_{\rm sys, +}$ '+cat_id)
+            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_psf_sys, color=color, capsize=2, alpha=alpha, label=r'$\xi^{\rm PSF}_{\rm sys, +}$ '+cat_id)
 
         plt.xscale('log')
         plt.yscale('log')
         plt.xlabel(r"$\theta$ [arcmin]")
-        plt.ylabel(r"$\xi_{\rm PSF, sys}$")
+        plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
 
         if savefig:
-            plt.savefig('xi_sys.png')
+            plt.savefig('xi_psf_sys.png')
+            plt.close()
 
-    def compute_xi_sys(self, theta):
+    def compute_xi_psf_sys_term(self, theta, term):
         """
-        compute_xi_sys
+        Compute Xi Psf Sys Term.
+
+        Compute one term of the systematic error on the cross-correlation given parameters (alpha, beta, eta)
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta) used to compute the systematic error
+
+        term : int
+            term (rho function) number, from 0 to 5
+
+        Return
+        ------
+        np.array
+            xi_psf_sys
+
+        """
+        alpha, beta, eta = theta
+
+        if term == 0:
+            prefactor = alpha ** 2
+        elif term == 1:
+            prefactor = beta ** 2
+        elif term == 3:
+            prefactor = eta ** 2
+        elif term == 2:
+            prefactor = 2 * alpha * beta
+        elif term == 5:
+            prefactor = 2 * alpha * eta
+        elif term == 4:
+            prefactor = 2 * beta * eta
+        else:
+            raise ValueError(f"Invalid term {term}")
+
+        return prefactor * self.rho_stat_handler.rho_stats[f"rho_{term}_p"]
+
+    def compute_xi_psf_sys(self, theta):
+        """
+        Compute Xi Psf Sys.
 
         Compute the systematic error on the cross-correlation given parameters (alpha, beta, eta)
 
@@ -1215,10 +1354,21 @@ class PSFErrorFit():
         Return
         ------
         np.array
-            xi_sys
+            xi_psf_sys
         """
 
         alpha, beta, eta = theta
 
-        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*beta*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
-        return xi_sys
+        xi_psf_sys = np.zeros_like(self.rho_stat_handler.rho_stats["theta"])
+
+        for term in range(6):
+           xi_psf_sys += self.compute_xi_psf_sys_term(theta, term)
+
+            #alpha ** 2 * self.rho_stat_handler.rho_stats["rho_0_p"]
+            #+ beta ** 2 * self.rho_stat_handler.rho_stats["rho_1_p"]
+            #+ eta ** 2 * self.rho_stat_handler.rho_stats["rho_3_p"]
+            #+ 2 * alpha * beta * self.rho_stat_handler.rho_stats["rho_2_p"]
+            #+ 2 * alpha * eta * self.rho_stat_handler.rho_stats["rho_5_p"]
+            #+ 2 * beta * eta * self.rho_stat_handler.rho_stats["rho_4_p"]
+   
+        return xi_psf_sys
