@@ -39,7 +39,7 @@ def neg_dash(
 
     Parameters
     ----------
-    ax : 
+    ax :
         The matplotlib object on which the plot is performed
     x_in : numpy.ndarray
         X-axis inputs
@@ -168,13 +168,13 @@ class Catalogs():
     """
     Catalogs
 
-    Class to build the different treecorr catalogs given a shape catalog that will be 
+    Class to build the different treecorr catalogs given a shape catalog that will be
     used to compute the different statistics
     """
 
     def __init__(self, params=None, output=None):
         #set default parameters
-        if (params is None): 
+        if (params is None):
             self.params_default(output)
         else:
             self.set_params(params, output)
@@ -213,7 +213,7 @@ class Catalogs():
             "star_flag": "FLAG_STAR_HSM",
             "patch_number": 120,
             "ra_units": "deg",
-            "dec_units": "deg" 
+            "dec_units": "deg"
         }
 
         if output is not None:
@@ -248,7 +248,7 @@ class Catalogs():
             self.dat_shear = fits.getdata(path_gal)
         if path_psf is not None:
             self.dat_psf = fits.getdata(path_psf)
-    
+
     def get_cat_fields(self, cat_type, square_size=False):
         """
         Get Cat Fields
@@ -286,18 +286,18 @@ class Catalogs():
 
         assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
                                            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error'.")
-        
+
         if cat_type=="gal":
             if self._params["w_col"] is not None:
                 weights = self.dat_shear[self._params["w_col"]]
             else:
-                weights = np.ones.like(ra)
+                weights = np.ones_like(ra)
             assert self.dat_shear is not None, ("Check you read the shear catalogs correctly.")
             ra = self.dat_shear[self._params["ra_col"]]
             dec = self.dat_shear[self._params["dec_col"]]
             g1 = self.dat_shear[self._params["e1_col"]] - np.average(self.dat_shear[self._params["e1_col"]], weights=weights)
             g2 = self.dat_shear[self._params["e2_col"]] - np.average(self.dat_shear[self._params["e2_col"]], weights=weights)
-            
+
         else:
             assert self.dat_psf is not None, ("Check you read the shear catalogs correctly.")
             #Add a mask?
@@ -305,11 +305,11 @@ class Catalogs():
             ra = self.dat_psf[self._params["ra_col"]]
             dec = self.dat_psf[self._params["dec_col"]]
             weights = None
-            
+
             if cat_type=="psf":
                 g1 = self.dat_psf[self._params["e1_PSF_col"]] - self.dat_psf[self._params["e1_PSF_col"]].mean()
                 g2 = self.dat_psf[self._params["e2_PSF_col"]] - self.dat_psf[self._params["e2_PSF_col"]].mean()
-            
+
             elif cat_type=="psf_error":
                 g1 = (self.dat_psf[self._params["e1_star_col"]] - self.dat_psf[self._params["e1_PSF_col"]])
                 g1 -= g1.mean()
@@ -326,7 +326,7 @@ class Catalogs():
 
         return ra, dec, g1, g2, weights
     
-    def build_catalog(self, cat_type, key, npatch=None, square_size=False, mask=False):
+    def build_catalog(self, cat_type, key, npatch=None, patch_centers=None, square_size=False, mask=False):
         """
         build_catalogue
 
@@ -353,7 +353,7 @@ class Catalogs():
 
         if npatch is None:
             npatch = self._params["patch_number"]
-        
+
         ra, dec, g1, g2, weights = self.get_cat_fields(cat_type, square_size)
 
         if mask:
@@ -365,16 +365,28 @@ class Catalogs():
         else:
             mask_arr = np.array([True for i in ra])
 
-        cat = treecorr.Catalog(
-            ra=ra[mask_arr],
-            dec=dec[mask_arr],
-            g1=g1[mask_arr],
-            g2=g2[mask_arr],
-            w=weights,
-            ra_units=self._params["ra_units"],
-            dec_units=self._params["dec_units"],
-            npatch=npatch
-        )
+        if patch_centers is None:
+            cat = treecorr.Catalog(
+                ra=ra[mask_arr],
+                dec=dec[mask_arr],
+                g1=g1[mask_arr],
+                g2=g2[mask_arr],
+                w=weights,
+                ra_units=self._params["ra_units"],
+                dec_units=self._params["dec_units"],
+                npatch=npatch
+            )
+        else:
+            cat = treecorr.Catalog(
+                ra=ra[mask_arr],
+                dec=dec[mask_arr],
+                g1=g1[mask_arr],
+                g2=g2[mask_arr],
+                w=weights,
+                ra_units=self._params["ra_units"],
+                dec_units=self._params["dec_units"],
+                patch_centers=patch_centers
+            )
 
         self.catalogs_dict.update(
             {key: cat}
@@ -416,7 +428,7 @@ class Catalogs():
         -------
         treecorr.Catalog
             The requested treecorr.Catalog
-        """ 
+        """
         return self.catalogs_dict[key]
 
 class RhoStat():
@@ -426,7 +438,13 @@ class RhoStat():
     Class to compute the rho statistics (Rowe 2010) of a PSF catalogue.
     """
 
-    def __init__(self, params=None, output=None, treecorr_config=None, verbose=False):
+    def __init__(
+        self,
+        params=None,
+        output=None,
+        treecorr_config=None,
+        verbose=False
+    ):
 
         self.catalogs = Catalogs(params, output)
 
@@ -470,8 +488,9 @@ class RhoStat():
             print("Building catalogs...")
 
         self.catalogs.build_catalog(cat_type='psf', key='psf_'+catalog_id, square_size=square_size, mask=mask)
-        self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, square_size=square_size, mask=mask)
-        self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, square_size=square_size, mask=mask)
+        patch_centers = self.catalogs.catalogs_dict['psf_'+catalog_id].patch_centers
+        self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
+        self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
 
         if self.verbose:
             print("Catalogs successfully built...")
@@ -575,7 +594,7 @@ class RhoStat():
     def load_rho_stats(self, filename):
         self.rho_stats = fits.getdata(self.catalogs._output+'/'+filename)
 
-    def plot_rho_stats(self, filenames, colors, catalog_ids, abs=True, savefig=None):
+    def plot_rho_stats(self, filenames, colors, catalog_ids, abs=True, savefig=None, legend="each"):
         """
         plot_rho_stats
 
@@ -585,7 +604,7 @@ class RhoStat():
         ----------
         filenames : list str
             List of the files containing the rho statistics. They can be computed using the method `compute_rho_stats` of this class.
-        
+
         colors : list str
             Color of the plot for the different catalogs. We recommend using different colors for different catalogs for readability.
 
@@ -597,6 +616,9 @@ class RhoStat():
 
         savefig : str
             If not None, saves the figure with the name given in savefig.
+
+        legend : str, optional
+            allowed are "each" (default; legends in each panel), "outside" (legend outside of panels)
         """
 
         fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(15,9))
@@ -607,27 +629,40 @@ class RhoStat():
 
             for i in range(6):
                 xlabel=r"$\theta$ [arcmin]" if i>2 else ''
-                ylabel=r"$\rho-$statistics" if (i==0 or i==3) else ''
-                label = fr'$\rho_{i}(\theta)$ '+cat_id
+
+                if legend == "inside":
+                    ylabel = r"$\rho-$statistics" if (i==0 or i==3) else ''
+                    label = fr'$\rho_{i}(\theta)$ '+cat_id
+                else:
+                    ylabel = rf"$\rho_{i}(\theta)$"
+                    label = fr'$\rho_i$ {cat_id}'
+
                 if abs:
                     ax[i].errorbar(self.rho_stats['theta'], np.abs(self.rho_stats['rho_'+str(i)+'_p']), yerr=np.sqrt(self.rho_stats['varrho_'+str(i)+'_p']),
                     label=label, color=color, capsize=2)
                     ax[i].set_xlabel(xlabel)
                     ax[i].set_ylabel(ylabel)
+                    ax[i].set_xlim(float(self._treecorr_config["min_sep"]), float(self._treecorr_config["max_sep"]))
                     ax[i].set_xscale('log')
                     ax[i].set_yscale('log')
                 else:
                     #Plot the negative values of the rho-stats in dashed lines
                     neg_dash(
                         ax[i], self.rho_stats['theta'], self.rho_stats['rho_'+str(i)+'_p'], yerr_in=np.sqrt(self.rho_stats['varrho_'+str(i)+'_p']),
-                        vertical_lines=False, rho_nb=str(i), cat_id=cat_id, xlabel=xlabel, ylabel=ylabel, semilogx=True, semilogy=True, capsize=True, color=color
+                        vertical_lines=False, rho_nb=str(i), cat_id=cat_id, xlabel=xlabel, ylabel=ylabel, semilogx=True, semilogy=True, capsize=True, color=color,
                     )
 
-                ax[i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
-                ax[i].legend(loc='best', fontsize='small')
+                if legend == "inside":
+                    ax[i].legend(loc='best', fontsize='small')
 
+        if legend == "outside":
+            ax[-1].legend(bbox_to_anchor=(1.5, 0.0), fontsize='small')
+
+        plt.tight_layout()
         if savefig is not None:
-            plt.savefig(self.catalogs._output+'/'+savefig)
+            plt.savefig(self.catalogs._output+'/'+savefig, bbox_inches='tight')
+
+        plt.close()
 
 class TauStat():
     """
@@ -687,8 +722,9 @@ class TauStat():
                 print("Building catalogs...")
 
             self.catalogs.build_catalog(cat_type='psf', key='psf_'+catalog_id, square_size=square_size, mask=mask)
-            self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, square_size=square_size, mask=mask)
-            self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, square_size=square_size, mask=mask)
+            patch_centers = self.catalogs.catalogs_dict['psf_'+catalog_id].patch_centers
+            self.catalogs.build_catalog(cat_type='psf_error', key='psf_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
+            self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
 
         else:
             self.catalogs.read_shear_cat(path_gal=path_cat, path_psf=None)
@@ -696,7 +732,12 @@ class TauStat():
             if self.verbose:
                 print("Building catalog...")
             
-            self.catalogs.build_catalog(cat_type='gal', key='gal_'+catalog_id)
+            try:
+                patch_centers = self.catalogs.catalogs_dict['psf_'+catalog_id].patch_centers
+            except KeyError:
+                print("Warning, you should build psf catalog before galaxy catalog.")
+                patch_centers = None
+            self.catalogs.build_catalog(cat_type='gal', key='gal_'+catalog_id, patch_centers=patch_centers)
 
         if self.verbose:
             print("Catalogs successfully built...")
@@ -721,7 +762,7 @@ class TauStat():
 
         func : function
             The function to select the quantity whose covariance is being computed from tau_0, tau_2 and tau_5.
-        
+
         var_method: str
             The method used to compute the covariance. (Default: jackknife)
         """
@@ -788,7 +829,7 @@ class TauStat():
     def load_tau_stats(self, filename):
         self.tau_stats = fits.getdata(self.catalogs._output+'/'+filename)
 
-    def plot_tau_stats(self, filenames, colors, catalog_ids, savefig=None, plot_tau_m=True):
+    def plot_tau_stats(self, filenames, colors, catalog_ids, savefig=None, plot_tau_m=True, legend="inside"):
         """
         plot_tau_stats
 
@@ -798,7 +839,7 @@ class TauStat():
         ----------
         filenames : list str
             List of the files containing the rho statistics. They can be computed using the method `compute_rho_stats` of this class.
-        
+
         colors : list str
             Color of the plot for the different catalogs. We recommend using different colors for different catalogs for readability.
 
@@ -810,6 +851,9 @@ class TauStat():
 
         plot_tau_m : bool
             If True, plot the tau - additionally.
+
+        legend : str, optional
+            allowed are "each" (default; legends in each panel), "outside" (legend outside of panels)
 
         Return
         ------
@@ -830,24 +874,33 @@ class TauStat():
 
             for i in range(3):
                 for j in range(nrows):
-                    xlabel=r"$\theta$ [arcmin]" if (j==nrows-1) else ''
-                    ylabel=r"$\tau-$statistics" if (i==0) else ''
                     p_or_m = 'm' if j else 'p'
                     p_or_m_label = '-' if j else '+'
+                    xlabel=r"$\theta$ [arcmin]" if (j==nrows-1) else ''
+                    if legend == "inside":
+                        ylabel = r"$\tau-$statistics" if (i==0) else ''
+                        label = rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)$ '+cat_id if i==0 else rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)\theta$ '+cat_id
+                    else:
+                        ylabel = rf"$\tau_{i}(\theta)$"
+                        label = rf"$\tau_i$ {cat_id}"
                     factor_theta = np.ones_like(self.tau_stats["theta"]) if i==0 else self.tau_stats["theta"]
                     y = self.tau_stats['tau_'+str(int(0.5*i**2+1.5*i))+'_'+p_or_m]*factor_theta
                     yerr_in = np.sqrt(self.tau_stats['vartau_'+str(int(0.5*i**2+1.5*i))+'_'+p_or_m])*factor_theta
-                    label = rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)$ '+cat_id if i==0 else rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)\theta$ '+cat_id
 
                     ax[j, i].errorbar(self.tau_stats["theta"], y, yerr=yerr_in, label=label, color=color, capsize=2)
                     ax[j, i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
                     ax[j, i].set_xlabel(xlabel)
                     ax[j, i].set_ylabel(ylabel)
                     ax[j, i].set_xscale('log')
-                    ax[j, i].legend(loc='best', fontsize='small')
+                    if legend == "inside":
+                        ax[j, i].legend(loc='best', fontsize='small')
 
+        if legend == "outside":
+            ax[-1, -1].legend(bbox_to_anchor=(1.5, 0.0), fontsize='small')
+
+        plt.tight_layout()
         if savefig is not None:
-            plt.savefig(self.catalogs._output+'/'+savefig)
+            plt.savefig(self.catalogs._output+'/'+savefig, bbox_inches='tight')
 
         return fig, ax
 
@@ -873,7 +926,7 @@ class PSFErrorFit():
             y_model = self.model(theta)
             d = y_model -y
             return -0.5 * d.T@inv_cov@d
-        
+
         self.log_likelihood = log_likelihood
         self.data_directory = data_directory
 
@@ -973,7 +1026,7 @@ class PSFErrorFit():
             if low_alpha <= alpha <= high_alpha and low_beta <= beta <= high_beta and low_eta <=eta <= high_eta:
                 return 0.0
             return -np.inf
-        
+
         self.log_prior = log_prior
 
     def model(self, theta):
@@ -1007,7 +1060,7 @@ class PSFErrorFit():
         ])
 
         return model_output.flatten()
-    
+
     def log_probability(self, theta, y, inv_cov):
         """
         log_probability
@@ -1031,7 +1084,7 @@ class PSFErrorFit():
             return -np.inf
         return lp + self.log_likelihood(theta, y, inv_cov)
 
-    def run_chain(self, init=np.array([0.0,0.0,0.0]), nwalkers=124, nsamples=10000, discard=300, thin=100, verbose=True, savefig=None):
+    def run_chain(self, init=np.array([0.0,0.0,0.0]), nwalkers=124, nsamples=10000, discard=300, thin=100, verbose=True, savefig=None, npatch=200, apply_debias=False):
         """
         run_chain
 
@@ -1042,7 +1095,7 @@ class PSFErrorFit():
         ----------
         init : np.array
             Initial value of the parameters. An additional random noise will be added. (Default: [0,0,0])
-        
+
         nwalkers : int
             Number of walkers used in the Ensemble Sampler (See emcee documentation). (Default: 124)
 
@@ -1057,6 +1110,12 @@ class PSFErrorFit():
 
         verbose : bool
             If True, prints several informations.
+
+        npatch : int
+            The number of patches used to perform the inference. (Only used if apply_bias if true, Default: 200)
+
+        apply_debias : bool
+            If True, apply some debiasing of the inverse of the covariance matrix. (Default: False)
 
         Returns
         -------
@@ -1084,6 +1143,9 @@ class PSFErrorFit():
             self.tau_stat_handler.tau_stats["tau_2_p"],
             self.tau_stat_handler.tau_stats["tau_5_p"]
         ]).flatten()
+
+        if apply_debias:
+            inv_cov = (npatch - output.shape[0] - 2)/(npatch-1)*inv_cov
 
         init = init + 1e-3*np.random.randn(nwalkers, ndim)
 
@@ -1114,12 +1176,14 @@ class PSFErrorFit():
                 ax.yaxis.set_label_coords(-0.1, 0.5)
 
                 axes[-1].set_xlabel("step number");
-        
+
             plt.savefig(self.data_directory+'/'+savefig)
 
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
-        mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
-        q = np.diff(mcmc_result, axis=0)
+        mcmc_result, q = self.get_mcmc_from_samples(flat_samples)
+
+        #mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
+        #q = np.diff(mcmc_result, axis=0)
         if verbose:
             print(f"Number of samples: {flat_samples.shape[0]}\n")
 
@@ -1131,7 +1195,84 @@ class PSFErrorFit():
             print(f"Max log_likelihood: {self.log_likelihood(mcmc_result[1,:], output, inv_cov)}")
 
         return flat_samples, mcmc_result, q
-    
+
+    def get_sample_path(self, catalog_id):
+        """Get Sample Path.
+
+        Return file path of MCMC sample.
+
+        Parameters
+        ----------
+        catalog_id : str
+            ID of the catalog used for this run
+
+        Returns
+        -------
+        str
+            file path
+        """
+        file_path = f"{self.rho_stat_handler.catalogs._output}/samples_{catalog_id}.npy"
+        return file_path
+
+
+    def save_samples(self, flat_samples, catalog_id):
+        """Save Samples.
+
+        Save samples to file.
+
+        Parameters
+        ----------
+        flat_samples : np.array
+            Samples obtained from the MCMC analysis
+        catalog_id : str
+            ID of the catalog used for this run
+
+        """
+        np.save(self.get_sample_path(catalog_id), flat_samples)
+
+    def load_samples(self, catalog_id):
+        """Load Samples.
+
+        Load samples from file.
+
+        Parameters
+        ----------
+        Returns
+        -------
+        np.array
+            Samples obtained from the MCMC analysi
+
+        """
+        file_path = self.get_sample_path(catalog_id)
+        flat_samples = np.load(file_path)
+
+        return flat_samples
+
+
+    def get_mcmc_from_samples(self, flat_samples):
+        """Get MCMC From Samples.
+
+        Return MCMC samples and quanties from samples.
+
+        Parameters
+        ----------
+        flat_samples : np.array
+            Samples obtained from the MCMC analysis
+
+        Returns
+        -------
+        np.array
+            Best-fit values of the parameters
+
+        np.array
+            Error bars at the 68% confidence level.
+
+        """
+        mcmc_result = np.percentile(flat_samples, [16, 50, 84], axis=0)
+        q = np.diff(mcmc_result, axis=0)
+
+        return mcmc_result, q
+
     def plot_tau_stats_w_model(self, theta, filename, color, catalog_id, savefig=None):
         """
         plot_tau_stats_w_model
@@ -1158,45 +1299,159 @@ class PSFErrorFit():
         assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
 
         taus = self.model(theta).reshape(3, -1)
-        
+
+        ylim = [[-4e-5,  4e-5], [-6e-6, 4e-6], [-7e-6, 1e-6]]
         for i in range(3):
             factor = np.ones_like(self.tau_stat_handler.tau_stats["theta"]) if i==0 else self.tau_stat_handler.tau_stats["theta"]
             ax[0, i].plot(self.tau_stat_handler.tau_stats["theta"], taus[i]*factor, color='red', label='Model')
             ax[0, i].legend(loc='upper right', fontsize='small')
+            ax[0, i].set_ylim(ylim[i])
+            ax[0, i].axhline(color="k", linestyle="dotted", linewidth=0.5)
 
         if savefig is not None:
             plt.savefig(self.data_directory+'/'+savefig)
 
-    def plot_xi_sys(self, theta, cat_id, color, savefig=None, alpha=1):
-        """
-        plot_xi_sys
+        plt.close()
 
-        Plot the systematic error on the corss-correlation given parameters (alpha, beta, eta)
+    def plot_xi_psf_sys(self, theta, cat_id, color, savefig=None, alpha=1):
+        """
+        Plot Xi Psf sys.
+
+        Plot the systematic error on the corss-correlation given parameters (alpha, beta, eta).
 
         Parameters
         ----------
         theta : tuple
             Parameters (alpha, beta, eta) used to compute the systematic error.
 
-        
         """
-        xi_sys = self.compute_xi_sys(theta)
+        xi_psf_sys = self.compute_xi_psf_sys(theta)
         if alpha < 1:
-            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, alpha=alpha)
+            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_psf_sys, color=color, capsize=2, alpha=alpha)
         else:
-            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_sys, color=color, capsize=2, alpha=alpha, label=r'$\xi_{\rm sys, +}$ '+cat_id)
+            plt.errorbar(self.rho_stat_handler.rho_stats["theta"], xi_psf_sys, color=color, capsize=2, alpha=alpha, label=r'$\xi^{\rm PSF}_{\rm sys, +}$ '+cat_id)
 
         plt.xscale('log')
         plt.yscale('log')
         plt.xlabel(r"$\theta$ [arcmin]")
-        plt.ylabel(r"$\xi_{\rm PSF, sys}$")
+        plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
 
         if savefig:
-            plt.savefig('xi_sys.png')
+            plt.savefig('xi_psf_sys.png')
+            plt.close()
 
-    def compute_xi_sys(self, theta):
+
+    def plot_xi_psf_sys_terms(self, cat_id, theta, out_path, yscale="log"):
+
+        ls = ["dotted", "dashed", "dashdot", (-1, (3, 5, 1, 5, 1, 5)), (0, (1, 10)), (0, (5, 5))]
+        color = ["green", "blue", "red", "magenta", "cyan", "orange"]
+
+        plt.figure(figsize=(15, 6))
+
+        #self.plot_xi_psf_sys(theta, cat_id, "black")
+        ang_scales = self.rho_stat_handler.rho_stats["theta"]
+
+        label_pre = [
+            r"$\alpha^2$",
+            r"$\beta^2$",
+            r"$\eta^2$",
+            r"$2 \alpha \beta$",
+            r"$2 \alpha \eta$",
+            r"$2 \beta \eta$",
+        ]
+        xi_sum = np.zeros_like(ang_scales)
+
+        if yscale == "linear":
+            plot_fct = plt.semilogx
+            ylim = [-0.5e-6, 5e-6]
+        else:
+            plot_fct = plt.loglog
+            ylim = [3e-10, 5e-6]
+
+        linewidth_pos = 3
+        linewidth_neg = 1
+
+        xi_psf_sys = self.compute_xi_psf_sys(theta)
+        plot_fct(
+            ang_scales,
+            xi_psf_sys,
+            linestyle="-",
+            linewidth=linewidth_pos,
+            color="black",
+            label=r'$\xi^{\rm PSF}_{\rm sys, +}$ '+ cat_id,
+        )
+
+        for term in range(6):
+            xi_psf_sys_term = self.compute_xi_psf_sys_term(theta, term)
+            xi_sum += xi_psf_sys_term
+            if xi_psf_sys_term[-1] > 0:
+                linewidth = linewidth_pos
+            else:
+                linewidth = linewidth_neg
+            plot_fct(
+                ang_scales,
+                np.abs(xi_psf_sys_term),
+                linestyle=ls[term],
+                linewidth=linewidth,
+                color=color[term],
+                label=fr"{label_pre[term]} $\rho_{term}$",
+            )
+        xi_psf_sys_check = self.compute_xi_psf_sys(theta)
+
+        plot_fct(ang_scales, xi_psf_sys_check, "bo", mfc="none")
+        plot_fct(ang_scales, xi_sum, "bs", mfc="none")
+
+        plt.xlabel(r"$\theta$ [arcmin]")
+        plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
+        plt.legend(loc="best", fontsize="small")
+        plt.ylim(ylim)
+        plt.tight_layout()
+        plt.savefig(out_path, bbox_inches='tight')
+        plt.close()
+
+
+    def compute_xi_psf_sys_term(self, theta, term):
         """
-        compute_xi_sys
+        Compute Xi Psf Sys Term.
+
+        Compute one term of the systematic error on the cross-correlation given parameters (alpha, beta, eta)
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta) used to compute the systematic error
+
+        term : int
+            term (rho function) number, from 0 to 5
+
+        Return
+        ------
+        np.array
+            xi_psf_sys
+
+        """
+        alpha, beta, eta = theta
+
+        if term == 0:
+            prefactor = alpha ** 2
+        elif term == 1:
+            prefactor = beta ** 2
+        elif term == 3:
+            prefactor = eta ** 2
+        elif term == 2:
+            prefactor = 2 * alpha * beta
+        elif term == 5:
+            prefactor = 2 * alpha * eta
+        elif term == 4:
+            prefactor = 2 * beta * eta
+        else:
+            raise ValueError(f"Invalid term {term}")
+
+        return prefactor * self.rho_stat_handler.rho_stats[f"rho_{term}_p"]
+
+    def compute_xi_psf_sys(self, theta):
+        """
+        Compute Xi Psf Sys.
 
         Compute the systematic error on the cross-correlation given parameters (alpha, beta, eta)
 
@@ -1208,10 +1463,21 @@ class PSFErrorFit():
         Return
         ------
         np.array
-            xi_sys
+            xi_psf_sys
         """
 
         alpha, beta, eta = theta
 
-        xi_sys = alpha**2 * self.rho_stat_handler.rho_stats["rho_0_p"] + beta**2 * self.rho_stat_handler.rho_stats["rho_1_p"]+eta**2 * self.rho_stat_handler.rho_stats["rho_3_p"] + 2*alpha*beta*self.rho_stat_handler.rho_stats["rho_2_p"] +2*alpha*eta*self.rho_stat_handler.rho_stats["rho_5_p"] + 2*beta*eta*self.rho_stat_handler.rho_stats["rho_4_p"]
-        return xi_sys
+        xi_psf_sys = np.zeros_like(self.rho_stat_handler.rho_stats["theta"])
+
+        for term in range(6):
+           xi_psf_sys += self.compute_xi_psf_sys_term(theta, term)
+
+            #alpha ** 2 * self.rho_stat_handler.rho_stats["rho_0_p"]
+            #+ beta ** 2 * self.rho_stat_handler.rho_stats["rho_1_p"]
+            #+ eta ** 2 * self.rho_stat_handler.rho_stats["rho_3_p"]
+            #+ 2 * alpha * beta * self.rho_stat_handler.rho_stats["rho_2_p"]
+            #+ 2 * alpha * eta * self.rho_stat_handler.rho_stats["rho_5_p"]
+            #+ 2 * beta * eta * self.rho_stat_handler.rho_stats["rho_4_p"]
+
+        return xi_psf_sys

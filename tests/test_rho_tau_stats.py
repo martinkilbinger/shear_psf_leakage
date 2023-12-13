@@ -11,18 +11,18 @@ from plots import plot_contours
 
 #First specify  the paths to your data
 paths_gal = [
-    #"/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits",
-    "/automnt/n23data1/fhervas/shapepipe_clean_uppercut/unions_shapepipe_extended_2022_v1.0.4.fits",
+    "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits",
+    #"/automnt/n23data1/fhervas/shapepipe_clean_uppercut/unions_shapepipe_extended_2022_v1.0.4.fits",
     "/home/mkilbing/astro/data/DES/DES_Y3_cut.fits",
     "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_extended_2022_v1.3_mtheli8k.fits",
-    #"/n17data/mkilbing/astro/data/CFIS/v0.0/shapepipe_1500_goldshape_v1.fits"
+    "/n17data/mkilbing/astro/data/CFIS/v0.0/shapepipe_1500_goldshape_v1.fits"
 ]
 
 paths_psf = [
     "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits",
     "/home/mkilbing/astro/data/DES/psf_y3a1-v29.fits",
     "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_psf_2022_v1.0.2_mtheli8k.fits",
-    #"/n17data/sguerrini/star_cat.fits"
+    "/n17data/sguerrini/star_cat.fits"
 ]
 
 #Specify if you want to mask some data using flags
@@ -30,7 +30,7 @@ masks = [
     True,
     False,
     True,
-    #True
+    True
 ]
 
 #Specify is the sizes have to be squared. It can depend on the catalog.
@@ -38,12 +38,32 @@ square_sizes = [
     True,
     False,
     True,
-    #True
+    True
 ]
 
-output = 'v1.3_mask_comparison'
+output = '/home/guerrini/rho_tau_stats_output/run_full_debiased_3'
 
 #Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
+params_sp = {
+    "e1_col": "e1",
+    "e2_col": "e2",
+    "w_col": "w",
+    "ra_col": "RA",
+    "dec_col": "Dec",
+    "e1_PSF_col": "E1_PSF_HSM",
+    "e2_PSF_col": "E2_PSF_HSM",
+    "e1_star_col": "E1_STAR_HSM",
+    "e2_star_col": "E2_STAR_HSM",
+    "PSF_size": "SIGMA_PSF_HSM",
+    "star_size": "SIGMA_STAR_HSM",
+    "PSF_flag": "FLAG_PSF_HSM",
+    "star_flag": "FLAG_STAR_HSM",
+    "patch_number": 200,
+    "ra_units": "deg",
+    "dec_units": "deg" 
+}
+
+
 params_des = {
     "e1_col": "e1_cal",
     "e2_col": "e2_cal",
@@ -75,7 +95,7 @@ params_axel = {
     "star_size": "SIGMA_STAR_HSM",
     "PSF_flag": "FLAG_PSF_HSM",
     "star_flag": "FLAG_STAR_HSM",
-    "patch_number": 120,
+    "patch_number": 200,
     "ra_units": "deg",
     "dec_units": "deg" 
 }
@@ -91,19 +111,19 @@ treecorr_config = {
 }
 
 params = [
-    None,
+    params_sp,
     params_des,
-    None,
-    #params_axel
+    params_sp,
+    params_axel
 ]
 
-colors = ['blue', 'red', 'green'] #Colors for the plot
-catalog_ids = ['SPV1.3_wo_mask', 'DESY3', 'SPV1.3_w_mask'] #Ids of the catalogs
+colors = ['blue', 'red', 'green', 'purple'] #Colors for the plot
+catalog_ids = ['SPV1.0', 'DESY3', 'SPV1.3', 'SPV1500'] #Ids of the catalogs
 
 print(paths_gal)
 print(paths_psf)
 ###################################Compute, save and plot the rho statistics############################
-rho_stat_handler = RhoStat(output=output, verbose=True) #Create your class to compute, save, load and plot rho_stats
+rho_stat_handler = RhoStat(output=output, treecorr_config=treecorr_config, verbose=True) #Create your class to compute, save, load and plot rho_stats
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the different catalogs
     try:
         rho_stat_handler.load_rho_stats('rho_stats_'+cat_id+'.fits')
@@ -120,7 +140,7 @@ filenames = ['rho_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
 rho_stat_handler.plot_rho_stats(filenames, colors, catalog_ids, abs=True, savefig='rho_stats.png') #Plot
 
 ######################################Compute, save and plot the tau statistics#############################
-tau_stat_handler = TauStat(catalogs=rho_stat_handler.catalogs, output=output, verbose=True) #Create your class to compute, save, load and plot tau_stats
+tau_stat_handler = TauStat(catalogs=rho_stat_handler.catalogs, output=output, treecorr_config=treecorr_config, verbose=True) #Create your class to compute, save, load and plot tau_stats
 
 for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths_psf, catalog_ids, params, masks, square_sizes): #Iterate on the catalogs
 
@@ -131,13 +151,15 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths
             tau_stat_handler.catalogs.params_default(output)
         else:
             tau_stat_handler.catalogs.set_params(param, output) #Set the parameters
-        tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
+
         if 'psf_'+cat_id not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(path_psf, cat_type='psf', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
+        tau_stat_handler.build_cat_to_compute_tau(path_gal, cat_type='gal', catalog_id=cat_id, square_size=square_size, mask=mask) #Build the catalog of galaxies. PSF was computed above
+        
 
 
         only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
-        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='jackknife') #Compute and save the tau statistics
+        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='bootstrap') #Compute and save the tau statistics
 
 
 filenames = ['tau_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
@@ -151,12 +173,12 @@ flat_sample_list = []
 mcmc_result_list = []
 q_list = []
 
-for cat_id in catalog_ids:
+for cat_id, param in zip(catalog_ids, params):
     psf_fitter.load_rho_stat('rho_stats_'+cat_id+'.fits')
     psf_fitter.load_tau_stat('tau_stats_'+cat_id+'.fits')
     psf_fitter.load_covariance('cov_'+cat_id+'.npy')
 
-    flat_samples, mcmc_result, q = psf_fitter.run_chain(savefig='mcmc_samples_'+cat_id+'.png')
+    flat_samples, mcmc_result, q = psf_fitter.run_chain(savefig='mcmc_samples_'+cat_id+'.png', npatch=param["patch_number"], apply_debias=True)
     flat_sample_list.append(flat_samples)
     mcmc_result_list.append(mcmc_result)
     q_list.append(q)
