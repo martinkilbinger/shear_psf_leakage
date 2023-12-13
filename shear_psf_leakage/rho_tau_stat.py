@@ -616,27 +616,29 @@ class RhoStat():
 
             for i in range(6):
                 xlabel=r"$\theta$ [arcmin]" if i>2 else ''
+
                 if legend == "inside":
                     ylabel = r"$\rho-$statistics" if (i==0 or i==3) else ''
                     label = fr'$\rho_{i}(\theta)$ '+cat_id
                 else:
                     ylabel = rf"$\rho_{i}(\theta)$"
                     label = fr'$\rho_i$ {cat_id}'
+
                 if abs:
                     ax[i].errorbar(self.rho_stats['theta'], np.abs(self.rho_stats['rho_'+str(i)+'_p']), yerr=np.sqrt(self.rho_stats['varrho_'+str(i)+'_p']),
                     label=label, color=color, capsize=2)
                     ax[i].set_xlabel(xlabel)
                     ax[i].set_ylabel(ylabel)
+                    ax[i].set_xlim(float(self._treecorr_config["min_sep"]), float(self._treecorr_config["max_sep"]))
                     ax[i].set_xscale('log')
                     ax[i].set_yscale('log')
                 else:
                     #Plot the negative values of the rho-stats in dashed lines
                     neg_dash(
                         ax[i], self.rho_stats['theta'], self.rho_stats['rho_'+str(i)+'_p'], yerr_in=np.sqrt(self.rho_stats['varrho_'+str(i)+'_p']),
-                        vertical_lines=False, rho_nb=str(i), cat_id=cat_id, xlabel=xlabel, ylabel=ylabel, semilogx=True, semilogy=True, capsize=True, color=color, fmt=".",
+                        vertical_lines=False, rho_nb=str(i), cat_id=cat_id, xlabel=xlabel, ylabel=ylabel, semilogx=True, semilogy=True, capsize=True, color=color,
                     )
 
-                ax[i].set_xlim(self._treecorr_config["min_sep"], self._treecorr_config["max_sep"])
                 if legend == "inside":
                     ax[i].legend(loc='best', fontsize='small')
 
@@ -860,7 +862,7 @@ class TauStat():
                         ylabel = r"$\tau-$statistics" if (i==0) else ''
                         label = rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)$ '+cat_id if i==0 else rf'$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)\theta$ '+cat_id
                     else:
-                        ylabel = r"$\tau_{i}(\theta)$"
+                        ylabel = rf"$\tau_{i}(\theta)$"
                         label = rf"$\tau_i$ {cat_id}"
                     factor_theta = np.ones_like(self.tau_stats["theta"]) if i==0 else self.tau_stats["theta"]
                     y = self.tau_stats['tau_'+str(int(0.5*i**2+1.5*i))+'_'+p_or_m]*factor_theta
@@ -1270,10 +1272,13 @@ class PSFErrorFit():
 
         taus = self.model(theta).reshape(3, -1)
 
+        ylim = [[-4e-5,  4e-5], [-6e-6, 4e-6], [-7e-6, 1e-6]]
         for i in range(3):
             factor = np.ones_like(self.tau_stat_handler.tau_stats["theta"]) if i==0 else self.tau_stat_handler.tau_stats["theta"]
             ax[0, i].plot(self.tau_stat_handler.tau_stats["theta"], taus[i]*factor, color='red', label='Model')
             ax[0, i].legend(loc='upper right', fontsize='small')
+            ax[0, i].set_ylim(ylim[i])
+            ax[0, i].axhline(color="k", linestyle="dotted", linewidth=0.5)
 
         if savefig is not None:
             plt.savefig(self.data_directory+'/'+savefig)
