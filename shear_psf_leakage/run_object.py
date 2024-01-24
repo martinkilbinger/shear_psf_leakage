@@ -447,6 +447,7 @@ class LeakageObject:
             "a11": -0.4,
             "a22": 0.3,
             "a12": 0.3,
+            "a21": 0.25,
             "c1": 0.2,
             "c2": -0.3,
         }
@@ -476,7 +477,7 @@ class LeakageObject:
                     n_bin=n_bin,
                     out_path=out_path,
                     colors=colors,
-                    y_ground_truth=[y1, y2],
+                    plot_all_points=True,
                     par_ground_truth=p_gt,
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
@@ -557,7 +558,7 @@ class LeakageObject:
             verbose=self._params["verbose"],
         )
         fp_best_fit = open(f"{out_path}.json", "w")
-        _par_best_fit.dump(fp_best_fit)
+        par_best_fit.dump(fp_best_fit)
 
         # Fit separate 1D models, including size
         # MKDEBUG: to remove, is done by fit_any
