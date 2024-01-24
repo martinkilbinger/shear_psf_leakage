@@ -1296,7 +1296,19 @@ class PSFErrorFit():
         fig, ax = self.tau_stat_handler.plot_tau_stats([filename], [color], [catalog_id], plot_tau_m=False)
 
         assert (self.rho_stat_handler.rho_stats is not None), ("Please load rho statistics data.") #Check if data was loaded
-        assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
+        assert (
+            np.all(
+                np.abs(
+                    self.rho_stat_handler.rho_stats["theta"] -
+                    self.tau_stat_handler.tau_stats["theta"]
+                ) / self.tau_stat_handler.tau_stats["theta"] < 0.001
+            )
+        ), \
+        (
+            "The rho and tau statistics have not the same angular scales."
+            + " Check that they come from the same catalog with the same"
+            + " treecorr config."
+        )
 
         taus = self.model(theta).reshape(3, -1)
 
