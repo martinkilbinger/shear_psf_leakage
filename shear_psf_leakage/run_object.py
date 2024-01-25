@@ -540,9 +540,9 @@ class LeakageObject:
         # Fit consistent spin-2 2D model
         out_path = (
             f"{self._params['output_dir']}"
-            + f"/PSF_e_vs_e_gal_{order-{order}_mix-{mix}"
+            + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
         )
-        par_best_fit = leakage.corr_2d(
+        self.par_best_fit = leakage.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -558,7 +558,7 @@ class LeakageObject:
             verbose=self._params["verbose"],
         )
         fp_best_fit = open(f"{out_path}.json", "w")
-        par_best_fit.dump(fp_best_fit)
+        self.par_best_fit.dump(fp_best_fit)
 
         # Fit separate 1D models, including size
         # MKDEBUG: to remove, is done by fit_any
