@@ -1213,51 +1213,6 @@ class LeakageScale:
         cs_cat.write_ascii_table_file(cols, names, fname)
 
 
-def var_sum(s2a, s2b):
-    """Var Sum.
-
-    Return variance of a + b.
-
-    """
-    s2 = s2a + s2b
-
-    return s2
-
-def var_mult_div(y, a, b, s2a, s2b):
-    """Var Mult Div.
-
-    Return variance of y = a * b or y = a / b.
-
-    """
-    s2 = y ** 2 * (s2a / a ** 2 + s2b / b ** 2)
-
-    return s2
-
-def var_product(a, b, s2a, s2b):
-    """Var Product.
-
-    Return variance of y = a * b.
-
-    """
-    y = a * b
-
-    s2 = var_mult_div(y, a, b, s2a, s2b)
-
-    return s2
-
-def var_ratio(a, b, s2a, s2b):
-    """Var Ratio.
-
-    Return variance of y = a / b.
-
-    """
-    y = a / b
-
-    s2 = var_mult_div(y, a, b, s2a, s2b)
-
-    return s2
-
-
 def run_leakage_scale(*args):
     """Run Leakage Scale.
 
