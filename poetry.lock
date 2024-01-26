@@ -836,15 +836,13 @@ test = ["certifi", "pretend", "pytest (>=6.2.0)", "pytest-benchmark", "pytest-co
 test-randomorder = ["pytest-randomly"]
 
 [[package]]
-name = "cs-util"
+name = "cs_util"
 version = "0.0.7"
 description = ""
 optional = false
 python-versions = ">=3.7"
-files = [
-    {file = "cs_util-0.0.7-py3-none-any.whl", hash = "sha256:b02de3ff13b1d5da66fd6dab72b813c5f8ecfaf418c4ac0e8827d1f67bcd893d"},
-    {file = "cs_util-0.0.7.tar.gz", hash = "sha256:19975aded1e41b93acee125d3b0f6ce2fe70a6e1a7eda293ec954f9e458e1348"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 astropy = ">=4.0"
@@ -854,10 +852,14 @@ numpy = ">=1.21"
 vos = ">=3.3"
 
 [package.extras]
-dev = ["cs-util[lint,release,test]"]
+dev = ["cs_util[lint,release,test]"]
 lint = ["black", "jinja2 (==3.0)"]
 release = ["build", "sdist", "twine"]
 test = ["pytest", "pytest-black", "pytest-cov", "pytest-pydocstyle"]
+
+[package.source]
+type = "directory"
+url = "../cs_util"
 
 [[package]]
 name = "cycler"
@@ -1076,6 +1078,27 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 files = [
     {file = "future-0.18.3.tar.gz", hash = "sha256:34a17436ed1e96697a86f9de3d15a3b0be01d8bc8de9c1dffd59fb8234ed5307"},
 ]
+
+[[package]]
+name = "getdist"
+version = "1.4.7"
+description = "GetDist Monte Carlo sample analysis, plotting and GUI"
+optional = false
+python-versions = ">=3.7.0"
+files = [
+    {file = "getdist-1.4.7.tar.gz", hash = "sha256:c54c1a2aad2d7111e03775d0e9a2e8446c85e595eb8970ce6df0f1a574cd9031"},
+]
+
+[package.dependencies]
+matplotlib = ">=2.2.0,<3.5.0 || >3.5.0"
+numpy = ">=1.17.0"
+packaging = "*"
+PyYAML = ">=5.1"
+scipy = ">=1.5"
+
+[package.extras]
+docs = ["sphinx", "sphinx_rtd_theme (>=1.0)", "sphinxcontrib-jquery"]
+gui = ["PySide6 (>=6.1)"]
 
 [[package]]
 name = "html2text"
@@ -3831,4 +3854,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "8023ce2de2251edb272c5bdb814d245c0a064aac7c73de1443305e822da2c7c6"
+content-hash = "820dc52af2f578ca71fe2c7500d527f26683e1ec551fc66c03daf97ac7a2cec5"
