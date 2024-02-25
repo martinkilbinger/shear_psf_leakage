@@ -232,7 +232,7 @@ class Catalogs():
         if output is not None:
             self._output = output
 
-    def read_shear_cat(self, path_gal, path_psf):
+    def read_shear_cat(self, path_gal, path_psf, hdu=1):
         """
         read_shear_cat
 
@@ -245,9 +245,9 @@ class Catalogs():
         """
         assert ((path_gal is not None) or (path_psf is not None)), ("Please specify a path for the shear catalog you want to read.")
         if path_gal is not None:
-            self.dat_shear = fits.getdata(path_gal)
+            self.dat_shear = fits.getdata(path_gal, ext=hdu)
         if path_psf is not None:
-            self.dat_psf = fits.getdata(path_psf)
+            self.dat_psf = fits.getdata(path_psf, ext=hdu)
 
     def get_cat_fields(self, cat_type, square_size=False):
         """
@@ -463,7 +463,7 @@ class RhoStat():
 
         self.verbose = verbose
 
-    def build_cat_to_compute_rho(self, path_cat_star, catalog_id='', square_size=False, mask=False):
+    def build_cat_to_compute_rho(self, path_cat_star, catalog_id='', square_size=False, mask=False, hdu=1):
         """
         build_cat_to_compute_rho
 
@@ -480,9 +480,12 @@ class RhoStat():
 
         mask : bool
             If True, use PSF and star flags to mask the data. (Default: False)
+
+        hdu : int, optional
+            HDU number of input FITS file, default is 1
         """
 
-        self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat_star)
+        self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat_star, hdu=hdu)
 
         if self.verbose:
             print("Building catalogs...")
@@ -693,7 +696,7 @@ class TauStat():
 
         self.verbose = verbose
 
-    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False):
+    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False, hdu=1):
         """
         build_cat_to_compute_tau
 
@@ -713,10 +716,13 @@ class TauStat():
 
         mask : bool
             If True, use PSF and star flags to mask the data. (Default: False)
+
+        hdu : int, optional
+            HDU number of input FITS file, default is 1
         """
 
         if cat_type=="psf":
-            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat)
+            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat, hdu=hdu)
 
             if self.verbose:
                 print("Building catalogs...")
@@ -727,7 +733,7 @@ class TauStat():
             self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
 
         else:
-            self.catalogs.read_shear_cat(path_gal=path_cat, path_psf=None)
+            self.catalogs.read_shear_cat(path_gal=path_cat, path_psf=None, hdu=hdu)
 
             if self.verbose:
                 print("Building catalog...")
