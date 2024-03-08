@@ -11,37 +11,41 @@ from plots import plot_contours
 
 #First specify  the paths to your data
 paths_gal = [
-    "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits",
+    #"/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits",
     #"/automnt/n23data1/fhervas/shapepipe_clean_uppercut/unions_shapepipe_extended_2022_v1.0.4.fits",
     "/home/mkilbing/astro/data/DES/DES_Y3_cut.fits",
+    "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_extended_2022_v1.0_mtheli8k.fits",
     "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_extended_2022_v1.3_mtheli8k.fits",
     "/n17data/mkilbing/astro/data/CFIS/v0.0/shapepipe_1500_goldshape_v1.fits"
 ]
 
 paths_psf = [
-    "/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits",
+    #"/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits",
     "/home/mkilbing/astro/data/DES/psf_y3a1-v29.fits",
+    "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_psf_2022_v1.0.2_mtheli8k.fits",
     "/n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_psf_2022_v1.0.2_mtheli8k.fits",
     "/n17data/sguerrini/star_cat.fits"
 ]
 
 #Specify if you want to mask some data using flags
 masks = [
-    True,
+    #True,
     False,
+    True,
     True,
     True
 ]
 
 #Specify is the sizes have to be squared. It can depend on the catalog.
 square_sizes = [
-    True,
+    #True,
     False,
+    True,
     True,
     True
 ]
 
-output = '/home/guerrini/rho_tau_stats_output/run_full_debiased_3'
+output = '/home/guerrini/rho_tau_stats_output/new_setup_2'
 
 #Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
 params_sp = {
@@ -95,7 +99,7 @@ params_axel = {
     "star_size": "SIGMA_STAR_HSM",
     "PSF_flag": "FLAG_PSF_HSM",
     "star_flag": "FLAG_STAR_HSM",
-    "patch_number": 200,
+    "patch_number": 120,
     "ra_units": "deg",
     "dec_units": "deg" 
 }
@@ -105,20 +109,20 @@ treecorr_config = {
                 "dec_units": "deg",
                 "sep_units": "arcmin",
                 "min_sep": 0.1,
-                "max_sep": 100,
+                "max_sep": 250,
                 "nbins": 20,
                 "var_method": "jackknife"
 }
 
 params = [
-    params_sp,
     params_des,
+    params_sp,
     params_sp,
     params_axel
 ]
 
-colors = ['blue', 'red', 'green', 'purple'] #Colors for the plot
-catalog_ids = ['SPV1.0', 'DESY3', 'SPV1.3', 'SPV1500'] #Ids of the catalogs
+colors = ['red', 'blue', 'green', 'purple'] #Colors for the plot
+catalog_ids = ['DES', 'SPV1.0', 'SPV1.3', 'SP1500'] #Ids of the catalogs
 
 print(paths_gal)
 print(paths_psf)
@@ -159,7 +163,7 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(paths_gal, paths
 
 
         only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten() #function to extract the tau+
-        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='bootstrap') #Compute and save the tau statistics
+        tau_stat_handler.compute_tau_stats(cat_id, 'tau_stats_'+cat_id+'.fits', save_cov=True, func=only_p, var_method='jackknife') #Compute and save the tau statistics
 
 
 filenames = ['tau_stats_'+cat_id+'.fits' for cat_id in catalog_ids]
@@ -195,7 +199,7 @@ plt.figure(figsize=(15, 6))
 for mcmc_result, cat_id, color, flat_sample in zip(mcmc_result_list, catalog_ids, colors, flat_sample_list):
     psf_fitter.load_rho_stat('rho_stats_'+cat_id+'.fits')
     for i in range(100):
-        psf_fitter.plot_xi_sys(flat_sample[-i+1], cat_id, color, alpha=0.1)
-    psf_fitter.plot_xi_sys(mcmc_result[1], cat_id, color)
+        psf_fitter.plot_xi_psf_sys(flat_sample[-i+1], cat_id, color, alpha=0.1)
+    psf_fitter.plot_xi_psf_sys(mcmc_result[1], cat_id, color)
 plt.legend()
 plt.savefig(output+'/xi_sys.png')
