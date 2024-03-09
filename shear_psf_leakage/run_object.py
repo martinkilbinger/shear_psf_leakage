@@ -479,7 +479,7 @@ class LeakageObject:
                     ylabel_arr=ylabel_arr,
                     order=order,
                     mix=mix,
-                    title=f"test {order} {mix}",
+                    title="",
                     n_bin=n_bin,
                     out_path=out_path,
                     colors=colors,
@@ -522,12 +522,12 @@ class LeakageObject:
         # Set options for plotting
         n_bin = 30
         colors = ["b", "r"]
-        ylabel_arr = [r"$e_1^{\rm gal}$", r"$e_2^{\rm gal}$"]
+        ylabel_arr = [r"$e_1^{\rm g}$", r"$e_2^{\rm g}$"]
 
         xlabel_arr = [
-            r"$e_{1}^{\rm PSF}$",
-            r"$e_{2}^{\rm PSF}$",
-            r"$\mathrm{FWHM}^{\rm PSF}$ [arcsec]",
+            r"$e_{1}^{\rm p}$",
+            r"$e_{2}^{\rm p}$",
+            r"$\mathrm{FWHM}^{\rm p}$ [arcsec]",
         ]
 
         e, weights = self.get_ellipticity_weights()
@@ -556,7 +556,7 @@ class LeakageObject:
             ylabel_arr=ylabel_arr,
             order=order,
             mix=mix,
-            title=f"{order} {mix}",
+            title="",
             n_bin=n_bin,
             out_path=out_path,
             colors=colors,
