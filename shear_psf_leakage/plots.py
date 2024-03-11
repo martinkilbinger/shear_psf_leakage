@@ -129,6 +129,14 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
     return x_bin, y_bin, err_bin
 
 
+def get_bias(p_dp, par_ground_truth, key):
+
+    return (
+        (p_dp[key].nominal_value - par_ground_truth[key].value)
+        / p_dp[key].std_dev
+    )
+    
+
 def set_labels(p_dp, order, mix, par_ground_truth=None):
     """Set Labels.
 
@@ -153,35 +161,43 @@ def set_labels(p_dp, order, mix, par_ground_truth=None):
     label = {}
 
     # Linear parameters
-    label["A"] = f'$a_{{11}}={p_dp["a11"]: .2ugL}$'
-    label["D"] = f'$a_{{22}}={p_dp["a22"]: .2ugL}$'
+    label["A"] = f'$a_{{11}}\;\,={p_dp["a11"]: .2ugL}$'
+    label["D"] = f'$a_{{22}}\;\,={p_dp["a22"]: .2ugL}$'
     if par_ground_truth:
-        label["A"] = f"{label['A']} ({par_ground_truth['a11'].value})"
-        label["D"] = f"{label['D']} ({par_ground_truth['a22'].value})"
+        bias = get_bias(p_dp, par_ground_truth, "a11")
+        label["A"] = f"{label['A']} ({par_ground_truth['a11'].value}, {bias:.1f}$\sigma$)"
+        bias = get_bias(p_dp, par_ground_truth, "a22")
+        label["D"] = f"{label['D']} ({par_ground_truth['a22'].value}, {bias:.1f}$\sigma$)"
     
     # Constant parameters
-    label["A"] = label["A"] + "\n" + f'$c_1={p_dp["c1"]: .2ugL}$'
-    label["D"] = label["D"] + "\n" + f'$c_2={p_dp["c2"]: .2ugL}$'
+    label["A"] = label["A"] + "\n" + f'$c_1\;\;\;={p_dp["c1"]: .2ugL}$'
+    label["D"] = label["D"] + "\n" + f'$c_2\;\;\;={p_dp["c2"]: .2ugL}$'
     if par_ground_truth:
-        label["A"] = f"{label['A']} ({par_ground_truth['c1'].value})"
-        label["D"] = f"{label['D']} ({par_ground_truth['c2'].value})"
+        bias = get_bias(p_dp, par_ground_truth, "c1")
+        label["A"] = f"{label['A']} ({par_ground_truth['c1'].value}, {bias:.1f}$\sigma$)"
+        bias = get_bias(p_dp, par_ground_truth, "c2")
+        label["D"] = f"{label['D']} ({par_ground_truth['c2'].value}, {bias:.1f}$\sigma$)"
 
     if order == "quad":
         # Add quadratic parameters
         label_q111 = f'$q_{{111}}={p_dp["q111"]: .2ugL}$'
         label_q222 = f'$q_{{222}}={p_dp["q222"]: .2ugL}$'
         if par_ground_truth:
-            label_q111 = f"{label_q111} ({par_ground_truth['q111'].value})"
-            label_q222 = f"{label_q222} ({par_ground_truth['q222'].value})"
+            bias = get_bias(p_dp, par_ground_truth, "q111")
+            label_q111 = f"{label_q111} ({par_ground_truth['q111'].value}, {bias:.1f}$\sigma$)"
+            bias = get_bias(p_dp, par_ground_truth, "q222")
+            label_q222 = f"{label_q222} ({par_ground_truth['q222'].value}, {bias:.1f}$\sigma$)"
         label["A"] = label_q111 + "\n" + label["A"]
         label["D"] = label_q222 + "\n" + label["D"]
     if mix:
         # Mixed linear parameters
-        label["B"] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
-        label["C"] = f'$a_{{21}}={p_dp["a21"]: .2ugL}$'
+        label["B"] = f'$a_{{12}}\;\,={p_dp["a12"]: .2ugL}$'
+        label["C"] = f'$a_{{21}}\;\,={p_dp["a21"]: .2ugL}$'
         if par_ground_truth:
-            label["B"] = f"{label['B']} ({par_ground_truth['a12'].value})"
-            label["C"] = f"{label['C']} ({par_ground_truth['a21'].value})"
+            bias = get_bias(p_dp, par_ground_truth, "a12")
+            label["B"] = f"{label['B']} ({par_ground_truth['a12'].value}, {bias:.1f}$\sigma$)"
+            bias = get_bias(p_dp, par_ground_truth, "a21")
+            label["C"] = f"{label['C']} ({par_ground_truth['a21'].value}, {bias:.1f}$\sigma$)"
 
         # Mixed quadratic parameters
         if order == "quad":
@@ -191,10 +207,14 @@ def set_labels(p_dp, order, mix, par_ground_truth=None):
             label_q112 = f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
 
             if par_ground_truth:
-                label_q211 = f"{label_q211} ({par_ground_truth['q211'].value})"
-                label_q212 = f"{label_q212} ({par_ground_truth['q212'].value})"
-                label_q122 = f"{label_q122} ({par_ground_truth['q122'].value})"
-                label_q112 = f"{label_q112} ({par_ground_truth['q112'].value})"
+                bias = get_bias(p_dp, par_ground_truth, "q211")
+                label_q211 = f"{label_q211} ({par_ground_truth['q211'].value}, {bias:.1f}$\sigma$)"
+                bias = get_bias(p_dp, par_ground_truth, "q212")
+                label_q212 = f"{label_q212} ({par_ground_truth['q212'].value}, {bias:.1f}$\sigma$)"
+                bias = get_bias(p_dp, par_ground_truth, "q122")
+                label_q122 = f"{label_q122} ({par_ground_truth['q122'].value}, {bias:.1f}$\sigma$)"
+                bias = get_bias(p_dp, par_ground_truth, "q112")
+                label_q112 = f"{label_q112} ({par_ground_truth['q112'].value}, {bias:.1f}$\sigma$)"
 
             label["B"] = label_q211 + "\n" + label_q212 + "\n" + label["B"]
             label["C"] = label_q122 + "\n" + label_q112 + "\n" + label["C"]
@@ -258,7 +278,7 @@ def plot_bar_spin(par, s_ground_truth, output_path=None):
     )
     xlim = ax.get_xlim()
     ax.plot(xlim, [0, 0], "k-")
-    ax.set_ylabel(r"$z_s = x_s + \mathrm{i} y_s$")
+    ax.set_ylabel(r"$\alpha_s^\Re, \alpha_s^\Im$")
     xl = list(s)
     ax.set_xticks(xl)
     ax.set_xlabel("$s$")

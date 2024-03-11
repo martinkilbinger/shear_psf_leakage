@@ -247,10 +247,6 @@ x4 = 0.5 * (
     - obj.get_alpha_ufloat(1, 1)
 )
 
-# In theory we have y4 = a_12 = a_21. In practise the leakage matrix is
-# not entirely symmetrical. Let us identify the mean off-diagonal with y4.
-# The difference is in principle the imaginary spin-0 coefficient, which
-# should be zero.
 y4 = 0.5 * (obj.get_alpha_ufloat(0, 1) + obj.get_alpha_ufloat(1, 0))
 y0 = 0.5 * (obj.get_alpha_ufloat(1, 0) - obj.get_alpha_ufloat(0, 1))
 

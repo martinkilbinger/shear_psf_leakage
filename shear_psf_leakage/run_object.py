@@ -456,13 +456,19 @@ class LeakageObject:
             p_gt.add(par, value=pars_gt[par])
 
         # Ground-truth 2D (y_1, y_2) data
-        y1, y2 = leakage.func_bias_2d(p_gt, x_arr[0], x_arr[1], order="quad", mix=True)
+        y1, y2 = leakage.func_bias_2d(
+            p_gt,
+            x_arr[0],
+            x_arr[1],
+            order="quad",
+            mix=True
+        )
 
         # Perturbation
         dy1 = np.random.normal(scale=sig_x, size=size)
         dy2 = np.random.normal(scale=sig_x, size=size)
 
-        # Perform fits
+        # Carry out fits
         for order in ["lin", "quad"]:
             for mix in [False, True]:
                 out_path = f"{self._params['output_dir']}/test_{order}_{mix}"
@@ -473,7 +479,7 @@ class LeakageObject:
                     ylabel_arr=ylabel_arr,
                     order=order,
                     mix=mix,
-                    title=f"test {order} {mix}",
+                    title="",
                     n_bin=n_bin,
                     out_path=out_path,
                     colors=colors,
@@ -500,21 +506,28 @@ class LeakageObject:
 
         return e, weights
 
-    def PSF_leakage(self):
+    def PSF_leakage(self, mix=True, order="lin"):
         """PSF Leakage.
 
         Compute and plot object-by-object PSF spin-consistent leakage relations.
+
+        Parameters
+        ----------
+        mix : bool, optional
+            Component mixing (spin-consistent); default is ``True``
+        order : str, optional
+            regression order; allowed are "lin" (default) and "quad"
 
         """
         # Set options for plotting
         n_bin = 30
         colors = ["b", "r"]
-        ylabel_arr = [r"$e_1^{\rm gal}$", r"$e_2^{\rm gal}$"]
+        ylabel_arr = [r"$e_1^{\rm g}$", r"$e_2^{\rm g}$"]
 
         xlabel_arr = [
-            r"$e_{1}^{\rm PSF}$",
-            r"$e_{2}^{\rm PSF}$",
-            r"$\mathrm{FWHM}^{\rm PSF}$ [arcsec]",
+            r"$e_{1}^{\rm p}$",
+            r"$e_{2}^{\rm p}$",
+            r"$\mathrm{FWHM}^{\rm p}$ [arcsec]",
         ]
 
         e, weights = self.get_ellipticity_weights()
@@ -531,29 +544,27 @@ class LeakageObject:
         ]
 
         # Fit consistent spin-2 2D model
-        mix = True
-        for order in ["lin", "quad"]:
-            out_path = (
-                f"{self._params['output_dir']}"
-                + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
-            )
-            par_best_fit = leakage.corr_2d(
-                x_arr[:2],
-                e,
-                weights=weights,
-                xlabel_arr=xlabel_arr[:2],
-                ylabel_arr=ylabel_arr,
-                order=order,
-                mix=mix,
-                title="",
-                n_bin=n_bin,
-                out_path=out_path,
-                colors=colors,
-                stats_file=self._stats_file,
-                verbose=self._params["verbose"],
-            )
-            with open(f"{out_path}.json", "w") as fp_best_fit:
-                par_best_fit.dump(fp_best_fit)
+        out_path = (
+            f"{self._params['output_dir']}"
+            + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
+        )
+        self.par_best_fit = leakage.corr_2d(
+            x_arr[:2],
+            e,
+            weights=weights,
+            xlabel_arr=xlabel_arr[:2],
+            ylabel_arr=ylabel_arr,
+            order=order,
+            mix=mix,
+            title="",
+            n_bin=n_bin,
+            out_path=out_path,
+            colors=colors,
+            stats_file=self._stats_file,
+            verbose=self._params["verbose"],
+        )
+        with open(f"{out_path}.json", "w") as fp_best_fit:
+          par_best_fit.dump(fp_best_fit)
 
         # Fit separate 1D models
         ylabel = r"$e_{1,2}^{\rm gal}$"
@@ -637,7 +648,9 @@ class LeakageObject:
 
             if obj._params["PSF_leakage"]:
                 # Object-by-object spin-consistent PSF leakage
-                obj.PSF_leakage()
+
+                for order in ("lin", "quad"):
+                    obj.PSF_leakage(mix=True, order=order)
 
             if obj._params["obs_leakage"]:
                 # Object-by-object dependence of general variables
