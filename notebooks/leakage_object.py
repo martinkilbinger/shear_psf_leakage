@@ -20,6 +20,9 @@
 # Martin Kilbinger <martin.kilbinger@cea.fr>
 
 # +
+import matplotlib
+matplotlib.use("qtagg")
+
 import os
 import matplotlib.pylab as plt
 

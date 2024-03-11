@@ -563,11 +563,10 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
-        fp_best_fit = open(f"{out_path}.json", "w")
-        self.par_best_fit.dump(fp_best_fit)
+        with open(f"{out_path}.json", "w") as fp_best_fit:
+          par_best_fit.dump(fp_best_fit)
 
-        # Fit separate 1D models, including size
-        # MKDEBUG: to remove, is done by fit_any
+        # Fit separate 1D models
         ylabel = r"$e_{1,2}^{\rm gal}$"
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
