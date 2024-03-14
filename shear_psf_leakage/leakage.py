@@ -14,6 +14,7 @@
 import os
 
 import numpy as np
+import json
 import matplotlib.pylab as plt
 from lmfit import minimize, Parameters
 from uncertainties import ufloat
@@ -950,7 +951,11 @@ def corr_2d(
         err = np.ones_like(y[0])
     res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix))
     if stats_file:
-        print_stats(f"2D fit order={order} mix={mix}:", stats_file, verbose=verbose)
+        print_stats(
+            f"2D fit order={order} mix={mix}:",
+            stats_file,
+            verbose=verbose,
+        )
         print_fit_report(res, file=stats_file)
     if verbose:
         print_fit_report(res)
@@ -968,7 +973,13 @@ def corr_2d(
         for p in res.params:
             print_stats(f"{p}={p_dp[p]:.3ugP}", stats_file, verbose=verbose)
         for spin in s_ds:
-            print_stats(f"{spin}={s_ds[spin]:.3ugP}", stats_file, verbose=verbose)
+            print_stats(
+                f"{spin}={s_ds[spin]:.3ugP}",
+                stats_file,
+                verbose=verbose,
+            )
+
+    # MKDEBUG TODO: Put plot stuff in diff function
 
     # Plots
 
@@ -1328,3 +1339,51 @@ def affine_corr_n(
     plt.tight_layout()
     plt.savefig(out_path_arr[-1])
     plt.close()
+
+
+def save_to_json(data, fname):
+    """Save To Json.
+
+    Save data to .json file.
+
+    Parameters
+    ----------
+    data : dict
+        input data
+    fname : str
+        output file name
+
+    See also
+    --------
+    read_from_json
+
+    """
+    with open(fname, "w") as f:
+        data.dump(f)
+
+
+def read_from_json(fname):
+    """Read From Json.
+
+    Read data from .json file.
+
+    Parameters
+    ----------
+    fname : str
+        input file name
+
+    Returns
+    -------
+    dict
+        data
+
+    See also
+    --------
+    save_to_json
+
+    """
+
+    with open(fname) as f:
+        data = json.load(f)
+
+    return data

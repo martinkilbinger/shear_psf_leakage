@@ -500,7 +500,21 @@ class LeakageObject:
 
         return e, weights
 
-    def PSF_leakage(self):
+    def get_out_base(self, mix, order):
+        """Get Out Base.
+
+        Return output file base name.
+
+        """
+        out_base = (
+            f"{self._params['output_dir']}"
+            + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
+        )
+
+        return out_base
+
+
+    def PSF_leakage(self, mix=True, order="lin"):
         """PSF Leakage.
 
         Compute and plot object-by-object PSF spin-consistent leakage relations.
@@ -531,31 +545,26 @@ class LeakageObject:
         ]
 
         # Fit consistent spin-2 2D model
-        mix = True
-        for order in ["lin", "quad"]:
-            out_path = (
-                f"{self._params['output_dir']}"
-                + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
-            )
-            par_best_fit = leakage.corr_2d(
-                x_arr[:2],
-                e,
-                weights=weights,
-                xlabel_arr=xlabel_arr[:2],
-                ylabel_arr=ylabel_arr,
-                order=order,
-                mix=mix,
-                title="",
-                n_bin=n_bin,
-                out_path=out_path,
-                colors=colors,
-                stats_file=self._stats_file,
-                verbose=self._params["verbose"],
-            )
-            with open(f"{out_path}.json", "w") as fp_best_fit:
-                par_best_fit.dump(fp_best_fit)
+        out_path = self.get_out_base(mix, order)
+        par_best_fit = leakage.corr_2d(
+            x_arr[:2],
+            e,
+            weights=weights,
+            xlabel_arr=xlabel_arr[:2],
+            ylabel_arr=ylabel_arr,
+            order=order,
+            mix=mix,
+            title="",
+            n_bin=n_bin,
+            out_path=out_path,
+            colors=colors,
+            stats_file=self._stats_file,
+            verbose=self._params["verbose"],
+        )
+        leakage.save_to_json(par_best_fit, f"{out_path}.json")
 
         # Fit separate 1D models
+        # MKDEBUG TODO: put in separate class funtion
         ylabel = r"$e_{1,2}^{\rm gal}$"
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]

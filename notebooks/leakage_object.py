@@ -21,7 +21,7 @@
 
 # +
 import matplotlib
-matplotlib.use("qtagg")
+matplotlib.use("agg")
 
 import os
 import matplotlib.pylab as plt
@@ -29,6 +29,7 @@ import matplotlib.pylab as plt
 from cs_util import canfar
 
 import shear_psf_leakage.run_object as run
+from shear_psf_leakage import leakage
 
 # -
 
@@ -121,7 +122,13 @@ obj.read_data()
 
 if obj._params["PSF_leakage"]:
     # Object-by-object spin-consistent PSF leakage
-    obj.PSF_leakage()
+    for order in ("lin", "quad"):
+        out_base = obj.get_out_base(mix=True, order=order)
+        out_path = f"{out_base}.json"
+        if os.path.exists(out_path):
+            obj.par_best_fit = leakage.read_from_json(out_path)
+        else:
+            obj.PSF_leakage(mix=True, order=order)
 
 if obj._params["obs_leakage"]:
     # Object-by-object spin-consistent PSF leakage
