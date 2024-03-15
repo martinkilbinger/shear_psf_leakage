@@ -482,6 +482,9 @@ class RhoStat():
 
         mask : bool
             If True, use PSF and star flags to mask the data. (Default: False)
+
+        hdu : int, optional
+            HDU number of input FITS file, default is 1
         """
 
         self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat_star, hdu=hdu)
@@ -703,7 +706,7 @@ class TauStat():
 
         self.verbose = verbose
 
-    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False):
+    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False, hdu=1):
         """
         build_cat_to_compute_tau
 
@@ -723,10 +726,13 @@ class TauStat():
 
         mask : bool
             If True, use PSF and star flags to mask the data. (Default: False)
+
+        hdu : int, optional
+            HDU number of input FITS file, default is 1
         """
 
         if cat_type=="psf":
-            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat)
+            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat, hdu=hdu)
 
             if self.verbose:
                 print("Building catalogs...")
@@ -737,7 +743,7 @@ class TauStat():
             self.catalogs.build_catalog(cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
 
         else:
-            self.catalogs.read_shear_cat(path_gal=path_cat, path_psf=None)
+            self.catalogs.read_shear_cat(path_gal=path_cat, path_psf=None, hdu=hdu)
 
             if self.verbose:
                 print("Building catalog...")

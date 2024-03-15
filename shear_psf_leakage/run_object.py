@@ -500,6 +500,7 @@ class LeakageObject:
 
         return e, weights
 
+<<<<<<< HEAD
     def get_out_base(self, mix, order):
         """Get Out Base.
 
@@ -514,10 +515,19 @@ class LeakageObject:
         return out_base
 
 
+=======
+>>>>>>> origin/rho_tau_hdu
     def PSF_leakage(self, mix=True, order="lin"):
         """PSF Leakage.
 
         Compute and plot object-by-object PSF spin-consistent leakage relations.
+
+        Parameters
+        ----------
+        mix : bool, optional
+            Component mixing (spin-consistent); default is ``True``
+        order : str, optional
+            regression order; allowed are "lin" (default) and "quad"
 
         """
         # Set options for plotting
@@ -546,7 +556,7 @@ class LeakageObject:
 
         # Fit consistent spin-2 2D model
         out_path = self.get_out_base(mix, order)
-        par_best_fit = leakage.corr_2d(
+        self.par_best_fit = leakage.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -561,10 +571,13 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
-        leakage.save_to_json(par_best_fit, f"{out_path}.json")
+        leakage.save_to_json(self.par_best_fit, f"{out_path}.json")
 
         # Fit separate 1D models
         # MKDEBUG TODO: put in separate class funtion
+        fp_best_fit = open(f"{out_path}.json", "w")
+        self.par_best_fit.dump(fp_best_fit)
+
         ylabel = r"$e_{1,2}^{\rm gal}$"
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
@@ -646,7 +659,9 @@ class LeakageObject:
 
             if obj._params["PSF_leakage"]:
                 # Object-by-object spin-consistent PSF leakage
-                obj.PSF_leakage()
+
+                for order in ("lin", "quad"):
+                    obj.PSF_leakage(mix=True, order=order)
 
             if obj._params["obs_leakage"]:
                 # Object-by-object dependence of general variables
