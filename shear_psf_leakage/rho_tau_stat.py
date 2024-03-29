@@ -529,7 +529,7 @@ class RhoStat():
 
         self.rho_stats = Table(
             [
-                rho_0.rnom,
+                rho_0.meanr,
                 rho_0.xip,
                 rho_0.varxip,
                 rho_0.xim,
@@ -788,7 +788,7 @@ class TauStat():
 
         self.tau_stats = Table(
             [
-                tau_0.rnom,
+                tau_0.meanr,
                 tau_0.xip,
                 tau_0.varxip,
                 tau_0.xim,
@@ -1149,9 +1149,9 @@ class PSFErrorFit():
         assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
         #Check that the abssiss are the same
 
-        assert (self.cov is not None), ("Please load a covariance matrix")
+        assert (self.cov_tau is not None), ("Please load a covariance matrix")
 
-        inv_cov = np.linalg.inv(self.cov)
+        inv_cov = np.linalg.inv(self.cov_tau)
         output = np.array([
             self.tau_stat_handler.tau_stats["tau_0_p"],
             self.tau_stat_handler.tau_stats["tau_2_p"],

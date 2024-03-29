@@ -1,0 +1,633 @@
+"""
+This module allows to compute a theoretical estimate of the covariance matrix of the tau statistics
+to estimate systematic error from the PSF using rho and tau statistics.
+Author: Sacha Guerrini
+"""
+
+import numpy as np
+from astropy.io import fits
+
+import scipy.integrate as integrate
+import scipy.interpolate as interpolate
+
+import treecorr
+
+class CovTauTh:
+    """
+    CovTauTh
+
+    Class to build and compute the covariance matrix of the tau statistics using a theoretical estimate
+    """
+
+    def __init__(
+        self,
+        path_gal,
+        path_psf,
+        hdu_psf,
+        treecorr_config,
+        A,
+        n_e,
+        n_psf,
+        **kwargs):
+        """
+        Initalize the CovTauTh class.
+        Galaxy and PSF star catalogs are used to initialize the value of the different shape noise.
+
+        Parameters
+        ----------
+        path_gal: str
+            Path to the galaxy catalog
+        path_psf: str
+            Path to the PSF catalog
+        hdu_psf: int
+            HDU of the PSF catalog
+        treecorr_config: dict
+            Configuration of the treecorr catalogs
+        A: float
+            Area of the survey
+        n_e: float
+            Number density of galaxies
+        n_psf: float
+            Number density of PSF stars
+        """
+        #Load the catalogs
+        cat_gal, cat_psf = fits.getdata(path_gal), fits.open(path_psf)[hdu_psf].data
+
+        #Create treecorr catalogs
+        gal, psf, psf_error, size_error = self.create_treecorr_catalog(cat_gal, cat_psf, treecorr_config)
+
+        #Compute the shape noise
+        self.sigma_e = self.compute_shape_noise(gal, gal)
+        self.sigma_psf = self.compute_shape_noise(psf, psf)
+        self.sigma_psf_error = self.compute_shape_noise(psf_error, psf_error)
+        self.sigma_psf_size_error = self.compute_shape_noise(size_error, size_error)
+
+        del gal, psf, psf_error, size_error
+        
+        self.A = A
+        self.n_e = n_e
+        self.n_psf = n_psf
+
+        self.rho_stats = kwargs.get("rho_stats", None)
+        self.tau_stats = kwargs.get("tau_stats", None)
+        self.xi_plus = kwargs.get("xi_plus", None)
+        self.xi_minus = kwargs.get("xi_minus", None)
+
+        if self.rho_stats is None:
+            print("You must load rho statistics")
+        else:
+            self.bins = self.rho_stats['theta']
+            self.delta_bin_log = (self.bins[1]-self.bins[0])/self.bins[1]
+        if self.tau_stats is None:
+            print("You must load tau statistics")
+        if self.xi_plus is None:
+            print("You must load Xi plus")
+        if self.xi_minus is None:
+            print("You must load Xi minus")
+
+        self.component_dict = {
+            '00': {
+                'eb': 'tau_0',
+                'ec': 'tau_0',
+                'bc': 'rho_0',
+                'sigma_bc': self.sigma_psf
+            },
+            '22': {
+                'eb': 'tau_2',
+                'ec': 'tau_2',
+                'bc': 'rho_1',
+                'sigma_bc': self.sigma_psf_error
+            },
+            '55': {
+                'eb': 'tau_5',
+                'ec': 'tau_5',
+                'bc': 'rho_3',
+                'sigma_bc': self.sigma_psf_size_error
+            },
+            '02': {
+                'eb': 'tau_0',
+                'ec': 'tau_2',
+                'bc': 'rho_2'
+            },
+            '05': {
+                'eb': 'tau_0',
+                'ec': 'tau_5',
+                'bc': 'rho_5'
+            },
+            '25': {
+                'eb': 'tau_2',
+                'ec': 'tau_5',
+                'bc': 'rho_4'
+            }
+        }
+
+    def create_treecorr_catalog(self, cat_gal, cat_psf, treecorr_config):
+        """
+        Create treecorr catalogs from the galaxy and PSF catalogs to compute estimate shape noise in covariance terms.
+        Works only for shapepipe catalogs right now. A config file will be added later
+        
+        Parameters
+        ----------
+        cat_gal: numpy.ndarray
+            Galaxy catalog
+        cat_psf: numpy.ndarray
+            PSF catalog
+        treecorr_config : dict
+            Configuration of the treecorr catalogs
+        
+        Returns
+        -------
+        treecorr.Catalog, treecorr.Catalog, treecorr.Catalog, treecorr.Catalog
+            Galaxy catalog, PSF catalog, PSF error catalog, PSF size error catalog
+        """
+        ra_units = treecorr_config.get('ra_units', 'deg')
+        dec_units = treecorr_config.get('dec_units', 'deg')
+        gal = treecorr.Catalog(
+            ra=cat_gal['ra'], dec=cat_gal['dec'], w=cat_gal['w'], g1=cat_gal['e1'], g2=cat_gal['e2'],
+            ra_units=ra_units, dec_units=dec_units
+        )
+
+        psf = treecorr.Catalog(
+            ra=cat_psf['ra'], dec=cat_psf['dec'], g1=cat_psf['E1_PSF_HSM'], g2=cat_psf['E2_PSF_HSM'],
+            ra_units=ra_units, dec_units=dec_units
+        )
+
+        psf_error = treecorr.Catalog(
+            ra=cat_psf['ra'], dec=cat_psf['dec'], g1=cat_psf['E1_STAR_HSM']-cat_psf['E1_PSF_HSM'], g2=cat_psf['E2_STAR_HSM']-cat_psf['E2_PSF_HSM'],
+            ra_units=ra_units, dec_units=dec_units
+        )
+
+        size_error = treecorr.Catalog(
+            ra=cat_psf['ra'], dec=cat_psf['dec'],
+            g1=cat_psf['E1_STAR_HSM']*(cat_psf["SIGMA_STAR_HSM"]**2-cat_psf["SIGMA_PSF_HSM"]**2)/cat_psf["SIGMA_STAR_HSM"]**2,
+            g2=cat_psf['E2_PSF_HSM']*(cat_psf["SIGMA_STAR_HSM"]**2-cat_psf["SIGMA_PSF_HSM"]**2)/cat_psf["SIGMA_STAR_HSM"]**2,
+            ra_units=ra_units, dec_units=dec_units
+        )
+        return gal, psf, psf_error, size_error
+    
+    def compute_shape_noise(self, cat1, cat2):
+        """
+        Compute the shape noise between two catalogs
+
+        Parameters
+        ----------
+        cat1: treecorr.Catalog
+            First catalog
+        cat2: treecorr.Catalog
+            Second catalog
+        
+        Returns
+        -------
+        float
+            Shape noise between the two catalogs
+        """
+        return np.sqrt(0.5*np.average((cat1.g1*cat2.g1)+(cat1.g2*cat2.g2), weights=cat1.w*cat2.w))
+
+    def load_rho_stat(self, path_rho_stat):
+        """
+        Load rho statistics
+
+        Parameters
+        ----------
+        path_rho_stat: str
+            Path to the rho statistics
+        """
+        self.rho_stats = fits.getdata(path_rho_stat)
+        self.bins = self.rho_stats['theta']
+        self.delta_bin_log = (self.bins[1]-self.bins[0])/self.bins[1]
+
+    def load_tau_stat(self, path_tau_stat):
+        """
+        Load tau statistics
+
+        Parameters
+        ----------
+        path_tau_stat: str
+            Path to the tau statistics
+        """
+        self.tau_stats = fits.getdata(path_tau_stat)
+
+    def load_xi_plus(self, path_xi_plus):
+        """
+        Load Xi plus
+
+        Parameters
+        ----------
+        path_xi_plus: str
+            Path to the Xi plus
+        """
+        self.xi_plus = fits.getdata(path_xi_plus)
+
+    def load_xi_minus(self, path_xi_minus):
+        """
+        Load Xi minus
+
+        Parameters
+        ----------
+        path_xi_minus: str
+            Path to the Xi minus
+        """
+        self.xi_minus = fits.getdata(path_xi_minus)
+
+    def check_consistency(self):
+        """
+        Check that the input data have the same angular bins.
+
+        Returns
+        -------
+        bool
+            True if the data are consistent, False otherwise
+        """
+        assert (self.rho_stats is not None), ("You must load rho statistics")
+        assert (self.tau_stats is not None), ("You must load tau statistics")
+        assert (self.xi_plus is not None), ("You must load Xi plus")
+        assert (self.xi_minus is not None), ("You must load Xi minus")
+
+        consistency = np.all(self.bins == self.tau_stats['theta']) & np.all(self.bins == self.xi_plus['ang']) & np.all(self.bins == self.xi_minus['ang'])
+        if not consistency:
+            print("!!! The angular bins are not consistent !!!")
+        return consistency
+    
+    def build_interpolator(self, bins, values):
+        """
+        Build an interpolator for the given values using the given bins to compute the covariance.
+        Scipy interpolator will be used between the bins. The function will then return 0 outside
+        this range.
+
+        Parameters
+        ----------
+        bins: numpy.ndarray
+            Bins of the values
+        values: numpy.ndarray
+            Values to interpolate
+
+        Returns
+        -------
+        callable:
+            Interpolator function
+        """
+        interpolator = interpolate.make_interp_spline(bins, values, k=1)
+        func = lambda x: np.where((x >= bins[0]) & (x <= bins[-1]),
+                                  interpolator(x),
+                                   np.where(x < bins[0], np.ones_like(x)*values[0], np.zeros_like(x))
+        )
+        return func
+
+    def build_cov(self, **kwargs):
+        """
+        Computes the covariance matrix of the tau statistics using a theoretical estimate
+
+        Returns
+        -------
+        numpy.ndarray
+            Covariance matrix of the tau statistics
+        """
+        cov_00 = self.compute_00_comp(**kwargs)
+        cov_02 = self.compute_02_comp(**kwargs)
+        cov_05 = self.compute_05_comp(**kwargs)
+        cov_25 = self.compute_25_comp(**kwargs)
+        cov_22 = self.compute_22_comp(**kwargs)
+        cov_55 = self.compute_55_comp(**kwargs)
+
+        cov = np.block([
+            [cov_00, cov_02, cov_05],
+            [cov_02.T, cov_22, cov_25],
+            [cov_05.T, cov_25.T, cov_55]
+        ])
+        return cov
+
+    def compute_00_comp(self, **kwargs):
+        """
+        Computes the auto-correlation tau_0/tau_0.
+
+        Returns
+        -------
+        numpy.ndarray
+            Auto-correlation tau_0/tau_0
+        """
+        cov_00 = self.compute_sn('00', **kwargs) + self.compute_mt('00', **kwargs) + self.compute_cv_rho_plus('00', **kwargs) +\
+            self.compute_cv_tau_plus('00', **kwargs) + self.compute_cv_rho_minus('00', **kwargs) +\
+            self.compute_cv_tau_minus('00', **kwargs)
+        return cov_00
+
+    def compute_02_comp(self, **kwargs):
+        """
+        Computes the cross-correlation tau_0/tau_2.
+
+        Returns
+        -------
+        numpy.ndarray
+            Cross-correlation tau_0/tau_2
+        """
+        cov_02 = self.compute_sn('02', **kwargs) + self.compute_mt('02', **kwargs) + self.compute_cv_rho_plus('02', **kwargs) +\
+            self.compute_cv_tau_plus('02', **kwargs) + self.compute_cv_rho_minus('02', **kwargs) +\
+            self.compute_cv_tau_minus('02', **kwargs)
+        return cov_02
+
+    def compute_05_comp(self, **kwargs):
+        """
+        Computes the cross-correlation tau_0/tau_5.
+
+        Returns
+        -------
+        numpy.ndarray
+            Cross-correlation tau_0/tau_5
+        """
+        cov_05 = self.compute_sn('05', **kwargs) + self.compute_mt('05', **kwargs) + self.compute_cv_rho_plus('05', **kwargs) +\
+            self.compute_cv_tau_plus('05', **kwargs) + self.compute_cv_rho_minus('05', **kwargs) +\
+            self.compute_cv_tau_minus('05', **kwargs)
+        return cov_05
+
+    def compute_25_comp(self, **kwargs):
+        """
+        Computes the cross-correlation tau_2/tau_5.
+
+        Returns
+        -------
+        numpy.ndarray
+            Cross-correlation tau_2/tau_5
+        """
+        cov_25 = self.compute_sn('25', **kwargs) + self.compute_mt('25', **kwargs) + self.compute_cv_rho_plus('25', **kwargs) +\
+            self.compute_cv_tau_plus('25', **kwargs) + self.compute_cv_rho_minus('25', **kwargs) +\
+            self.compute_cv_tau_minus('25', **kwargs)
+        return cov_25
+
+    def compute_22_comp(self, **kwargs):
+        """
+        Computes the auto-correlation tau_2/tau_2.
+
+        Returns
+        -------
+        numpy.ndarray
+            Auto-correlation tau_2/tau_2
+        """
+        cov_22 = self.compute_sn('22', **kwargs) + self.compute_mt('22', **kwargs) +self.compute_cv_rho_plus('22', **kwargs) +\
+            self.compute_cv_tau_plus('22', **kwargs) + self.compute_cv_rho_minus('22', **kwargs) +\
+            self.compute_cv_tau_minus('22', **kwargs)
+        return cov_22
+
+    def compute_55_comp(self, **kwargs):
+        """
+        Computes the auto-correlation tau_5/tau_5.
+
+        Returns
+        -------
+        numpy.ndarray
+            Auto-correlation tau_5/tau_5
+        """
+        cov_55 = self.compute_sn('55', **kwargs) + self.compute_mt('55', **kwargs) + self.compute_cv_rho_plus('55', **kwargs) +\
+            self.compute_cv_tau_plus('55', **kwargs) + self.compute_cv_rho_minus('55', **kwargs) +\
+            self.compute_cv_tau_minus('55', **kwargs)
+        return cov_55
+    
+    def compute_sn(self, component, **kwargs):
+        """
+        Computes the shot noise component of the covariance matrix for the given component.
+
+        Parameters
+        ----------
+        component: str
+            Component of the covariance matrix
+        
+        Returns
+        -------
+        numpy.ndarray
+            Shot noise component of the covariance matrix
+        """
+        assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
+        sigma_bc = self.component_dict[component].get('sigma_bc', 0)
+
+        sn = np.zeros((len(self.bins), len(self.bins)))
+        for i in range(len(self.bins)):
+            sn[i,i] = self.sigma_e**2*sigma_bc**2/(4*np.pi*self.A*self.n_e*self.n_psf*self.bins[i]**2*(self.delta_bin_log))
+        return sn
+
+    def compute_mt(self, component, **kwargs):
+        """
+        Computes the mixed term component of the covariance matrix for the given component.
+
+        Parameters
+        ----------
+        component: str
+            Component of the covariance matrix
+        
+        Returns
+        -------
+        numpy.ndarray
+            Shot noise component of the covariance matrix
+        """
+        assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
+        correlator = self.component_dict[component]['bc']
+        sigma_bc = self.component_dict[component].get('sigma_bc', None)
+        nbin_ang = kwargs.get("nbin_ang", 20)
+
+        mt = np.zeros((len(self.bins), len(self.bins)))
+        #interpolator_rho = interpolate.make_interp_spline(self.bins, self.rho_stats[correlator+"_p"], k=1)
+        interpolator_rho = self.build_interpolator(self.bins, self.rho_stats[correlator+"_p"])
+        if sigma_bc is not None:
+            #interpolator_xi_plus = interpolate.make_interp_spline(self.bins, self.xi_plus['value'], k=1)
+            interpolator_xi_plus = self.build_interpolator(self.bins, self.xi_plus['value'])
+        phi = np.linspace(0, np.pi, nbin_ang)
+        for i in range(len(self.bins)):
+            for j in range(len(self.bins)):
+                y = np.sqrt(self.bins[i]**2+self.bins[j]**2-2*self.bins[i]*self.bins[j]*np.cos(phi))
+                mt[i, j] = integrate.simps(interpolator_rho(y), phi)*self.sigma_e**2/(2*np.pi*self.A*self.n_e)
+                if sigma_bc is not None:
+                    mt[i, j] += integrate.simps(interpolator_xi_plus(y), phi)*sigma_bc**2/(2*np.pi*self.A*self.n_e)
+                mt[j, i] = mt[i, j]
+        return mt
+    
+    def compute_cv_rho_plus(self, component, **kwargs):
+        """
+        Computes the cosmic variance component of the covariance matrix for the given components
+        based on the rho statistics + component.
+
+        Parameters
+        ----------
+        components: str
+            Component of the covariance matrix
+        
+        Returns
+        -------
+        numpy.ndarray
+            Cosmic variance component of the covariance matrix
+        """
+        assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
+        xi_plus = self.xi_plus['value']
+        rho = self.rho_stats[self.component_dict[component]['bc']+'_p']
+        nbin_ang = kwargs.get("nbin_ang", 20)
+        nbin_rad = kwargs.get("nbin_rad", 20)
+
+        cv = np.zeros((len(self.bins), len(self.bins)))
+
+        #interpolator_xi = interpolate.make_interp_spline(self.bins, xi_plus, k=1)
+        #interpolator_rho = interpolate.make_interp_spline(self.bins, rho, k=1)
+        interpolator_xi = self.build_interpolator(self.bins, xi_plus)
+        interpolator_rho = self.build_interpolator(self.bins, rho)
+        phi_angle = np.linspace(0, np.pi, nbin_ang)
+        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        for i in range(len(self.bins)):
+            for j in range(len(self.bins)):
+                radius_val = np.zeros(len(phi_radius))
+                for k, phi_r in enumerate(phi_radius):
+                    y_xi = np.sqrt(phi_r**2+self.bins[i]**2-2*phi_r*self.bins[i]*np.cos(phi_angle))
+                    y_rho = np.sqrt(phi_r**2+self.bins[j]**2+2*phi_r*self.bins[j]*np.cos(phi_angle))
+                    int_xi = integrate.simps(interpolator_xi(y_xi), phi_angle)
+                    int_rho = integrate.simps(interpolator_rho(y_rho), phi_angle)
+                    radius_val[k] = int_xi*int_rho*phi_r
+                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
+                cv[j, i] = cv[i, j]
+        return cv
+
+    def compute_cv_tau_plus(self, component, **kwargs):
+        """
+        Computes the cosmic variance component of the covariance matrix for the given components
+        based on the tau statistics + component.
+
+        Parameters
+        ----------
+        components: str
+            Component of the covariance matrix
+        
+        Returns
+        -------
+        numpy.ndarray
+            Cosmic variance component of the covariance matrix
+        """
+        assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
+        tau_b = self.tau_stats[self.component_dict[component]['eb']+'_p']
+        tau_c = self.tau_stats[self.component_dict[component]['ec']+'_p']
+        nbin_ang = kwargs.get("nbin_ang", 20)
+        nbin_rad = kwargs.get("nbin_rad", 20)
+
+        cv = np.zeros((len(self.bins), len(self.bins)))
+
+        #interpolator_tau_b = interpolate.make_interp_spline(self.bins, tau_b, k=1)
+        #interpolator_tau_c = interpolate.make_interp_spline(self.bins, tau_c, k=1)
+        interpolator_tau_b = self.build_interpolator(self.bins, tau_b)
+        interpolator_tau_c = self.build_interpolator(self.bins, tau_c)
+        phi_angle = np.linspace(0, np.pi, nbin_ang)
+        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        for i in range(len(self.bins)):
+            for j in range(len(self.bins)):
+                radius_val = np.zeros(len(phi_radius))
+                for k, phi_r in enumerate(phi_radius):
+                    y_tau_b = np.sqrt(phi_r**2+self.bins[i]**2-2*phi_r*self.bins[i]*np.cos(phi_angle))
+                    y_tau_c = np.sqrt(phi_r**2+self.bins[j]**2+2*phi_r*self.bins[j]*np.cos(phi_angle))
+                    int_tau_b = integrate.simps(interpolator_tau_b(y_tau_b), phi_angle)
+                    int_tau_c = integrate.simps(interpolator_tau_c(y_tau_c), phi_angle)
+                    radius_val[k] = int_tau_b*int_tau_c*phi_r
+                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
+                cv[j, i] = cv[i, j]
+        return cv
+    
+    def compute_cv_rho_minus(self, component, **kwargs):
+        """
+        Computes the cosmic variance component of the covariance matrix for the given components
+        based on the rho statistics - component.
+
+        Parameters
+        ----------
+        components: str
+            Component of the covariance matrix
+
+        Returns
+        -------
+        numpy.ndarray
+            Cosmic variance component of the covariance matrix
+        """
+        assert(component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
+        xi_minus = self.xi_minus['value']
+        rho = self.rho_stats[self.component_dict[component]['bc']+'_m']
+        nbin_ang = kwargs.get("nbin_ang", 20)
+        nbin_rad = kwargs.get("nbin_rad", 20)
+
+        cv = np.zeros((len(self.bins), len(self.bins)))
+        #interpolator_xi = interpolate.make_interp_spline(self.bins, xi_minus, k=1)
+        #interpolator_rho = interpolate.make_interp_spline(self.bins, rho, k=1)
+        interpolator_xi = self.build_interpolator(self.bins, xi_minus)
+        interpolator_rho = self.build_interpolator(self.bins, rho)
+        phi_angle = np.linspace(0, np.pi, nbin_ang)
+        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        for i in range(len(self.bins)):
+            for j in range(len(self.bins)):
+                radius_val = np.zeros(len(phi_radius))
+                for k, phi_r in enumerate(phi_radius):
+                    psi_a = np.array([
+                        phi_r-self.bins[i]*np.cos(phi_angle),
+                        -self.bins[i]*np.sin(phi_angle)
+                    ])
+                    psi_b = np.array([
+                        phi_r+self.bins[j]*np.cos(phi_angle),
+                        self.bins[j]*np.sin(phi_angle)
+                    ])
+                    norm_a = np.linalg.norm(psi_a, axis=0)
+                    polar_a = np.arctan2(psi_a[1], psi_a[0])
+                    norm_b = np.linalg.norm(psi_b, axis=0)
+                    polar_b = np.arctan2(psi_b[1], psi_b[0])
+                    #The term coming from the sine will integrate out to 0 so we can only compute terms with cosine
+                    int_xi = integrate.simps(interpolator_xi(norm_a)*np.cos(4*polar_a), phi_angle)
+                    int_rho = integrate.simps(interpolator_rho(norm_b)*np.cos(4*polar_b), phi_angle)
+                    radius_val[k] = int_xi*int_rho*phi_r
+                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
+                cv[j, i] = cv[i, j]
+        return cv
+
+    def compute_cv_tau_minus(self, component, **kwargs):
+        """
+        Computes the cosmic variance component of the covariance matrix for the given components
+        based on the tau statistics - component.
+
+        Parameters
+        ----------
+        components: str
+            Component of the covariance matrix
+        
+        Returns
+        -------
+        numpy.ndarray
+            Cosmic variance component of the covariance matrix
+        """
+        assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
+        tau_b = self.tau_stats[self.component_dict[component]['eb']+'_m']
+        tau_c = self.tau_stats[self.component_dict[component]['ec']+'_m']
+        nbin_ang = kwargs.get("nbin_ang", 20)
+        nbin_rad = kwargs.get("nbin_rad", 20)
+
+        cv = np.zeros((len(self.bins), len(self.bins)))
+        #interpolator_tau_b = interpolate.make_interp_spline(self.bins, tau_b, k=1)
+        #interpolator_tau_c = interpolate.make_interp_spline(self.bins, tau_c, k=1)
+        interpolator_tau_b = self.build_interpolator(self.bins, tau_b)
+        interpolator_tau_c = self.build_interpolator(self.bins, tau_c)
+        phi_angle = np.linspace(0, np.pi, nbin_ang)
+        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        for i in range(len(self.bins)):
+            for j in range(len(self.bins)):
+                radius_val = np.zeros(len(phi_radius))
+                for k, phi_r in enumerate(phi_radius):
+                    psi_a = np.array([
+                        phi_r-self.bins[i]*np.cos(phi_angle),
+                        -self.bins[i]*np.sin(phi_angle)
+                    ])
+                    psi_b = np.array([
+                        phi_r+self.bins[j]*np.cos(phi_angle),
+                        self.bins[j]*np.sin(phi_angle)
+                    ])
+                    norm_a = np.linalg.norm(psi_a, axis=0)
+                    polar_a = np.arctan2(psi_a[1], psi_a[0])
+                    norm_b = np.linalg.norm(psi_b, axis=0)
+                    polar_b = np.arctan2(psi_b[1], psi_b[0])
+                    #The term coming from the sine will integrate out to 0 so we can only compute terms with cosine
+                    int_tau_b = integrate.simps(interpolator_tau_b(norm_a)*np.cos(4*polar_a), phi_angle)
+                    int_tau_c = integrate.simps(interpolator_tau_c(norm_b)*np.cos(4*polar_b), phi_angle)
+                    radius_val[k] = int_tau_b*int_tau_c*phi_r
+                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
+                cv[j, i] = cv[i, j]
+        return cv
+
+
+
+                
+
+
+        
