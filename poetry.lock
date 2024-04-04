@@ -837,7 +837,7 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "cs_util"
-version = "0.0.7"
+version = "0.1.0"
 description = ""
 optional = false
 python-versions = ">=3.7"
@@ -848,7 +848,7 @@ develop = false
 astropy = ">=4.0"
 datetime = ">=4.7"
 matplotlib = ">=3.3"
-numpy = ">=1.21"
+numpy = ">=1.19"
 vos = ">=3.3"
 
 [package.extras]
@@ -950,6 +950,24 @@ files = [
     {file = "distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"},
     {file = "distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed"},
 ]
+
+[[package]]
+name = "emcee"
+version = "3.1.4"
+description = "The Python ensemble sampling toolkit for MCMC"
+optional = false
+python-versions = "*"
+files = [
+    {file = "emcee-3.1.4-py2.py3-none-any.whl", hash = "sha256:13d216a96b4f60661839d5f6ec482eda9e86b499502cda2bf6d8cc839ccf3e59"},
+    {file = "emcee-3.1.4.tar.gz", hash = "sha256:8e0e19dc8bcef9c6d02f860bef8ddc6c876b8878a6ce666943e2c5cfd9317fed"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[package.extras]
+extras = ["h5py", "scipy"]
+tests = ["coverage[toml]", "pytest", "pytest-cov"]
 
 [[package]]
 name = "exceptiongroup"
@@ -3562,6 +3580,26 @@ files = [
 ]
 
 [[package]]
+name = "tqdm"
+version = "4.66.2"
+description = "Fast, Extensible Progress Meter"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tqdm-4.66.2-py3-none-any.whl", hash = "sha256:1ee4f8a893eb9bef51c6e35730cebf234d5d0b6bd112b0271e10ed7c24a02bd9"},
+    {file = "tqdm-4.66.2.tar.gz", hash = "sha256:6cd52cdf0fef0e0f543299cfc96fec90d7b8a7e88745f411ec33eb44d5ed3531"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["pytest (>=6)", "pytest-cov", "pytest-timeout", "pytest-xdist"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
+
+[[package]]
 name = "traitlets"
 version = "5.14.1"
 description = "Traitlets Python configuration system"
@@ -3854,4 +3892,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "820dc52af2f578ca71fe2c7500d527f26683e1ec551fc66c03daf97ac7a2cec5"
+content-hash = "7534a14460be521619bd79e621ceb4c4b9710b5adf88f0886d7d94c1f76bd210"
