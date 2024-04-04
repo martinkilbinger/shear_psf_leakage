@@ -14,7 +14,7 @@
 import os
 
 import numpy as np
-import json
+import pickle
 import matplotlib.pylab as plt
 from lmfit import minimize, Parameters
 from uncertainties import ufloat
@@ -925,24 +925,26 @@ def corr_2d(
     # Initialise parameters of model to fit
     params = Parameters()
 
+    val_init = 0.0
+
     # Affine parameters
     for p_affine in ["a11", "a22", "c1", "c2"]:
-        params.add(p_affine, value=0.0)
+        params.add(p_affine, value=val_init)
 
     if mix:
         # Linear mixing pararmeters
-        params.add("a12", value=0.0)
-        params.add("a21", value=0.0)
+        params.add("a12", value=val_init)
+        params.add("a21", value=val_init)
 
     if order == "quad":
         # Quadratic parameters
         for p_quad in ["q111", "q222"]:
-            params.add(p_quad, value=0.0)
+            params.add(p_quad, value=val_init)
 
         if mix:
             # Quadratic mixing parameters
             for p_quad_mix in ["q112", "q122", "q212", "q211"]:
-                params.add(p_quad_mix, value=0.0)
+                params.add(p_quad_mix, value=val_init)
 
     # Mininise loss function
     if weights is not None:
@@ -1341,10 +1343,10 @@ def affine_corr_n(
     plt.close()
 
 
-def save_to_json(data, fname):
-    """Save To Json.
+def save_to_file(data, fname):
+    """Save To File.
 
-    Save data to .json file.
+    Save data to .pkl (pickle) file.
 
     Parameters
     ----------
@@ -1355,17 +1357,17 @@ def save_to_json(data, fname):
 
     See also
     --------
-    read_from_json
+    read_from_file
 
     """
-    with open(fname, "w") as f:
-        data.dump(f)
+    with open(fname, "wb") as f:
+        pickle.dump(data, f)
 
 
-def read_from_json(fname):
-    """Read From Json.
+def read_from_file(fname):
+    """Read From File.
 
-    Read data from .json file.
+    Read data from .pkl (pickle) file.
 
     Parameters
     ----------
@@ -1379,11 +1381,11 @@ def read_from_json(fname):
 
     See also
     --------
-    save_to_json
+    save_to_file
 
     """
 
-    with open(fname) as f:
-        data = json.load(f)
+    with open(fname, "rb") as f:
+        data = pickle.load(f)
 
     return data
