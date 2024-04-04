@@ -7,146 +7,9 @@ from lmfit import Parameters
 from optparse import OptionParser
 
 from cs_util import logging
+from cs_util import args as cs_args
 
 from . import leakage
-
-
-# MKDEBUG TODO: to cs_util. Also check shapepipe.
-def my_string_split(string, num=-1, verbose=False, stop=False, sep=None):
-    """My String Split.
-
-    Split a *string* into a list of strings. Choose as separator
-    the first in the list [space, underscore] that occurs in the string.
-    (Thus, if both occur, use space.)
-
-    Parameters
-    ----------
-    string : str
-        Input string
-    num : int
-        Required length of output list of strings, -1 if no requirement.
-    verbose : bool
-        Verbose output
-    stop : bool
-        Stop programs with error if True, return None and continues otherwise
-    sep : bool
-        Separator, try ' ', '_', and '.' if None (default)
-
-    Raises
-    ------
-    CfisError
-        If number of elements in string and num are different, for stop=True
-    ValueError
-        If no separator found in string
-
-    Returns
-    -------
-    list
-        List of string on success, and None if failed
-
-    """
-    if string is None:
-        return None
-
-    if sep is None:
-        has_space = string.find(" ")
-        has_underscore = string.find("_")
-        has_dot = string.find(".")
-
-        if has_space != -1:
-            my_sep = " "
-        elif has_underscore != -1:
-            my_sep = "_"
-        elif has_dot != -1:
-            my_sep = "."
-        else:
-            # no separator found, does string consist of only one element?
-            if num == -1 or num == 1:
-                my_sep = None
-            else:
-                raise Valueerror(
-                    "No separator (' ', '_', or '.') found in string"
-                    + f" '{string}', cannot split"
-                )
-    else:
-        if not string.find(sep):
-            raise ValueError(
-                f"No separator '{sep}' found in string '{string}', " + "cannot split"
-            )
-        my_sep = sep
-
-    res = string.split(my_sep)
-
-    if num != -1 and num != len(res) and stop:
-        raise CfisError(f"String '{len(res)}' has length {num}, required is {num}")
-
-    return res
-
-
-# MKDEBUG to cs_util
-def parse_options(p_def, short_options, types, help_strings):
-    """Parse Options.
-
-    Parse command line options.
-
-    Parameters
-    ----------
-    p_def : dict
-        default parameter values
-    help_strings : dict
-        help strings for options
-
-    Returns
-    -------
-    options: tuple
-        Command line options
-    """
-
-    usage = "%prog [OPTIONS]"
-    parser = OptionParser(usage=usage)
-
-    for key in p_def:
-        if key in help_strings:
-            if key in short_options:
-                short = short_options[key]
-            else:
-                short = ""
-
-            if key in types:
-                typ = types[key]
-            else:
-                typ = "string"
-
-            if typ == "bool":
-                parser.add_option(
-                    f"{short}",
-                    f"--{key}",
-                    dest=key,
-                    default=False,
-                    action="store_true",
-                    help=help_strings[key].format(p_def[key]),
-                )
-            else:
-                parser.add_option(
-                    f"{short}",
-                    f"--{key}",
-                    dest=key,
-                    type=typ,
-                    default=p_def[key],
-                    help=help_strings[key].format(p_def[key]),
-                )
-
-    parser.add_option(
-        "-v",
-        "--verbose",
-        dest="verbose",
-        action="store_true",
-        help=f"verbose output",
-    )
-
-    options, args = parser.parse_args()
-
-    return options
 
 
 class LeakageObject:
@@ -168,7 +31,7 @@ class LeakageObject:
 
         """
         # Read command line options
-        options = parse_options(
+        options = cs_args.parse_options(
             self._params,
             self._short_options,
             self._types,
@@ -280,13 +143,13 @@ class LeakageObject:
 
         """
         if self._params["cols"]:
-            self._params["cols"] = my_string_split(
+            self._params["cols"] = cs_args.my_string_split(
                 self._params["cols"],
                 verbose=self._params["verbose"],
                 stop=True,
             )
         if self._params["cols_ratio"]:
-            self._params["cols_ratio"] = my_string_split(
+            self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,
                 verbose=self._params["verbose"],
@@ -500,7 +363,6 @@ class LeakageObject:
 
         return e, weights
 
-<<<<<<< HEAD
     def get_out_base(self, mix, order):
         """Get Out Base.
 
@@ -514,9 +376,6 @@ class LeakageObject:
 
         return out_base
 
-
-=======
->>>>>>> origin/rho_tau_hdu
     def PSF_leakage(self, mix=True, order="lin"):
         """PSF Leakage.
 
@@ -571,12 +430,10 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
-        leakage.save_to_json(self.par_best_fit, f"{out_path}.json")
+        leakage.save_to_file(self.par_best_fit, f"{out_path}.pkl")
 
         # Fit separate 1D models
         # MKDEBUG TODO: put in separate class funtion
-        fp_best_fit = open(f"{out_path}.json", "w")
-        self.par_best_fit.dump(fp_best_fit)
 
         ylabel = r"$e_{1,2}^{\rm gal}$"
         mlabel = [r"\alpha_1", r"\alpha_2"]

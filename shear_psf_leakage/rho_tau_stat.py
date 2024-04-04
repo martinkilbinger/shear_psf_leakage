@@ -321,9 +321,10 @@ class Catalogs():
             else:
                 size_star = self.dat_psf[self._params["star_size"]]**2 if square_size else  self.dat_psf[self._params["star_size"]]
                 size_psf = self.dat_psf[self._params["PSF_size"]]**2 if square_size else  self.dat_psf[self._params["PSF_size"]]
-                g1 = self.dat_psf[self._params["e1_star_col"]] * (size_star - size_psf)/size_star
+
+                g1 = self.dat_psf[self._params["e1_star_col"]] * (size_star - size_psf) / size_star
                 #g1 -= g1.mean()
-                g2 = self.dat_psf[self._params["e2_star_col"]] * (size_star - size_psf)/size_star
+                g2 = self.dat_psf[self._params["e2_star_col"]] * (size_star - size_psf) / size_star
                 #g2 -= g2.mean()
 
         return ra, dec, g1, g2, weights
