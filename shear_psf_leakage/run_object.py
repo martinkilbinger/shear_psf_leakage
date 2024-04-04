@@ -319,13 +319,19 @@ class LeakageObject:
             p_gt.add(par, value=pars_gt[par])
 
         # Ground-truth 2D (y_1, y_2) data
-        y1, y2 = leakage.func_bias_2d(p_gt, x_arr[0], x_arr[1], order="quad", mix=True)
+        y1, y2 = leakage.func_bias_2d(
+            p_gt,
+            x_arr[0],
+            x_arr[1],
+            order="quad",
+            mix=True
+        )
 
         # Perturbation
         dy1 = np.random.normal(scale=sig_x, size=size)
         dy2 = np.random.normal(scale=sig_x, size=size)
 
-        # Perform fits
+        # Carry out fits
         for order in ["lin", "quad"]:
             for mix in [False, True]:
                 out_path = f"{self._params['output_dir']}/test_{order}_{mix}"
@@ -336,7 +342,7 @@ class LeakageObject:
                     ylabel_arr=ylabel_arr,
                     order=order,
                     mix=mix,
-                    title=f"test {order} {mix}",
+                    title="",
                     n_bin=n_bin,
                     out_path=out_path,
                     colors=colors,
@@ -392,12 +398,12 @@ class LeakageObject:
         # Set options for plotting
         n_bin = 30
         colors = ["b", "r"]
-        ylabel_arr = [r"$e_1^{\rm gal}$", r"$e_2^{\rm gal}$"]
+        ylabel_arr = [r"$e_1^{\rm g}$", r"$e_2^{\rm g}$"]
 
         xlabel_arr = [
-            r"$e_{1}^{\rm PSF}$",
-            r"$e_{2}^{\rm PSF}$",
-            r"$\mathrm{FWHM}^{\rm PSF}$ [arcsec]",
+            r"$e_{1}^{\rm p}$",
+            r"$e_{2}^{\rm p}$",
+            r"$\mathrm{FWHM}^{\rm p}$ [arcsec]",
         ]
 
         e, weights = self.get_ellipticity_weights()

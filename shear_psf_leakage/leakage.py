@@ -981,8 +981,6 @@ def corr_2d(
                 verbose=verbose,
             )
 
-    # MKDEBUG TODO: Put plot stuff in diff function
-
     # Plots
 
     # Spin compoments
