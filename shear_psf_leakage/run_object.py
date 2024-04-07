@@ -37,12 +37,7 @@ class LeakageObject:
             self._types,
             self._help_strings,
         )
-
-        # Update parameter values from options
-        for key in vars(options):
-            self._params[key] = getattr(options, key)
-
-        # del options ?
+        self._params = options
 
         # Save calling command
         logging.log_command(args)
@@ -495,8 +490,17 @@ class LeakageObject:
             )
         self.corr_any_quant(label_quant, ratio=self._params["cols_ratio"])
 
-    def run(self):
+    def run(self, mix=None, order=None):
         """Run.
+
+        Parameters
+        ----------
+        mix : list, optional
+            list of bool; True (False) means with (without) component mixing;
+            default is `None` in which case both options will be run
+        order : list, optional
+            list of str; allowed are "lin" (linear fit) and "quad" (quadratic
+            fit); default is `None` in which case both options will be run
 
         Main processing of scale-dependent leakage.
 
@@ -523,8 +527,21 @@ class LeakageObject:
             if obj._params["PSF_leakage"]:
                 # Object-by-object spin-consistent PSF leakage
 
-                for order in ("lin", "quad"):
-                    obj.PSF_leakage(mix=True, order=order)
+                # Set mix and order to default if not provided
+                if mix is None:
+                    mix = ["lin", "quad"]
+                if order is None:
+                    order = [True, False]
+
+                # Make sure mix and order are lists
+                if not isinstance(mix, list):
+                    mix = [mix]
+                if not isinstance(order, list):
+                    order = [order]
+
+                for my_order in order:
+                    for my_mix in mix:
+                        obj.PSF_leakage(mix=my_mix, order=my_order)
 
             if obj._params["obs_leakage"]:
                 # Object-by-object dependence of general variables
