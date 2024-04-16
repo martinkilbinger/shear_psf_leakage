@@ -50,23 +50,50 @@ class CovTauTh:
         n_psf: float
             Number density of PSF stars
         """
+        self.treecorr_config = treecorr_config
+        self.A = A
+        self.n_e = n_e
+        self.n_psf = n_psf
+
         #Load the catalogs
         cat_gal, cat_psf = fits.getdata(path_gal), fits.open(path_psf)[hdu_psf].data
 
         #Create treecorr catalogs
-        gal, psf, psf_error, size_error = self.create_treecorr_catalog(cat_gal, cat_psf, treecorr_config)
+        self.gal, self.psf, self.psf_error, self.size_error = self.create_treecorr_catalog(cat_gal, cat_psf)
 
         #Compute the shape noise
-        self.sigma_e = self.compute_shape_noise(gal, gal)
-        self.sigma_psf = self.compute_shape_noise(psf, psf)
-        self.sigma_psf_error = self.compute_shape_noise(psf_error, psf_error)
-        self.sigma_psf_size_error = self.compute_shape_noise(size_error, size_error)
+        self.sigma_e = self.compute_shape_noise(self.gal, self.gal)
+        self.sigma_psf = self.compute_shape_noise(self.psf, self.psf)
+        self.sigma_psf_error = self.compute_shape_noise(self.psf_error, self.psf_error)
+        self.sigma_psf_size_error = self.compute_shape_noise(self.size_error, self.size_error)
 
-        del gal, psf, psf_error, size_error
-        
-        self.A = A
-        self.n_e = n_e
-        self.n_psf = n_psf
+
+        #interpolate rho stats
+        self.rho_0_p_itp = self.build_interpolator(self.psf, self.psf, type='plus')
+        self.rho_0_m_itp = self.build_interpolator(self.psf, self.psf, type='minus')
+        self.rho_1_p_itp = self.build_interpolator(self.psf_error, self.psf_error, type='plus')
+        self.rho_1_m_itp = self.build_interpolator(self.psf_error, self.psf_error, type='minus')
+        self.rho_2_p_itp = self.build_interpolator(self.psf, self.psf_error, type='plus')
+        self.rho_2_m_itp = self.build_interpolator(self.psf, self.psf_error, type='minus')
+        self.rho_3_p_itp = self.build_interpolator(self.size_error, self.size_error, type='plus')
+        self.rho_3_m_itp = self.build_interpolator(self.size_error, self.size_error, type='minus')
+        self.rho_4_p_itp = self.build_interpolator(self.psf_error, self.size_error, type='plus')
+        self.rho_4_m_itp = self.build_interpolator(self.psf_error, self.size_error, type='minus')
+        self.rho_5_p_itp = self.build_interpolator(self.psf, self.size_error, type='plus')
+        self.rho_5_m_itp = self.build_interpolator(self.psf, self.size_error, type='minus')
+
+
+        #interpolate tau stats
+        self.tau_0_p_itp = self.build_interpolator(self.gal, self.psf, type='plus')
+        self.tau_0_m_itp = self.build_interpolator(self.gal, self.psf, type='minus')
+        self.tau_2_p_itp = self.build_interpolator(self.gal, self.psf_error, type='plus')
+        self.tau_2_m_itp = self.build_interpolator(self.gal, self.psf_error, type='minus')
+        self.tau_5_p_itp = self.build_interpolator(self.gal, self.size_error, type='plus')
+        self.tau_5_m_itp = self.build_interpolator(self.gal, self.size_error, type='minus')
+
+        #interpolate xi plus and minus
+        self.xi_plus_itp = self.build_interpolator(self.gal, self.gal, type='plus')
+        self.xi_minus_itp = self.build_interpolator(self.gal, self.gal, type='minus')
 
         self.rho_stats = kwargs.get("rho_stats", None)
         self.tau_stats = kwargs.get("tau_stats", None)
@@ -87,41 +114,41 @@ class CovTauTh:
 
         self.component_dict = {
             '00': {
-                'eb': 'tau_0',
-                'ec': 'tau_0',
-                'bc': 'rho_0',
-                'sigma_bc': self.sigma_psf
+                'eb': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
+                'ec': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
+                'bc': {'p': self.rho_0_p_itp, 'm': self.rho_0_m_itp},
+                'sigma_bc': self.sigma_psf,
             },
             '22': {
-                'eb': 'tau_2',
-                'ec': 'tau_2',
-                'bc': 'rho_1',
-                'sigma_bc': self.sigma_psf_error
+                'eb': {'p': self.tau_2_p_itp, 'm': self.tau_2_m_itp},
+                'ec': {'p': self.tau_2_p_itp, 'm': self.tau_2_m_itp},
+                'bc': {'p': self.rho_1_p_itp, 'm': self.rho_1_m_itp},
+                'sigma_bc': self.sigma_psf_error,
             },
             '55': {
-                'eb': 'tau_5',
-                'ec': 'tau_5',
-                'bc': 'rho_3',
-                'sigma_bc': self.sigma_psf_size_error
+                'eb': {'p': self.tau_5_p_itp, 'm': self.tau_5_m_itp},
+                'ec': {'p': self.tau_5_p_itp, 'm': self.tau_5_m_itp},
+                'bc': {'p': self.rho_3_p_itp, 'm': self.rho_3_m_itp},
+                'sigma_bc': self.sigma_psf_size_error,
             },
             '02': {
-                'eb': 'tau_0',
-                'ec': 'tau_2',
-                'bc': 'rho_2'
+                'eb': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
+                'ec': {'p': self.tau_2_p_itp, 'm': self.tau_2_m_itp},
+                'bc': {'p': self.rho_2_p_itp, 'm': self.rho_2_m_itp},
             },
             '05': {
-                'eb': 'tau_0',
-                'ec': 'tau_5',
-                'bc': 'rho_5'
+                'eb': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
+                'ec': {'p': self.tau_5_p_itp, 'm': self.tau_5_m_itp},
+                'bc': {'p': self.rho_5_p_itp, 'm': self.rho_5_m_itp},
             },
             '25': {
-                'eb': 'tau_2',
-                'ec': 'tau_5',
-                'bc': 'rho_4'
+                'eb': {'p': self.tau_2_p_itp, 'm': self.tau_2_m_itp},
+                'ec': {'p': self.tau_5_p_itp, 'm': self.tau_5_m_itp},
+                'bc': {'p': self.rho_4_p_itp, 'm': self.rho_4_m_itp},
             }
         }
 
-    def create_treecorr_catalog(self, cat_gal, cat_psf, treecorr_config):
+    def create_treecorr_catalog(self, cat_gal, cat_psf):
         """
         Create treecorr catalogs from the galaxy and PSF catalogs to compute estimate shape noise in covariance terms.
         Works only for shapepipe catalogs right now. A config file will be added later
@@ -132,16 +159,14 @@ class CovTauTh:
             Galaxy catalog
         cat_psf: numpy.ndarray
             PSF catalog
-        treecorr_config : dict
-            Configuration of the treecorr catalogs
         
         Returns
         -------
         treecorr.Catalog, treecorr.Catalog, treecorr.Catalog, treecorr.Catalog
             Galaxy catalog, PSF catalog, PSF error catalog, PSF size error catalog
         """
-        ra_units = treecorr_config.get('ra_units', 'deg')
-        dec_units = treecorr_config.get('dec_units', 'deg')
+        ra_units = self.treecorr_config.get('ra_units', 'deg')
+        dec_units = self.treecorr_config.get('dec_units', 'deg')
         gal = treecorr.Catalog(
             ra=cat_gal['ra'], dec=cat_gal['dec'], w=cat_gal['w'], g1=cat_gal['e1'], g2=cat_gal['e2'],
             ra_units=ra_units, dec_units=dec_units
@@ -181,8 +206,8 @@ class CovTauTh:
         float
             Shape noise between the two catalogs
         """
-        return np.sqrt(0.5*np.average((cat1.g1*cat2.g1)+(cat1.g2*cat2.g2), weights=cat1.w*cat2.w))
-
+        return 0.5*np.average((cat1.g1*cat2.g1)+(cat1.g2*cat2.g2), weights=cat1.w*cat2.w)
+    
     def load_rho_stat(self, path_rho_stat):
         """
         Load rho statistics
@@ -248,28 +273,40 @@ class CovTauTh:
             print("!!! The angular bins are not consistent !!!")
         return consistency
     
-    def build_interpolator(self, bins, values):
+    def build_interpolator(self, cat_1, cat_2, type):
         """
-        Build an interpolator for the given values using the given bins to compute the covariance.
+        Build an interpolator for the given catalogs on a sufficient range.
         Scipy interpolator will be used between the bins. The function will then return 0 outside
         this range.
 
         Parameters
         ----------
-        bins: numpy.ndarray
-            Bins of the values
-        values: numpy.ndarray
-            Values to interpolate
+        cat_1: treecorr.Catalog
+            First catalog to be cross-correlated
+        cat_2: treecorr.Catalog
+            Second catalog to be cross-correlated
+        type: str
+            Type of the function to interpolate ('plus' or 'minus')
 
         Returns
         -------
         callable:
             Interpolator function
         """
+        assert (type in ['plus', 'minus']), ("The type must be either 'plus' or 'minus'")
+
+        gg = treecorr.GGCorrelation(nbins=30, min_sep=1e-3, max_sep=1e3, sep_units='arcmin')
+        gg.process(cat_1, cat_2)
+        bins = gg.meanr
+        if type=='plus':
+            values = gg.xip
+        elif type=='minus':
+            values = gg.xim
         interpolator = interpolate.make_interp_spline(bins, values, k=1)
         func = lambda x: np.where((x >= bins[0]) & (x <= bins[-1]),
                                   interpolator(x),
-                                   np.where(x < bins[0], np.ones_like(x)*values[0], np.zeros_like(x))
+                                np.where(x<bins[0], np.zeros_like(x), #np.where(x < bins[0], np.ones_like(x)*values[0],
+                                np.zeros_like(x))
         )
         return func
 
@@ -395,11 +432,24 @@ class CovTauTh:
             Shot noise component of the covariance matrix
         """
         assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        sigma_bc = self.component_dict[component].get('sigma_bc', 0)
+        
 
         sn = np.zeros((len(self.bins), len(self.bins)))
-        for i in range(len(self.bins)):
-            sn[i,i] = self.sigma_e**2*sigma_bc**2/(4*np.pi*self.A*self.n_e*self.n_psf*self.bins[i]**2*(self.delta_bin_log))
+        tau = treecorr.GGCorrelation(
+                nbins=self.treecorr_config['nbins'],
+                min_sep=self.treecorr_config['min_sep'],
+                max_sep=self.treecorr_config['max_sep'],
+                sep_units=self.treecorr_config['sep_units']
+        )
+        if component == '00':
+            tau.process(self.gal, self.psf)
+            sn = tau.cov[:len(self.bins), :len(self.bins)]
+        elif component == '22':
+            tau.process(self.gal, self.psf_error)
+            sn = tau.cov[:len(self.bins), :len(self.bins)]
+        elif component == '55':
+            tau.process(self.gal, self.size_error)
+            sn = tau.cov[:len(self.bins), :len(self.bins)]
         return sn
 
     def compute_mt(self, component, **kwargs):
@@ -417,23 +467,21 @@ class CovTauTh:
             Shot noise component of the covariance matrix
         """
         assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        correlator = self.component_dict[component]['bc']
+        correlator_bc = self.component_dict[component]['bc']
         sigma_bc = self.component_dict[component].get('sigma_bc', None)
         nbin_ang = kwargs.get("nbin_ang", 20)
 
         mt = np.zeros((len(self.bins), len(self.bins)))
-        #interpolator_rho = interpolate.make_interp_spline(self.bins, self.rho_stats[correlator+"_p"], k=1)
-        interpolator_rho = self.build_interpolator(self.bins, self.rho_stats[correlator+"_p"])
+        interpolator_rho = correlator_bc['p']
         if sigma_bc is not None:
-            #interpolator_xi_plus = interpolate.make_interp_spline(self.bins, self.xi_plus['value'], k=1)
-            interpolator_xi_plus = self.build_interpolator(self.bins, self.xi_plus['value'])
+            interpolator_xi_plus = self.xi_plus_itp
         phi = np.linspace(0, np.pi, nbin_ang)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 y = np.sqrt(self.bins[i]**2+self.bins[j]**2-2*self.bins[i]*self.bins[j]*np.cos(phi))
-                mt[i, j] = integrate.simps(interpolator_rho(y), phi)*self.sigma_e**2/(2*np.pi*self.A*self.n_e)
+                mt[i, j] = integrate.simps(interpolator_rho(y), phi)*self.sigma_e/(2*np.pi*self.A*self.n_e)
                 if sigma_bc is not None:
-                    mt[i, j] += integrate.simps(interpolator_xi_plus(y), phi)*sigma_bc**2/(2*np.pi*self.A*self.n_e)
+                    mt[i, j] += integrate.simps(interpolator_xi_plus(y), phi)*sigma_bc/(2*np.pi*self.A*self.n_e)
                 mt[j, i] = mt[i, j]
         return mt
     
@@ -453,30 +501,30 @@ class CovTauTh:
             Cosmic variance component of the covariance matrix
         """
         assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        xi_plus = self.xi_plus['value']
-        rho = self.rho_stats[self.component_dict[component]['bc']+'_p']
+        rho = self.component_dict[component]['bc']
         nbin_ang = kwargs.get("nbin_ang", 20)
         nbin_rad = kwargs.get("nbin_rad", 20)
 
         cv = np.zeros((len(self.bins), len(self.bins)))
 
-        #interpolator_xi = interpolate.make_interp_spline(self.bins, xi_plus, k=1)
-        #interpolator_rho = interpolate.make_interp_spline(self.bins, rho, k=1)
-        interpolator_xi = self.build_interpolator(self.bins, xi_plus)
-        interpolator_rho = self.build_interpolator(self.bins, rho)
+        
+        interpolator_xi = self.xi_plus_itp
+        interpolator_rho = rho['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        phi_radius = np.linspace(1e-2, 500, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
                 for k, phi_r in enumerate(phi_radius):
-                    y_xi = np.sqrt(phi_r**2+self.bins[i]**2-2*phi_r*self.bins[i]*np.cos(phi_angle))
-                    y_rho = np.sqrt(phi_r**2+self.bins[j]**2+2*phi_r*self.bins[j]*np.cos(phi_angle))
-                    int_xi = integrate.simps(interpolator_xi(y_xi), phi_angle)
-                    int_rho = integrate.simps(interpolator_rho(y_rho), phi_angle)
-                    radius_val[k] = int_xi*int_rho*phi_r
+                    #Compute i,j term
+                    y_m = np.sqrt(phi_r**2+self.bins[i]**2-2*phi_r*self.bins[i]*np.cos(phi_angle))
+                    y_p = np.sqrt(phi_r**2+self.bins[j]**2+2*phi_r*self.bins[j]*np.cos(phi_angle))
+                    int_xi_m = integrate.simps(interpolator_xi(y_m), phi_angle)
+                    int_xi_p = integrate.simps(interpolator_xi(y_p), phi_angle)
+                    int_rho_m = integrate.simps(interpolator_rho(y_m), phi_angle)
+                    int_rho_p = integrate.simps(interpolator_rho(y_p), phi_angle)
+                    radius_val[k] = 0.5*(int_xi_m*int_rho_p*phi_r+int_xi_p*int_rho_m*phi_r)
                 cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
-                cv[j, i] = cv[i, j]
         return cv
 
     def compute_cv_tau_plus(self, component, **kwargs):
@@ -495,19 +543,17 @@ class CovTauTh:
             Cosmic variance component of the covariance matrix
         """
         assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        tau_b = self.tau_stats[self.component_dict[component]['eb']+'_p']
-        tau_c = self.tau_stats[self.component_dict[component]['ec']+'_p']
+        tau_b = self.component_dict[component]['eb']
+        tau_c = self.component_dict[component]['ec']
         nbin_ang = kwargs.get("nbin_ang", 20)
         nbin_rad = kwargs.get("nbin_rad", 20)
 
         cv = np.zeros((len(self.bins), len(self.bins)))
 
-        #interpolator_tau_b = interpolate.make_interp_spline(self.bins, tau_b, k=1)
-        #interpolator_tau_c = interpolate.make_interp_spline(self.bins, tau_c, k=1)
-        interpolator_tau_b = self.build_interpolator(self.bins, tau_b)
-        interpolator_tau_c = self.build_interpolator(self.bins, tau_c)
+        interpolator_tau_b = tau_b['p']
+        interpolator_tau_c = tau_c['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        phi_radius = np.linspace(1e-2, 500, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -518,7 +564,6 @@ class CovTauTh:
                     int_tau_c = integrate.simps(interpolator_tau_c(y_tau_c), phi_angle)
                     radius_val[k] = int_tau_b*int_tau_c*phi_r
                 cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
-                cv[j, i] = cv[i, j]
         return cv
     
     def compute_cv_rho_minus(self, component, **kwargs):
@@ -537,18 +582,17 @@ class CovTauTh:
             Cosmic variance component of the covariance matrix
         """
         assert(component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        xi_minus = self.xi_minus['value']
-        rho = self.rho_stats[self.component_dict[component]['bc']+'_m']
+        rho = self.component_dict[component]['bc']
         nbin_ang = kwargs.get("nbin_ang", 20)
         nbin_rad = kwargs.get("nbin_rad", 20)
 
         cv = np.zeros((len(self.bins), len(self.bins)))
         #interpolator_xi = interpolate.make_interp_spline(self.bins, xi_minus, k=1)
         #interpolator_rho = interpolate.make_interp_spline(self.bins, rho, k=1)
-        interpolator_xi = self.build_interpolator(self.bins, xi_minus)
-        interpolator_rho = self.build_interpolator(self.bins, rho)
+        interpolator_xi = self.xi_minus_itp
+        interpolator_rho = rho['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        phi_radius = np.linspace(1e-2, 500, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -566,11 +610,12 @@ class CovTauTh:
                     norm_b = np.linalg.norm(psi_b, axis=0)
                     polar_b = np.arctan2(psi_b[1], psi_b[0])
                     #The term coming from the sine will integrate out to 0 so we can only compute terms with cosine
-                    int_xi = integrate.simps(interpolator_xi(norm_a)*np.cos(4*polar_a), phi_angle)
-                    int_rho = integrate.simps(interpolator_rho(norm_b)*np.cos(4*polar_b), phi_angle)
-                    radius_val[k] = int_xi*int_rho*phi_r
+                    int_xi_m = integrate.simps(interpolator_xi(norm_a)*np.cos(4*polar_a), phi_angle)
+                    int_xi_p = integrate.simps(interpolator_xi(norm_b)*np.cos(4*polar_b), phi_angle)
+                    int_rho_m = integrate.simps(interpolator_rho(norm_a)*np.cos(4*polar_a), phi_angle)
+                    int_rho_p = integrate.simps(interpolator_rho(norm_b)*np.cos(4*polar_b), phi_angle)
+                    radius_val[k] = 0.5*(int_xi_m*int_rho_p*phi_r+int_xi_p*int_rho_m*phi_r)
                 cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
-                cv[j, i] = cv[i, j]
         return cv
 
     def compute_cv_tau_minus(self, component, **kwargs):
@@ -589,18 +634,16 @@ class CovTauTh:
             Cosmic variance component of the covariance matrix
         """
         assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        tau_b = self.tau_stats[self.component_dict[component]['eb']+'_m']
-        tau_c = self.tau_stats[self.component_dict[component]['ec']+'_m']
+        tau_b = self.component_dict[component]['eb']
+        tau_c = self.component_dict[component]['ec']
         nbin_ang = kwargs.get("nbin_ang", 20)
         nbin_rad = kwargs.get("nbin_rad", 20)
 
         cv = np.zeros((len(self.bins), len(self.bins)))
-        #interpolator_tau_b = interpolate.make_interp_spline(self.bins, tau_b, k=1)
-        #interpolator_tau_c = interpolate.make_interp_spline(self.bins, tau_c, k=1)
-        interpolator_tau_b = self.build_interpolator(self.bins, tau_b)
-        interpolator_tau_c = self.build_interpolator(self.bins, tau_c)
+        interpolator_tau_b = tau_b['m']
+        interpolator_tau_c = tau_c['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(0.1, 250, nbin_rad)
+        phi_radius = np.linspace(1e-2, 500, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -622,7 +665,6 @@ class CovTauTh:
                     int_tau_c = integrate.simps(interpolator_tau_c(norm_b)*np.cos(4*polar_b), phi_angle)
                     radius_val[k] = int_tau_b*int_tau_c*phi_r
                 cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
-                cv[j, i] = cv[i, j]
         return cv
 
 
