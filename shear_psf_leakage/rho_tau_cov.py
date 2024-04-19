@@ -28,6 +28,7 @@ class CovTauTh:
         A,
         n_e,
         n_psf,
+        params=None,
         **kwargs):
         """
         Initalize the CovTauTh class.
@@ -49,11 +50,18 @@ class CovTauTh:
             Number density of galaxies
         n_psf: float
             Number density of PSF stars
+        params: dict
+            Parameters of the class
         """
         self.treecorr_config = treecorr_config
         self.A = A
         self.n_e = n_e
         self.n_psf = n_psf
+
+        if params is None:
+            self.params_default()
+        else:
+            self.set_params(params)
 
         #Load the catalogs
         cat_gal, cat_psf = fits.getdata(path_gal), fits.open(path_psf)[hdu_psf].data
@@ -117,19 +125,19 @@ class CovTauTh:
                 'eb': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
                 'ec': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
                 'bc': {'p': self.rho_0_p_itp, 'm': self.rho_0_m_itp},
-                'sigma_bc': self.sigma_psf,
+                'sigma_bc': None,
             },
             '22': {
                 'eb': {'p': self.tau_2_p_itp, 'm': self.tau_2_m_itp},
                 'ec': {'p': self.tau_2_p_itp, 'm': self.tau_2_m_itp},
                 'bc': {'p': self.rho_1_p_itp, 'm': self.rho_1_m_itp},
-                'sigma_bc': self.sigma_psf_error,
+                'sigma_bc': None,
             },
             '55': {
                 'eb': {'p': self.tau_5_p_itp, 'm': self.tau_5_m_itp},
                 'ec': {'p': self.tau_5_p_itp, 'm': self.tau_5_m_itp},
                 'bc': {'p': self.rho_3_p_itp, 'm': self.rho_3_m_itp},
-                'sigma_bc': self.sigma_psf_size_error,
+                'sigma_bc': None,
             },
             '02': {
                 'eb': {'p': self.tau_0_p_itp, 'm': self.tau_0_m_itp},
@@ -147,6 +155,46 @@ class CovTauTh:
                 'bc': {'p': self.rho_4_p_itp, 'm': self.rho_4_m_itp},
             }
         }
+
+    def params_default(self):
+        """
+        Params Default.
+
+        Initialize the parameters of the class with columns name from SPV1.
+        For the treecorr configuration, default parameters are:
+        -coord_units: degree
+        -sep_units: arcmin
+        -theta_min: 0.1
+        -theta_max: 250
+        -n_theta: 20
+        """
+
+        self._params = {
+            "e1_col": "e1",
+            "e2_col": "e2",
+            "w_col": "w",
+            "ra_col": "RA",
+            "dec_col": "Dec",
+            "e1_PSF_col": "E1_PSF_HSM",
+            "e2_PSF_col": "E2_PSF_HSM",
+            "e1_star_col": "E1_STAR_HSM",
+            "e2_star_col": "E2_STAR_HSM",
+            "PSF_size": "SIGMA_PSF_HSM",
+            "star_size": "SIGMA_STAR_HSM",
+            "PSF_flag": "FLAG_PSF_HSM",
+            "star_flag": "FLAG_STAR_HSM",
+            "square_size": True,
+            "ra_units": "deg",
+            "dec_units": "deg"
+        }
+    
+    def set_params(self, params):
+        """
+        set_params:
+
+        Initialize the parameters to the given configuration. Can also update the current params.
+        """
+        self._params = params
 
     def create_treecorr_catalog(self, cat_gal, cat_psf):
         """
@@ -168,24 +216,32 @@ class CovTauTh:
         ra_units = self.treecorr_config.get('ra_units', 'deg')
         dec_units = self.treecorr_config.get('dec_units', 'deg')
         gal = treecorr.Catalog(
-            ra=cat_gal['ra'], dec=cat_gal['dec'], w=cat_gal['w'], g1=cat_gal['e1'], g2=cat_gal['e2'],
+            ra=cat_gal[self._params['ra_col']], dec=cat_gal[self._params['dec_col']],
+            w=cat_gal[self._params['w_col']], g1=cat_gal[self._params['e1_col']], g2=cat_gal[self._params['e2_col']],
             ra_units=ra_units, dec_units=dec_units
         )
 
         psf = treecorr.Catalog(
-            ra=cat_psf['ra'], dec=cat_psf['dec'], g1=cat_psf['E1_PSF_HSM'], g2=cat_psf['E2_PSF_HSM'],
+            ra=cat_psf[self._params['ra_col']], dec=cat_psf[self._params['dec_col']],
+            g1=cat_psf[self._params['e1_PSF_col']], g2=cat_psf[self._params['e2_PSF_col']],
             ra_units=ra_units, dec_units=dec_units
         )
 
         psf_error = treecorr.Catalog(
-            ra=cat_psf['ra'], dec=cat_psf['dec'], g1=cat_psf['E1_STAR_HSM']-cat_psf['E1_PSF_HSM'], g2=cat_psf['E2_STAR_HSM']-cat_psf['E2_PSF_HSM'],
+            ra=cat_psf[self._params['ra_col']], dec=cat_psf[self._params['dec_col']],
+            g1=cat_psf[self._params['e1_star_col']]-cat_psf[self._params['e1_PSF_col']],
+            g2=cat_psf[self._params['e2_star_col']]-cat_psf[self._params['e2_PSF_col']],
             ra_units=ra_units, dec_units=dec_units
         )
 
+        size_resid = (cat_psf[self._params['star_size']]**2-cat_psf[self._params['PSF_size']]**2)/cat_psf[self._params['star_size']]**2\
+        if self._params['square_size'] else\
+        (cat_psf[self._params['star_size']]-cat_psf[self._params['PSF_size']])/cat_psf[self._params['star_size']]
+
         size_error = treecorr.Catalog(
-            ra=cat_psf['ra'], dec=cat_psf['dec'],
-            g1=cat_psf['E1_STAR_HSM']*(cat_psf["SIGMA_STAR_HSM"]**2-cat_psf["SIGMA_PSF_HSM"]**2)/cat_psf["SIGMA_STAR_HSM"]**2,
-            g2=cat_psf['E2_PSF_HSM']*(cat_psf["SIGMA_STAR_HSM"]**2-cat_psf["SIGMA_PSF_HSM"]**2)/cat_psf["SIGMA_STAR_HSM"]**2,
+            ra=cat_psf[self._params['ra_col']], dec=cat_psf[self._params['dec_col']],
+            g1=cat_psf[self._params['e1_star_col']]*size_resid,
+            g2=cat_psf[self._params['e2_star_col']]*size_resid,
             ra_units=ra_units, dec_units=dec_units
         )
         return gal, psf, psf_error, size_error

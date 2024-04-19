@@ -703,7 +703,7 @@ class TauStat():
 
         self.verbose = verbose
 
-    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False):
+    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False, hdu=1):
         """
         build_cat_to_compute_tau
 
@@ -726,7 +726,7 @@ class TauStat():
         """
 
         if cat_type=="psf":
-            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat)
+            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat, hdu=hdu)
 
             if self.verbose:
                 print("Building catalogs...")
