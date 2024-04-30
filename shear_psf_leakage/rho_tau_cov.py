@@ -108,17 +108,10 @@ class CovTauTh:
         self.xi_plus = kwargs.get("xi_plus", None)
         self.xi_minus = kwargs.get("xi_minus", None)
 
-        if self.rho_stats is None:
-            print("You must load rho statistics")
-        else:
-            self.bins = self.rho_stats['theta']
-            self.delta_bin_log = (self.bins[1]-self.bins[0])/self.bins[1]
-        if self.tau_stats is None:
-            print("You must load tau statistics")
-        if self.xi_plus is None:
-            print("You must load Xi plus")
-        if self.xi_minus is None:
-            print("You must load Xi minus")
+        dummy_cat = treecorr.Catalog(ra=[0], dec=[0], g1=[0], g2=[0], w=[0], ra_units='deg', dec_units='deg')
+        gg = treecorr.GGCorrelation(self.treecorr_config)
+        gg.process(dummy_cat, dummy_cat)
+        self.bins = gg.meanr
 
         self.component_dict = {
             '00': {
@@ -263,71 +256,6 @@ class CovTauTh:
             Shape noise between the two catalogs
         """
         return 0.5*np.average((cat1.g1*cat2.g1)+(cat1.g2*cat2.g2), weights=cat1.w*cat2.w)
-    
-    def load_rho_stat(self, path_rho_stat):
-        """
-        Load rho statistics
-
-        Parameters
-        ----------
-        path_rho_stat: str
-            Path to the rho statistics
-        """
-        self.rho_stats = fits.getdata(path_rho_stat)
-        self.bins = self.rho_stats['theta']
-        self.delta_bin_log = (self.bins[1]-self.bins[0])/self.bins[1]
-
-    def load_tau_stat(self, path_tau_stat):
-        """
-        Load tau statistics
-
-        Parameters
-        ----------
-        path_tau_stat: str
-            Path to the tau statistics
-        """
-        self.tau_stats = fits.getdata(path_tau_stat)
-
-    def load_xi_plus(self, path_xi_plus):
-        """
-        Load Xi plus
-
-        Parameters
-        ----------
-        path_xi_plus: str
-            Path to the Xi plus
-        """
-        self.xi_plus = fits.getdata(path_xi_plus)
-
-    def load_xi_minus(self, path_xi_minus):
-        """
-        Load Xi minus
-
-        Parameters
-        ----------
-        path_xi_minus: str
-            Path to the Xi minus
-        """
-        self.xi_minus = fits.getdata(path_xi_minus)
-
-    def check_consistency(self):
-        """
-        Check that the input data have the same angular bins.
-
-        Returns
-        -------
-        bool
-            True if the data are consistent, False otherwise
-        """
-        assert (self.rho_stats is not None), ("You must load rho statistics")
-        assert (self.tau_stats is not None), ("You must load tau statistics")
-        assert (self.xi_plus is not None), ("You must load Xi plus")
-        assert (self.xi_minus is not None), ("You must load Xi minus")
-
-        consistency = np.all(self.bins == self.tau_stats['theta']) & np.all(self.bins == self.xi_plus['ang']) & np.all(self.bins == self.xi_minus['ang'])
-        if not consistency:
-            print("!!! The angular bins are not consistent !!!")
-        return consistency
     
     def build_interpolator(self, cat_1, cat_2, type):
         """
