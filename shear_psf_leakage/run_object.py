@@ -10,6 +10,7 @@ from cs_util import logging
 from cs_util import args as cs_args
 
 from . import leakage
+from . import plots
 
 
 class LeakageObject:
@@ -415,26 +416,42 @@ class LeakageObject:
         ]
 
         # Fit consistent spin-2 2D model
-        out_path = self.get_out_base(mix, order)
-        self.par_best_fit = leakage.corr_2d(
+        out_base = self.get_out_base(mix, order)
+        out_path = f"{out_base}.pkl"
+        if not os.path.exists(out_path):
+            if self._params["verbose"]:
+                print("Computing best-fit parameters")
+            self.par_best_fit = leakage.corr_2d(
+                x_arr[:2],
+                e,
+                weights=weights,
+                order=order,
+                mix=mix,
+                stats_file=self._stats_file,
+            )
+            leakage.save_to_file(self.par_best_fit, out_path)
+        else:
+            if self._params["verbose"]:
+                print(f"Reading best-fit parameters from file {out_path}")
+            self.par_best_fit = leakage.read_from_file(out_path)
+
+        plots.plots_all_corr_2d(
+            self.par_best_fit,
             x_arr[:2],
             e,
             weights=weights,
             xlabel_arr=xlabel_arr[:2],
             ylabel_arr=ylabel_arr,
-            order=order,
-            mix=mix,
             title="",
             n_bin=n_bin,
-            out_path=out_path,
+            out_base=out_base,
             colors=colors,
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
-        leakage.save_to_file(self.par_best_fit, f"{out_path}.pkl")
 
         # Fit separate 1D models
-        # MKDEBUG TODO: put in separate class funtion
+        # MKDEBUG TODO: put in separate class function
 
         ylabel = r"$e_{1,2}^{\rm gal}$"
         mlabel = [r"\alpha_1", r"\alpha_2"]
