@@ -330,7 +330,7 @@ class LeakageObject:
         for order in ["lin", "quad"]:
             for mix in [False, True]:
                 # Carry out fits
-                leakage.corr_2d(
+                self.par_best_fit = leakage.corr_2d(
                     x_arr,
                     [y1 + dy1, y2 + dy2],
                     order=order,
@@ -340,12 +340,11 @@ class LeakageObject:
                 )
                 
                 # Create plots
-                out_path = f"{self._params['output_dir']}/test_{order}_{mix}"
+                out_base = f"{self._params['output_dir']}/test_{order}_{mix}"
                 plots.plots_all_corr_2d(
                     self.par_best_fit,
                     x_arr[:2],
-                    e,
-                    weights=weights,
+                    [y1 + dy1, y2 + dy2],
                     xlabel_arr=xlabel_arr[:2],
                     ylabel_arr=ylabel_arr,
                     title="",

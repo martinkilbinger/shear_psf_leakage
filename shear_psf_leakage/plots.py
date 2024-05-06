@@ -589,7 +589,7 @@ def plots_all_corr_2d(
             )
 
     # Bar plots of spin compoments
-    s_ground_truth = param_order2spin(par_ground_truth, order, mix) if par_ground_truth else None
+    s_ground_truth = leakage.param_order2spin(par_ground_truth, order, mix) if par_ground_truth else None
     out_path_spin = f"{out_base}_spin.png" if out_base else None
     plot_bar_spin(
         s_ds,

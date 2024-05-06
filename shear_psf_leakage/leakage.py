@@ -1255,6 +1255,8 @@ def read_from_file(fname):
         data = pickle.load(f)
 
     return data
+
+
 def param_order2spin(p_dp, order, mix):
     """Param Order 2 Spin.
 
@@ -1275,9 +1277,7 @@ def param_order2spin(p_dp, order, mix):
         Parameter spin coefficients
 
     """
-    s_ds = {}
-
-    s_ds["x0"] = 0.5 * (p_dp["a11"] + p_dp["a22"])
+    s_ds = {"x0": 0.5 * (p_dp["a11"] + p_dp["a22"])}
 
     if order == "quad" and mix:
         s_ds["x2"] = 0.5 * (p_dp["q111"] + p_dp["q122"])

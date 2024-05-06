@@ -154,48 +154,6 @@ def print_fit_report(res, file=None):
     print(f"bic = {res.bic}", file=file)
 
 
-def param_order2spin(p_dp, order, mix):
-    """Param Order 2 Spin.
-
-    Transform parameter from natural to spin coefficients.
-
-    Parameters
-    ----------
-    p_dp : dict
-        Parameter natural coefficients
-    order : str
-        expansion order, one of 'linear', 'quad'
-    mix : bool
-        ellipticity components are mixed if ``True``
-
-    Returns
-    -------
-    dict :
-        Parameter spin coefficients
-
-    """
-    s_ds = {}
-
-    s_ds["x0"] = 0.5 * (p_dp["a11"] + p_dp["a22"])
-
-    if order == "quad" and mix:
-        s_ds["x2"] = 0.5 * (p_dp["q111"] + p_dp["q122"])
-        s_ds["y2"] = 0.5 * (p_dp["q211"] - p_dp["q222"])
-        s_ds["x-2"] = 0.25 * (p_dp["q111"] - p_dp["q122"] + p_dp["q212"])
-        s_ds["y-2"] = 0.25 * (p_dp["q211"] - p_dp["q222"] - p_dp["q112"])
-
-    s_ds["x4"] = 0.5 * (p_dp["a11"] - p_dp["a22"])
-
-    if mix:
-        s_ds["y4"] = p_dp["a12"]
-
-    if order == "quad" and mix:
-        s_ds["x6"] = 0.25 * (p_dp["q111"] - p_dp["q122"] - p_dp["q212"])
-        s_ds["y6"] = 0.25 * (p_dp["q211"] - p_dp["q222"] + p_dp["q112"])
-
-    return s_ds
-
-
 def xi_a_b(
     ra_a,
     dec_a,
