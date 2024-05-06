@@ -531,7 +531,7 @@ def plots_all_corr_2d(
     plot_all_points=False,
     par_ground_truth=None,
     stats_file=None,
-    verbose=False
+    verbose=False,
 ):
     """Plots All Corr 1D.
     
@@ -549,9 +549,9 @@ def plots_all_corr_2d(
         weights of x points
     order : str, optional
         order of fit, default is 'lin'
-    mix : bool
-        mixing of components if True
-    n_bin : double, optional, default=29
+    mix : bool, optional
+        mixing of components if ``True; default)
+    n_bin: int, optional, default=29
         number of points onto which data are binned
     title : str
         title string, default is ""
@@ -589,10 +589,8 @@ def plots_all_corr_2d(
             )
 
     # Bar plots of spin compoments
+    s_ground_truth = param_order2spin(par_ground_truth, order, mix) if par_ground_truth else None
     out_path_spin = f"{out_base}_spin.png" if out_base else None
-
-    s_ground_truth = param_order1spin(par_ground_truth, order, mix) if par_ground_truth else None
-
     plot_bar_spin(
         s_ds,
         s_ground_truth=s_ground_truth,

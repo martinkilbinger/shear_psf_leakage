@@ -857,6 +857,7 @@ def corr_2d(
     order="lin",
     mix=False,
     stats_file=None,
+    verbose=False,
 ):
     """Corr 2D.
 
@@ -877,6 +878,8 @@ def corr_2d(
         mixing of components if True
     stats_file : filehandler, optional, default=None
         output file for statistics
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
 
     Returns
     -------
@@ -914,10 +917,7 @@ def corr_2d(
                 params.add(p_quad_mix, value=val_init)
 
     # Mininise loss function
-    if weights is not None:
-        err = 1 / np.sqrt(weights)
-    else:
-        err = np.ones_like(y[0])
+    err = 1 / np.sqrt(weights) if weights is not None else np.ones_like(y[0])
     res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix))
     if stats_file:
         print_stats(

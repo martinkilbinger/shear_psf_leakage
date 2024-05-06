@@ -327,26 +327,40 @@ class LeakageObject:
         dy1 = np.random.normal(scale=sig_x, size=size)
         dy2 = np.random.normal(scale=sig_x, size=size)
 
-        # Carry out fits
         for order in ["lin", "quad"]:
             for mix in [False, True]:
-                out_path = f"{self._params['output_dir']}/test_{order}_{mix}"
+                # Carry out fits
                 leakage.corr_2d(
                     x_arr,
                     [y1 + dy1, y2 + dy2],
-                    xlabel_arr=xlabel_arr,
-                    ylabel_arr=ylabel_arr,
                     order=order,
                     mix=mix,
+                    stats_file=self._stats_file,
+                    verbose=self._params["verbose"],
+                )
+                
+                # Create plots
+                out_path = f"{self._params['output_dir']}/test_{order}_{mix}"
+                plots.plots_all_corr_2d(
+                    self.par_best_fit,
+                    x_arr[:2],
+                    e,
+                    weights=weights,
+                    xlabel_arr=xlabel_arr[:2],
+                    ylabel_arr=ylabel_arr,
                     title="",
                     n_bin=n_bin,
-                    out_path=out_path,
+                    order=order,
+                    mix=mix,
+                    out_base=out_base,
                     colors=colors,
                     plot_all_points=True,
                     par_ground_truth=p_gt,
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
-                )
+        )
+
+
 
         print("Ground truth:")
         for par in p_gt:
@@ -371,12 +385,10 @@ class LeakageObject:
         Return output file base name.
 
         """
-        out_base = (
+        return (
             f"{self._params['output_dir']}"
             + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
         )
-
-        return out_base
 
     def PSF_leakage(self, mix=True, order="lin"):
         """PSF Leakage.
@@ -428,6 +440,7 @@ class LeakageObject:
                 order=order,
                 mix=mix,
                 stats_file=self._stats_file,
+                verbose=self._params["verbose"],
             )
             leakage.save_to_file(self.par_best_fit, out_path)
         else:
@@ -444,6 +457,8 @@ class LeakageObject:
             ylabel_arr=ylabel_arr,
             title="",
             n_bin=n_bin,
+            order=order,
+            mix=mix,
             out_base=out_base,
             colors=colors,
             stats_file=self._stats_file,
