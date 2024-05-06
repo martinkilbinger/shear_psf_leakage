@@ -108,7 +108,7 @@ class CovTauTh:
         self.xi_plus = kwargs.get("xi_plus", None)
         self.xi_minus = kwargs.get("xi_minus", None)
 
-        dummy_cat = treecorr.Catalog(ra=[0], dec=[0], g1=[0], g2=[0], w=[0], ra_units='deg', dec_units='deg')
+        dummy_cat = treecorr.Catalog(ra=[0], dec=[0], g1=[0], g2=[0], w=[1], ra_units='deg', dec_units='deg')
         gg = treecorr.GGCorrelation(self.treecorr_config)
         gg.process(dummy_cat, dummy_cat)
         self.bins = gg.meanr
@@ -495,7 +495,7 @@ class CovTauTh:
         interpolator_xi = self.xi_plus_itp
         interpolator_rho = rho['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-2, 300, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -537,7 +537,7 @@ class CovTauTh:
         interpolator_tau_b = tau_b['p']
         interpolator_tau_c = tau_c['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-2, 300, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -576,7 +576,7 @@ class CovTauTh:
         interpolator_xi = self.xi_minus_itp
         interpolator_rho = rho['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-2, 300, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -627,7 +627,7 @@ class CovTauTh:
         interpolator_tau_b = tau_b['m']
         interpolator_tau_c = tau_c['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-2, 300, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))

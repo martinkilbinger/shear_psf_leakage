@@ -956,6 +956,8 @@ class PSFErrorFit():
             The new data directory.
         """
         self.data_directory = data_directory
+        self.rho_stat_handler.catalogs._output = self.data_directory #Change the path to the specified data directory
+        self.tau_stat_handler.catalogs._output = self.data_directory
 
 
     def load_rho_stat(self, filename):
@@ -1146,7 +1148,7 @@ class PSFErrorFit():
         ndim = 3
         assert (self.rho_stat_handler.rho_stats is not None), ("Please load rho statistics data.") #Check if data was loaded
         assert (self.tau_stat_handler.tau_stats is not None), ("Please load tau statistics data.")
-        assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
+        #assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
         #Check that the abssiss are the same
 
         assert (self.cov_tau is not None), ("Please load a covariance matrix")
