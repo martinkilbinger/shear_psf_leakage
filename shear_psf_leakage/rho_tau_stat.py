@@ -299,7 +299,10 @@ class Catalogs():
             dec = self.dat_shear[self._params["dec_col"]]
             g1 = self.dat_shear[self._params["e1_col"]] - np.average(self.dat_shear[self._params["e1_col"]], weights=weights)
             g2 = self.dat_shear[self._params["e2_col"]] - np.average(self.dat_shear[self._params["e2_col"]], weights=weights)
-
+            if self._params["R11"] is not None:
+                g1 /= self._params["R11"]
+            if self._params["R22"] is not None:
+                g2 /= self._params["R22"]
         else:
             assert self.dat_psf is not None, ("Check you read the shear catalogs correctly.")
             #Add a mask?

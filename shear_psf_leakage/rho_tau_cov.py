@@ -176,6 +176,8 @@ class CovTauTh:
             "star_size": "SIGMA_STAR_HSM",
             "PSF_flag": "FLAG_PSF_HSM",
             "star_flag": "FLAG_STAR_HSM",
+            "R11": np.array([1]),
+            "R22": np.array([1]),
             "square_size": True,
             "ra_units": "deg",
             "dec_units": "deg"
@@ -208,9 +210,15 @@ class CovTauTh:
         """
         ra_units = self.treecorr_config.get('ra_units', 'deg')
         dec_units = self.treecorr_config.get('dec_units', 'deg')
+        if isinstance(self._params['R11'], str):
+            e1_gal = (cat_gal[self._params['e1_col']]-np.average(cat_gal[self._params['e1_col']], weights=cat_gal[self._params['w_col']]))/np.average(cat_gal[self._params['R11']])
+            e2_gal = (cat_gal[self._params['e2_col']]-np.average(cat_gal[self._params['e2_col']], weights=cat_gal[self._params['w_col']]))/np.average(cat_gal[self._params['R22']])
+        else:
+            e1_gal = (cat_gal[self._params['e1_col']]-np.average(cat_gal[self._params['e1_col']], weights=cat_gal[self._params['w_col']]))
+            e2_gal = (cat_gal[self._params['e2_col']]-np.average(cat_gal[self._params['e2_col']], weights=cat_gal[self._params['w_col']]))
         gal = treecorr.Catalog(
             ra=cat_gal[self._params['ra_col']], dec=cat_gal[self._params['dec_col']],
-            w=cat_gal[self._params['w_col']], g1=cat_gal[self._params['e1_col']], g2=cat_gal[self._params['e2_col']],
+            w=cat_gal[self._params['w_col']], g1=e1_gal, g2=e2_gal,
             ra_units=ra_units, dec_units=dec_units
         )
 
