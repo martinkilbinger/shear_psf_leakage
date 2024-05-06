@@ -495,7 +495,7 @@ class CovTauTh:
         interpolator_xi = self.xi_plus_itp
         interpolator_rho = rho['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 300, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -537,7 +537,7 @@ class CovTauTh:
         interpolator_tau_b = tau_b['p']
         interpolator_tau_c = tau_c['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 300, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -576,7 +576,7 @@ class CovTauTh:
         interpolator_xi = self.xi_minus_itp
         interpolator_rho = rho['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 300, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -627,7 +627,7 @@ class CovTauTh:
         interpolator_tau_b = tau_b['m']
         interpolator_tau_c = tau_c['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 300, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
