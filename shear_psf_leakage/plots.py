@@ -38,13 +38,11 @@ def equi_num_bins(values, n_bin):
         equi-numbered bin array
 
     """
-    xeqn = np.interp(
+    return np.interp(
         np.linspace(0, len(values), n_bin + 1),
         np.arange(len(values)),
         np.sort(values),
     )
-
-    return xeqn
 
 
 def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
@@ -588,7 +586,7 @@ def plots_all_corr_2d(
                 verbose=verbose,
             )
 
-    # Bar plots of spin compoments
+    # Bar plots of spin components
     s_ground_truth = leakage.param_order2spin(par_ground_truth, order, mix) if par_ground_truth else None
     out_path_spin = f"{out_base}_spin.png" if out_base else None
     plot_bar_spin(
