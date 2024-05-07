@@ -4,6 +4,8 @@ This module sets up a class to compute the rho stats computation
 Author: Sacha Guerrini
 """
 
+from tqdm import tqdm
+
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -232,7 +234,7 @@ class Catalogs():
         if output is not None:
             self._output = output
 
-    def read_shear_cat(self, path_gal, path_psf):
+    def read_shear_cat(self, path_gal, path_psf, hdu=1):
         """
         read_shear_cat
 
@@ -245,9 +247,9 @@ class Catalogs():
         """
         assert ((path_gal is not None) or (path_psf is not None)), ("Please specify a path for the shear catalog you want to read.")
         if path_gal is not None:
-            self.dat_shear = fits.getdata(path_gal)
+            self.dat_shear = fits.getdata(path_gal, ext=hdu)
         if path_psf is not None:
-            self.dat_psf = fits.getdata(path_psf)
+            self.dat_psf = fits.getdata(path_psf, ext=hdu)
 
     def get_cat_fields(self, cat_type, square_size=False):
         """
@@ -297,7 +299,10 @@ class Catalogs():
             dec = self.dat_shear[self._params["dec_col"]]
             g1 = self.dat_shear[self._params["e1_col"]] - np.average(self.dat_shear[self._params["e1_col"]], weights=weights)
             g2 = self.dat_shear[self._params["e2_col"]] - np.average(self.dat_shear[self._params["e2_col"]], weights=weights)
-
+            if self._params["R11"] is not None:
+                g1 /= self._params["R11"]
+            if self._params["R22"] is not None:
+                g2 /= self._params["R22"]
         else:
             assert self.dat_psf is not None, ("Check you read the shear catalogs correctly.")
             #Add a mask?
@@ -307,22 +312,22 @@ class Catalogs():
             weights = None
 
             if cat_type=="psf":
-                g1 = self.dat_psf[self._params["e1_PSF_col"]] - self.dat_psf[self._params["e1_PSF_col"]].mean()
-                g2 = self.dat_psf[self._params["e2_PSF_col"]] - self.dat_psf[self._params["e2_PSF_col"]].mean()
+                g1 = self.dat_psf[self._params["e1_PSF_col"]]# - self.dat_psf[self._params["e1_PSF_col"]].mean()
+                g2 = self.dat_psf[self._params["e2_PSF_col"]]# - self.dat_psf[self._params["e2_PSF_col"]].mean()
 
             elif cat_type=="psf_error":
                 g1 = (self.dat_psf[self._params["e1_star_col"]] - self.dat_psf[self._params["e1_PSF_col"]])
-                g1 -= g1.mean()
+                #g1 -= g1.mean()
                 g2 = (self.dat_psf[self._params["e2_star_col"]] - self.dat_psf[self._params["e2_PSF_col"]])
-                g2 -= g2.mean()
+                #g2 -= g2.mean()
 
             else:
                 size_star = self.dat_psf[self._params["star_size"]]**2 if square_size else  self.dat_psf[self._params["star_size"]]
                 size_psf = self.dat_psf[self._params["PSF_size"]]**2 if square_size else  self.dat_psf[self._params["PSF_size"]]
                 g1 = self.dat_psf[self._params["e1_star_col"]] * (size_star - size_psf)/size_star
-                g1 -= g1.mean()
+                #g1 -= g1.mean()
                 g2 = self.dat_psf[self._params["e2_star_col"]] * (size_star - size_psf)/size_star
-                g2 -= g2.mean()
+                #g2 -= g2.mean()
 
         return ra, dec, g1, g2, weights
     
@@ -463,7 +468,7 @@ class RhoStat():
 
         self.verbose = verbose
 
-    def build_cat_to_compute_rho(self, path_cat_star, catalog_id='', square_size=False, mask=False):
+    def build_cat_to_compute_rho(self, path_cat_star, catalog_id='', square_size=False, mask=False, hdu=1):
         """
         build_cat_to_compute_rho
 
@@ -482,7 +487,7 @@ class RhoStat():
             If True, use PSF and star flags to mask the data. (Default: False)
         """
 
-        self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat_star)
+        self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat_star, hdu=hdu)
 
         if self.verbose:
             print("Building catalogs...")
@@ -496,7 +501,7 @@ class RhoStat():
             print("Catalogs successfully built...")
             self.catalogs.show_catalogs()
 
-    def compute_rho_stats(self, catalog_id, filename):
+    def compute_rho_stats(self, catalog_id, filename, save_cov=False, func=None, var_method='jackknife'):
         """
         compute_rho_stats
 
@@ -527,7 +532,7 @@ class RhoStat():
 
         self.rho_stats = Table(
             [
-                rho_0.rnom,
+                rho_0.meanr,
                 rho_0.xip,
                 rho_0.varxip,
                 rho_0.xim,
@@ -584,6 +589,14 @@ class RhoStat():
 
         if self.verbose:
             print("Done...")
+
+        if save_cov:
+            if self.verbose:
+                print("Computing the covariance...")
+
+            cov = treecorr.estimate_multi_cov([rho_0, rho_1, rho_2, rho_3, rho_4, rho_5], var_method, func)
+
+            np.save(self.catalogs._output+'/'+'cov_rho_'+catalog_id, cov)
 
         self.save_rho_stats(filename) #A bit dirty just because of consistency of the datatype :/
         self.load_rho_stats(filename)
@@ -693,7 +706,7 @@ class TauStat():
 
         self.verbose = verbose
 
-    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False):
+    def build_cat_to_compute_tau(self, path_cat, cat_type, catalog_id='', square_size=False, mask=False, hdu=1):
         """
         build_cat_to_compute_tau
 
@@ -716,7 +729,7 @@ class TauStat():
         """
 
         if cat_type=="psf":
-            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat)
+            self.catalogs.read_shear_cat(path_gal=None, path_psf=path_cat, hdu=hdu)
 
             if self.verbose:
                 print("Building catalogs...")
@@ -778,7 +791,7 @@ class TauStat():
 
         self.tau_stats = Table(
             [
-                tau_0.rnom,
+                tau_0.meanr,
                 tau_0.xip,
                 tau_0.varxip,
                 tau_0.xim,
@@ -818,7 +831,7 @@ class TauStat():
 
             cov = treecorr.estimate_multi_cov([tau_0, tau_2, tau_5], var_method, func)
 
-            np.save(self.catalogs._output+'/'+'cov_'+catalog_id, cov)
+            np.save(self.catalogs._output+'/'+'cov_tau_'+catalog_id, cov)
 
         self.save_tau_stats(filename) #A bit dirty just because of consistency of the datatype :/
         self.load_tau_stats(filename)
@@ -919,7 +932,8 @@ class PSFErrorFit():
         self.rho_stat_handler = rho_stat_handler
         self.tau_stat_handler = tau_stat_handler
         print("Class created. Don't forget to load your rho and tau statistics and define your prior and your likelihood.")
-        self.cov = None
+        self.cov_rho = None
+        self.cov_tau = None
         self.init_log_prior()
 
         def log_likelihood(theta, y, inv_cov):
@@ -945,6 +959,8 @@ class PSFErrorFit():
             The new data directory.
         """
         self.data_directory = data_directory
+        self.rho_stat_handler.catalogs._output = self.data_directory #Change the path to the specified data directory
+        self.tau_stat_handler.catalogs._output = self.data_directory
 
 
     def load_rho_stat(self, filename):
@@ -975,7 +991,7 @@ class PSFErrorFit():
         """
         self.tau_stat_handler.load_tau_stats(filename)
 
-    def load_covariance(self, filename):
+    def load_covariance(self, filename, cov_type='rho'):
         """
         load_covariance
 
@@ -986,7 +1002,10 @@ class PSFErrorFit():
         filename : str
             Name of the file containing the covariance matrix.
         """
-        self.cov = np.load(self.data_directory+'/'+filename)
+        if cov_type=='rho':
+            self.cov_rho = np.load(self.data_directory+'/'+filename)
+        else:
+            self.cov_tau = np.load(self.data_directory+'/'+filename)
 
     def init_log_prior(self, low_alpha=-2.0, high_alpha=2.0, low_beta=-10.0, high_beta=10.0, low_eta=-20.0, high_eta=20.0):
         """
@@ -1132,12 +1151,12 @@ class PSFErrorFit():
         ndim = 3
         assert (self.rho_stat_handler.rho_stats is not None), ("Please load rho statistics data.") #Check if data was loaded
         assert (self.tau_stat_handler.tau_stats is not None), ("Please load tau statistics data.")
-        assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
+        #assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
         #Check that the abssiss are the same
 
-        assert (self.cov is not None), ("Please load a covariance matrix")
+        assert (self.cov_tau is not None), ("Please load a covariance matrix")
 
-        inv_cov = np.linalg.inv(self.cov)
+        inv_cov = np.linalg.inv(self.cov_tau)
         output = np.array([
             self.tau_stat_handler.tau_stats["tau_0_p"],
             self.tau_stat_handler.tau_stats["tau_2_p"],
@@ -1147,7 +1166,7 @@ class PSFErrorFit():
         if apply_debias:
             inv_cov = (npatch - output.shape[0] - 2)/(npatch-1)*inv_cov
 
-        init = init + 1e-3*np.random.randn(nwalkers, ndim)
+        init = init + 1e-1*np.random.randn(nwalkers, ndim)
 
         sampler = emcee.EnsembleSampler(
             nwalkers, ndim, self.log_probability, args=(output, inv_cov)
@@ -1213,6 +1232,24 @@ class PSFErrorFit():
         """
         file_path = f"{self.rho_stat_handler.catalogs._output}/samples_{catalog_id}.npy"
         return file_path
+    
+    def get_params_path(self, catalog_id):
+        """Get Params Path.
+
+        Return file path of parameters.
+
+        Parameters
+        ----------
+        catalog_id : str
+            ID of the catalog used for this run
+
+        Returns
+        -------
+        str
+            file path
+        """
+        file_path = f"{self.rho_stat_handler.catalogs._output}/params_{catalog_id}.npy"
+        return file_path
 
 
     def save_samples(self, flat_samples, catalog_id):
@@ -1272,7 +1309,182 @@ class PSFErrorFit():
         q = np.diff(mcmc_result, axis=0)
 
         return mcmc_result, q
+    
+    def build_rho_matrix(self, rho=None):
+        """
+        Build a matrix of rho statistics to get the tau statistics when multiplying with the parameters.
 
+        Parameters
+        ----------
+        rho : np.array
+            Rho statistics data. If None, use the data stored in the RhoStat class.
+
+        Returns
+        -------
+        np.array
+            Matrix of rho statistics.
+        """
+        n_thetas = len(self.rho_stat_handler.rho_stats["theta"]) #number of bins
+        rho_matrix = np.zeros((3*n_thetas, 3))
+        if rho is None:
+            rho_stats = self.rho_stat_handler.rho_stats
+            for i in range(n_thetas):
+                rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_5_p"][i]]
+                rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_4_p'][i]]
+                rho_matrix[i+2*n_thetas] = [rho_stats['rho_5_p'][i], rho_stats['rho_4_p'][i], rho_stats['rho_3_p'][i]]
+        else:
+            rho_stats = rho
+            for i in range(n_thetas):
+                rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[5, i]]
+                rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[4, i]]
+                rho_matrix[i+2*n_thetas] = [rho_stats[5, i], rho_stats[4, i], rho_stats[3, i]]
+        return rho_matrix
+    
+    def build_tau_vec(self, tau=None):
+        """
+        Build a vector of tau statistics to get the least squares parameters.
+
+        Parameters
+        ----------
+        tau : np.array
+            Tau statistics data. If None, use the data stored in the TauStat class.
+        
+        Returns
+        -------
+        np.array
+            Vector of tau statistics.
+        """
+        if tau is None:
+            tau_stats = self.tau_stat_handler.tau_stats
+            tau_vec = np.array([tau_stats["tau_0_p"], tau_stats["tau_2_p"], tau_stats["tau_5_p"]]).flatten()
+        else:
+            tau_vec = tau.flatten()
+        return tau_vec
+    
+    def get_least_squares_params(self, npatch=200, apply_debias=False):
+        """
+        Compute the least square optimum of the residuals for the mean value measured by TreeCorr.
+
+        Parameters
+        ----------
+        npatch : int
+            The number of patches used to compute the covariance. (Default: 200)
+        apply_debias : bool
+            If True, apply some debiasing of the inverse of the covariance matrix. (Default: False)
+
+        Returns
+        -------
+        np.array
+            Parameters realising the optimum.
+        """
+        rho_matrix = self.build_rho_matrix()
+        tau_vec = self.build_tau_vec()
+        assert self.cov_tau is not None, "Please load a covariance matrix for the tau statistics."
+        inv_cov = np.linalg.inv(self.cov_tau)
+        if apply_debias:
+            inv_cov = (npatch - tau_vec.shape[0] - 2)/(npatch-1)*inv_cov
+        return np.linalg.inv(rho_matrix.T @ inv_cov @ rho_matrix) @ rho_matrix.T @ inv_cov @ tau_vec
+    
+    def get_least_squares_params_samples(self, npatch, apply_debias=False, n_samples=10000, verbose=True):
+        """
+        Computes the least square optimum of the residuals by sampling rho and tau statistics from their covariance.
+
+        Parameters
+        ----------
+        npatch : int
+            The number of patches used to compute the covariance.
+        apply_debias : bool
+            If True, apply some debiasing of the inverse of the covariance matrix. (Default: False)
+        n_samples : int
+            The number of samples to draw from the covariance matrix.
+        verbose : bool
+            If True, prints several informations.
+
+        Returns
+        -------
+        np.array
+            Samples obtained from the MCMC analysis
+        np.array
+            Best-fit values of the parameters
+        np.array
+            Error bars at the 68% confidence level.
+        """
+        assert self.cov_tau is not None, "Please load a covariance matrix for the tau statistics."
+        assert self.cov_rho is not None, "Please load a covariance matrix for the rho statistics."
+        rho_stats = self.rho_stat_handler.rho_stats
+        rho_mean = np.array([rho_stats["rho_0_p"], rho_stats["rho_1_p"], rho_stats["rho_2_p"], rho_stats["rho_3_p"],
+                             rho_stats["rho_4_p"], rho_stats["rho_5_p"]]).flatten()
+        tau_stats = self.tau_stat_handler.tau_stats
+        tau_mean = np.array([tau_stats["tau_0_p"], tau_stats["tau_2_p"], tau_stats["tau_5_p"]]).flatten()
+        for i in tqdm(range(n_samples)):
+            rho = np.random.multivariate_normal(rho_mean, self.cov_rho)
+            rho = rho.reshape((6, -1))
+            rho_matrix = self.build_rho_matrix(rho)
+            tau = np.random.multivariate_normal(tau_mean, self.cov_tau)
+            tau_vec = self.build_tau_vec(tau)
+            inv_cov = np.linalg.inv(self.cov_tau)
+            if apply_debias:
+                inv_cov = (npatch - tau_vec.shape[0] - 2)/(npatch-1)*inv_cov
+            if i==0:
+                samples = np.linalg.inv(rho_matrix.T @ inv_cov @ rho_matrix) @ rho_matrix.T @ inv_cov @ tau_vec
+            else:
+                samples = np.vstack((samples, np.linalg.inv(rho_matrix.T @ inv_cov @ rho_matrix) @ rho_matrix.T @ inv_cov @ tau_vec))
+        result, q = self.get_mcmc_from_samples(samples)
+
+        if verbose:
+            labels = [r"$\alpha$", r"$\beta$", r"$\eta$"]
+            print(f"Number of samples: {samples.shape[0]}\n")
+
+            print("Parameters constraints")
+            print("----------------------")
+            for i in range(3):
+                print('Parameter: '+labels[i]+f'={result[1, i]:.4f}^+{q[0, i]:.4f}_{q[1, i]:.4f}')
+
+            print(f"Chi square: {self.eval_chi_square(result[1,:], npatch=npatch, apply_debias=apply_debias)}")
+        
+        return samples, result, q
+    
+    def eval_chi_square(self, theta, npatch=200, apply_debias=False):
+        """
+        Compute the chi square of the fit.
+
+        Parameters
+        ----------
+        theta : tuple
+            Parameters (alpha, beta, eta) of the model.
+        npatch : int
+            The number of patches used to compute the covariance.
+        apply_debias : bool
+            If True, apply some debiasing of the inverse of the covariance matrix. (Default: False)
+
+        Returns
+        -------
+        float
+            The value of the chi square.
+        """
+        rho_matrix = self.build_rho_matrix()
+        tau_vec = self.build_tau_vec()
+        assert self.cov_tau is not None, "Please load a covariance matrix for the tau statistics."
+        inv_cov = np.linalg.inv(self.cov_tau)
+        if apply_debias:
+            inv_cov = (npatch - tau_vec.shape[0] - 2)/(npatch-1)*inv_cov
+        return (tau_vec - rho_matrix @ theta) @ inv_cov @ (tau_vec - rho_matrix @ theta)
+
+    def save_params(self, theta, catalog_id):
+        """Save Parameters.
+
+        Save parameters to file.
+
+        Parameters
+        ----------
+        theta : np.array
+            Parameters obtained from the MCMC analysis or the LSQ fit.
+        catalog_id : str
+            ID of the catalog used for this run
+
+        """
+        np.save(self.get_sample_path(catalog_id), theta)
+    
     def plot_tau_stats_w_model(self, theta, filename, color, catalog_id, savefig=None):
         """
         plot_tau_stats_w_model
