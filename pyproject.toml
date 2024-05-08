@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "shear_psf_leakage"
-version = "0.1.6"
+version = "0.2"
 description = "PSF leakage for shear catalogue data"
 authors = [
 	"Martin Kilbinger <martin.kilbinger@cea.fr>",
+	"Sacha Guerrini <sacha.guerrini@cea.fr>",
 	"Clara Bonini <clara.bonini@universite-paris-saclay.fr>",
 ]
 readme = "README.md"
