@@ -108,7 +108,7 @@ class CovTauTh:
         self.xi_plus = kwargs.get("xi_plus", None)
         self.xi_minus = kwargs.get("xi_minus", None)
 
-        dummy_cat = treecorr.Catalog(ra=[0], dec=[0], g1=[0], g2=[0], w=[0], ra_units='deg', dec_units='deg')
+        dummy_cat = treecorr.Catalog(ra=[0], dec=[0], g1=[0], g2=[0], w=[1], ra_units='deg', dec_units='deg')
         gg = treecorr.GGCorrelation(self.treecorr_config)
         gg.process(dummy_cat, dummy_cat)
         self.bins = gg.meanr
@@ -176,6 +176,8 @@ class CovTauTh:
             "star_size": "SIGMA_STAR_HSM",
             "PSF_flag": "FLAG_PSF_HSM",
             "star_flag": "FLAG_STAR_HSM",
+            "R11": np.array([1]),
+            "R22": np.array([1]),
             "square_size": True,
             "ra_units": "deg",
             "dec_units": "deg"
@@ -208,9 +210,15 @@ class CovTauTh:
         """
         ra_units = self.treecorr_config.get('ra_units', 'deg')
         dec_units = self.treecorr_config.get('dec_units', 'deg')
+        if isinstance(self._params['R11'], str):
+            e1_gal = (cat_gal[self._params['e1_col']]-np.average(cat_gal[self._params['e1_col']], weights=cat_gal[self._params['w_col']]))/np.average(cat_gal[self._params['R11']])
+            e2_gal = (cat_gal[self._params['e2_col']]-np.average(cat_gal[self._params['e2_col']], weights=cat_gal[self._params['w_col']]))/np.average(cat_gal[self._params['R22']])
+        else:
+            e1_gal = (cat_gal[self._params['e1_col']]-np.average(cat_gal[self._params['e1_col']], weights=cat_gal[self._params['w_col']]))
+            e2_gal = (cat_gal[self._params['e2_col']]-np.average(cat_gal[self._params['e2_col']], weights=cat_gal[self._params['w_col']]))
         gal = treecorr.Catalog(
             ra=cat_gal[self._params['ra_col']], dec=cat_gal[self._params['dec_col']],
-            w=cat_gal[self._params['w_col']], g1=cat_gal[self._params['e1_col']], g2=cat_gal[self._params['e2_col']],
+            w=cat_gal[self._params['w_col']], g1=e1_gal, g2=e2_gal,
             ra_units=ra_units, dec_units=dec_units
         )
 
@@ -495,7 +503,7 @@ class CovTauTh:
         interpolator_xi = self.xi_plus_itp
         interpolator_rho = rho['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -537,7 +545,7 @@ class CovTauTh:
         interpolator_tau_b = tau_b['p']
         interpolator_tau_c = tau_c['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -576,7 +584,7 @@ class CovTauTh:
         interpolator_xi = self.xi_minus_itp
         interpolator_rho = rho['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
@@ -627,7 +635,7 @@ class CovTauTh:
         interpolator_tau_b = tau_b['m']
         interpolator_tau_c = tau_c['m']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-2, 500, nbin_rad)
+        phi_radius = np.linspace(1e-1, 250, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
                 radius_val = np.zeros(len(phi_radius))
