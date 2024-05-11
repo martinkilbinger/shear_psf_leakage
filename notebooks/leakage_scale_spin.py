@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
+#     cell_metadata_json: true
 #     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
-#     display_name: shear_psf_leakage2
+#     display_name: shear-psf-leakage-cHl61fDi-py3.9
 #     language: python
-#     name: shear_psf_leakage2
+#     name: python3
 # ---
 
 # # Scale-dependent PSF leakage
 #
-# ## Spin-consistent leakage
+# ## Spin-consistent calculations
 #
-# package shear_psf_leakge
+# Computes and plots scale-dependent spin-consistent PSF leakage functions.
 #
 # Martin Kilbinger <martin.kilbinger@cea.fr>
 
@@ -46,13 +47,10 @@ obj = run.LeakageScale()
 
 # ### Set input parameters
 
-# +
+# Read python parameter file or get user input
 params_upd = args.read_param_script("params_leakage_scale.py", obj._params, verbose=True)
 for key in params_upd:
     obj._params[key] = params_upd[key]
-# -
-
-print(obj._params)
 
 # ### Run
 
@@ -83,18 +81,18 @@ obj.do_alpha()
 # r = \frac{ \left( \xi_{12}^\textrm{p,p} \right)^2 }
 #     { \xi_{11}^\textrm{p,p} \, \xi_{22}^\textrm{p,p} }
 #   = \frac{ \left( \rho_{12, 0} \right)^2 }
-#       { \rho_{11, 0} \rho_{22, 0} }
+#       { \rho_{11, 0} \, \rho_{22, 0} }
 # $$
 
 # Check symmetry of PSF auto-correlation matrix
 diff = obj.Xi_pp_m[0][1] - obj.Xi_pp_m[1][0]
 print(
-    "r is symmetrical? max abs (rel) diff ="
+    "Is r symmetrical? max abs (rel) diff ="
     +f" {max(np.abs(diff)):.3e} ({max(np.abs(diff / obj.Xi_pp_m[0][1])):.3e})",
 )
 
 # +
-# Plot
+# Plot r and ratios of r
 
 theta = obj.get_theta()
 
@@ -316,32 +314,7 @@ cs_plots.plot_data_1d(
     close_fig=False,
     shift_x=True,
 )
-
-
-# The elements of $\alpha$ can be written as
-# \begin{align}
-# \newcommand{\mat}[1]{\mathrm{#1}}
-#     \alpha_{11} = & \left(
-#         \phantom -\xi_{11}^\textrm{g,p} \, \xi_{22}^\textrm{p,p}
-#         - \xi_{12}^\textrm{g,p} \, \xi_{12}^\textrm{p,p}
-#         \right) \left| \mat \xi^\textrm{p,p} \right|^{-1} ;
-#     \nonumber \\
-#     \alpha_{12} = & \left(
-#         - \xi_{11}^\textrm{g,p} \, \xi_{12}^\textrm{p,p}
-#         + \xi_{12}^\textrm{g,p} \, \xi_{11}^\textrm{p,p}
-#         \right) \left| \mat \xi^\textrm{p,p} \right|^{-1} ;
-#     \nonumber \\
-#         \alpha_{21} = & \left(
-#         \phantom - \xi_{21}^\textrm{g,p} \, \xi_{22}^\textrm{p,p}
-#         - \xi_{22}^\textrm{g,p} \, \xi_{12}^\textrm{p,p}
-#         \right) \left| \mat \xi^\textrm{p,p} \right|^{-1} ;
-#     \nonumber \\
-#         \alpha_{22} = & \left(
-#         - \xi_{21}^\textrm{g,p} \, \xi_{12}^\textrm{p,p}
-#         + \xi_{22}^\textrm{g,p} \, \xi_{11}^\textrm{p,p}
-#         \right) \left| \mat \Xi^\textrm{p,p} \right|^{-1},
-# \end{align}
-
+# + \xi_ {"incorrectly_encoded_metadata": "{22}^\\textrm{g,p} \\, \\xi_{11}^\\textrm{p,p}"}
 # #### Consistency relations for scalar leakage
 
 # If the leakage is a scalar function, it can be expressed in three different ways.
@@ -493,4 +466,3 @@ cs_plots.plot_data_1d(
     close_fig=False,
     shift_x=True,
 )
-# -
