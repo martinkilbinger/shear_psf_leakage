@@ -49,7 +49,6 @@ class LeakageObject:
         Set default parameter values.
 
         """
-        # MKDEBUG TODO: test -> action=store_true
         self._params = {
             "input_path_shear": None,
             "output_dir": ".",

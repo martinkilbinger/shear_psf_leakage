@@ -1,4 +1,4 @@
-"""RUN.
+"""RUN SCALE.
 
 This module sets up a run of the scale-dependent leakage calculations.
 
