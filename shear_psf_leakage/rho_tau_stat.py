@@ -1521,7 +1521,7 @@ class PSFErrorFit():
              self.tau_stat_handler.tau_stats["theta"]
             ) / self.tau_stat_handler.tau_stats["theta"]
         )
-        if np.any(scales_diff_ratio > 0.01):
+        if np.any(scales_diff_ratio > 0.001):
             print("theta for rho: ", self.rho_stat_handler.rho_stats["theta"])
             print("theta for tau: ", self.tau_stat_handler.tau_stats["theta"])
             print(scales_diff_ratio, max(scales_diff_ratio))
