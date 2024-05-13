@@ -175,11 +175,10 @@ cs_plots.plot_data_1d(
 
 theta = obj.get_theta()
 
-xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
+xlim = [obj._params["theta_min_amin"] / fac, obj._params["theta_max_amin"] * fac]
 ylim = obj._params["leakage_alpha_ylim"]
 
-n = 4
-theta_arr = [theta] * n
+theta_arr = [theta] * 4
     
 alpha = []
 yerr = []
@@ -230,16 +229,11 @@ x4 = 0.5 * (
     obj.get_alpha_ufloat(0, 0)
     - obj.get_alpha_ufloat(1, 1)
 )
-
 y4 = 0.5 * (obj.get_alpha_ufloat(0, 1) + obj.get_alpha_ufloat(1, 0))
 y0 = 0.5 * (obj.get_alpha_ufloat(1, 0) - obj.get_alpha_ufloat(0, 1))
 
-theta = obj.get_theta()
 
 ylim = obj._params["leakage_alpha_ylim"]
-
-n = 4
-theta_arr = [theta] * n
 
 y_arr = [
     unumpy.nominal_values(x0),
@@ -253,6 +247,7 @@ dy_arr = [
     unumpy.std_devs(y4),
     unumpy.std_devs(y0),
 ]
+theta_arr = [obj.get_theta()] * len(y_arr)
 labels = [
     r"$\alpha^\Re_0 = (\alpha_{11} + \alpha_{22})/2$",
     r"$\alpha^\Re_4 = (\alpha_{11} - \alpha_{22})/2$",
@@ -314,7 +309,7 @@ cs_plots.plot_data_1d(
     close_fig=False,
     shift_x=True,
 )
-# + \xi_ {"incorrectly_encoded_metadata": "{22}^\\textrm{g,p} \\, \\xi_{11}^\\textrm{p,p}"}
+
 # #### Consistency relations for scalar leakage
 
 # If the leakage is a scalar function, it can be expressed in three different ways.
@@ -326,10 +321,6 @@ xlim = [
 ]
 ylim = obj._params["leakage_alpha_ylim"]
 
-theta = obj.get_theta()
-
-theta_arr = [theta] * 3
-
 alpha_1 = []
 alpha_2 = []
 for ndx in range(len(theta)):
@@ -339,19 +330,24 @@ for ndx in range(len(theta)):
     alpha_2.append(my_a2)
 
 y = [
+    unumpy.nominal_values(x0),
     obj.alpha_leak,
     unumpy.nominal_values(alpha_1),
     unumpy.nominal_values(alpha_2),
 ]
 dy = [
+    unumpy.std_devs(x0),
     obj.sig_alpha_leak,
     unumpy.std_devs(alpha_1),
     unumpy.std_devs(alpha_2),
 ]
+theta_arr = [obj.get_theta()] * len(y)
 
-labels = [r"$\alpha$", r"$\alpha_1$", r"$\alpha_2$"]
+
+labels = [r"$\alpha_0^\Re$", r"$\alpha_+$", r"$\alpha_1$", r"$\alpha_2$"]
 xlabel = r"$\theta$ [arcmin]"
 ylabel = r"$\alpha(\theta)$"
+linestyles = ["-", "--", "--", "--"] 
 title = ""
 out_path = f"{obj._params['output_dir']}/alpha_leakage_scalar_consistency.png"
 
@@ -368,6 +364,7 @@ cs_plots.plot_data_1d(
     xlim=xlim,
     ylim=ylim,
     close_fig=False,
+    linestyles=linestyles,
     shift_x=True,
 )
 # -
