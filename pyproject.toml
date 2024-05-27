@@ -31,6 +31,7 @@ jupyter-server = "^2.8.0"
 jupyterlab = "^4.0.7"
 tornado = "^6.3.3"
 lenspack = "^1.0.0"
+pyccl = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
