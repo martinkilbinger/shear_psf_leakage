@@ -335,8 +335,7 @@ class CovTauTh:
             Auto-correlation tau_0/tau_0
         """
         cov_00 = self.compute_sn('00', **kwargs) + self.compute_mt('00', **kwargs) + self.compute_cv_rho_plus('00', **kwargs) +\
-            self.compute_cv_tau_plus('00', **kwargs) + self.compute_cv_rho_minus('00', **kwargs) +\
-            self.compute_cv_tau_minus('00', **kwargs)
+            self.compute_cv_tau_plus('00', **kwargs) + self.compute_cv_minus('00', **kwargs)
         return cov_00
 
     def compute_02_comp(self, **kwargs):
@@ -349,8 +348,7 @@ class CovTauTh:
             Cross-correlation tau_0/tau_2
         """
         cov_02 = self.compute_sn('02', **kwargs) + self.compute_mt('02', **kwargs) + self.compute_cv_rho_plus('02', **kwargs) +\
-            self.compute_cv_tau_plus('02', **kwargs) + self.compute_cv_rho_minus('02', **kwargs) +\
-            self.compute_cv_tau_minus('02', **kwargs)
+            self.compute_cv_tau_plus('02', **kwargs) + self.compute_cv_minus('02', **kwargs)
         return cov_02
 
     def compute_05_comp(self, **kwargs):
@@ -363,8 +361,7 @@ class CovTauTh:
             Cross-correlation tau_0/tau_5
         """
         cov_05 = self.compute_sn('05', **kwargs) + self.compute_mt('05', **kwargs) + self.compute_cv_rho_plus('05', **kwargs) +\
-            self.compute_cv_tau_plus('05', **kwargs) + self.compute_cv_rho_minus('05', **kwargs) +\
-            self.compute_cv_tau_minus('05', **kwargs)
+            self.compute_cv_tau_plus('05', **kwargs) + self.compute_cv_minus('05', **kwargs)
         return cov_05
 
     def compute_25_comp(self, **kwargs):
@@ -377,8 +374,7 @@ class CovTauTh:
             Cross-correlation tau_2/tau_5
         """
         cov_25 = self.compute_sn('25', **kwargs) + self.compute_mt('25', **kwargs) + self.compute_cv_rho_plus('25', **kwargs) +\
-            self.compute_cv_tau_plus('25', **kwargs) + self.compute_cv_rho_minus('25', **kwargs) +\
-            self.compute_cv_tau_minus('25', **kwargs)
+            self.compute_cv_tau_plus('25', **kwargs) + self.compute_cv_minus('25', **kwargs)
         return cov_25
 
     def compute_22_comp(self, **kwargs):
@@ -391,8 +387,7 @@ class CovTauTh:
             Auto-correlation tau_2/tau_2
         """
         cov_22 = self.compute_sn('22', **kwargs) + self.compute_mt('22', **kwargs) +self.compute_cv_rho_plus('22', **kwargs) +\
-            self.compute_cv_tau_plus('22', **kwargs) + self.compute_cv_rho_minus('22', **kwargs) +\
-            self.compute_cv_tau_minus('22', **kwargs)
+            self.compute_cv_tau_plus('22', **kwargs) + self.compute_cv_minus('22', **kwargs)
         return cov_22
 
     def compute_55_comp(self, **kwargs):
@@ -405,8 +400,7 @@ class CovTauTh:
             Auto-correlation tau_5/tau_5
         """
         cov_55 = self.compute_sn('55', **kwargs) + self.compute_mt('55', **kwargs) + self.compute_cv_rho_plus('55', **kwargs) +\
-            self.compute_cv_tau_plus('55', **kwargs) + self.compute_cv_rho_minus('55', **kwargs) +\
-            self.compute_cv_tau_minus('55', **kwargs)
+            self.compute_cv_tau_plus('55', **kwargs) + self.compute_cv_minus('55', **kwargs)
         return cov_55
     
     def compute_sn(self, component, **kwargs):
@@ -474,7 +468,6 @@ class CovTauTh:
                 mt[i, j] = integrate.simps(interpolator_rho(y), phi)*self.sigma_e/(2*np.pi*self.A*self.n_e)
                 if sigma_bc is not None:
                     mt[i, j] += integrate.simps(interpolator_xi_plus(y), phi)*sigma_bc/(2*np.pi*self.A*self.n_e)
-                mt[j, i] = mt[i, j]
         return mt
     
     def compute_cv_rho_plus(self, component, **kwargs):
@@ -503,19 +496,17 @@ class CovTauTh:
         interpolator_xi = self.xi_plus_itp
         interpolator_rho = rho['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-1, 250, nbin_rad)
+        phi_radius = np.linspace(1e-1, 1000, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
-                radius_val = np.zeros(len(phi_radius))
-                for k, phi_r in enumerate(phi_radius):
-                    #Compute i,j term
-                    y_m = np.sqrt(phi_r**2+self.bins[i]**2-2*phi_r*self.bins[i]*np.cos(phi_angle))
-                    y_p = np.sqrt(phi_r**2+self.bins[j]**2+2*phi_r*self.bins[j]*np.cos(phi_angle))
-                    int_xi_m = integrate.simps(interpolator_xi(y_m), phi_angle)
-                    int_xi_p = integrate.simps(interpolator_xi(y_p), phi_angle)
-                    int_rho_m = integrate.simps(interpolator_rho(y_m), phi_angle)
-                    int_rho_p = integrate.simps(interpolator_rho(y_p), phi_angle)
-                    radius_val[k] = 0.5*(int_xi_m*int_rho_p*phi_r+int_xi_p*int_rho_m*phi_r)
+                #Compute i,j term
+                y_m = np.sqrt(phi_radius[:, None]**2+self.bins[i]**2-2*phi_radius[:, None]*self.bins[i]*np.cos(phi_angle))
+                y_p = np.sqrt(phi_radius[:, None]**2+self.bins[j]**2+2*phi_radius[:, None]*self.bins[j]*np.cos(phi_angle))
+                int_xi_m = integrate.simps(interpolator_xi(y_m), phi_angle)
+                int_xi_p = integrate.simps(interpolator_xi(y_p), phi_angle)
+                int_rho_m = integrate.simps(interpolator_rho(y_m), phi_angle)
+                int_rho_p = integrate.simps(interpolator_rho(y_p), phi_angle)
+                radius_val = 0.5*(int_xi_m*int_rho_p*phi_radius+int_xi_p*int_rho_m*phi_radius)
                 cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
         return cv
 
@@ -545,23 +536,23 @@ class CovTauTh:
         interpolator_tau_b = tau_b['p']
         interpolator_tau_c = tau_c['p']
         phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-1, 250, nbin_rad)
+        phi_radius = np.linspace(1e-1, 1000, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
-                radius_val = np.zeros(len(phi_radius))
-                for k, phi_r in enumerate(phi_radius):
-                    y_tau_b = np.sqrt(phi_r**2+self.bins[i]**2-2*phi_r*self.bins[i]*np.cos(phi_angle))
-                    y_tau_c = np.sqrt(phi_r**2+self.bins[j]**2+2*phi_r*self.bins[j]*np.cos(phi_angle))
-                    int_tau_b = integrate.simps(interpolator_tau_b(y_tau_b), phi_angle)
-                    int_tau_c = integrate.simps(interpolator_tau_c(y_tau_c), phi_angle)
-                    radius_val[k] = int_tau_b*int_tau_c*phi_r
+                y_m = np.sqrt(phi_radius[:, None]**2+self.bins[i]**2-2*phi_radius[:, None]*self.bins[i]*np.cos(phi_angle))
+                y_p = np.sqrt(phi_radius[:, None]**2+self.bins[j]**2+2*phi_radius[:, None]*self.bins[j]*np.cos(phi_angle))
+                int_tau_b_m = integrate.simps(interpolator_tau_b(y_m), phi_angle)
+                int_tau_b_p = integrate.simps(interpolator_tau_b(y_p), phi_angle)
+                int_tau_c_m = integrate.simps(interpolator_tau_c(y_m), phi_angle)
+                int_tau_c_p = integrate.simps(interpolator_tau_c(y_p), phi_angle)
+                radius_val = 0.5*(int_tau_b_m*int_tau_c_p+int_tau_b_p*int_tau_c_m)*phi_radius
                 cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
         return cv
     
-    def compute_cv_rho_minus(self, component, **kwargs):
+    def compute_cv_minus(self, component, **kwargs):
         """
         Computes the cosmic variance component of the covariance matrix for the given components
-        based on the rho statistics - component.
+        based on the rho statistics - component and tau statistics - component together.
 
         Parameters
         ----------
@@ -574,91 +565,56 @@ class CovTauTh:
             Cosmic variance component of the covariance matrix
         """
         assert(component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
-        rho = self.component_dict[component]['bc']
-        nbin_ang = kwargs.get("nbin_ang", 20)
-        nbin_rad = kwargs.get("nbin_rad", 20)
-
-        cv = np.zeros((len(self.bins), len(self.bins)))
-        #interpolator_xi = interpolate.make_interp_spline(self.bins, xi_minus, k=1)
-        #interpolator_rho = interpolate.make_interp_spline(self.bins, rho, k=1)
-        interpolator_xi = self.xi_minus_itp
-        interpolator_rho = rho['m']
-        phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-1, 250, nbin_rad)
-        for i in range(len(self.bins)):
-            for j in range(len(self.bins)):
-                radius_val = np.zeros(len(phi_radius))
-                for k, phi_r in enumerate(phi_radius):
-                    psi_a = np.array([
-                        phi_r-self.bins[i]*np.cos(phi_angle),
-                        -self.bins[i]*np.sin(phi_angle)
-                    ])
-                    psi_b = np.array([
-                        phi_r+self.bins[j]*np.cos(phi_angle),
-                        self.bins[j]*np.sin(phi_angle)
-                    ])
-                    norm_a = np.linalg.norm(psi_a, axis=0)
-                    polar_a = np.arctan2(psi_a[1], psi_a[0])
-                    norm_b = np.linalg.norm(psi_b, axis=0)
-                    polar_b = np.arctan2(psi_b[1], psi_b[0])
-                    #The term coming from the sine will integrate out to 0 so we can only compute terms with cosine
-                    int_xi_m = integrate.simps(interpolator_xi(norm_a)*np.cos(4*polar_a), phi_angle)
-                    int_xi_p = integrate.simps(interpolator_xi(norm_b)*np.cos(4*polar_b), phi_angle)
-                    int_rho_m = integrate.simps(interpolator_rho(norm_a)*np.cos(4*polar_a), phi_angle)
-                    int_rho_p = integrate.simps(interpolator_rho(norm_b)*np.cos(4*polar_b), phi_angle)
-                    radius_val[k] = 0.5*(int_xi_m*int_rho_p*phi_r+int_xi_p*int_rho_m*phi_r)
-                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
-        return cv
-
-    def compute_cv_tau_minus(self, component, **kwargs):
-        """
-        Computes the cosmic variance component of the covariance matrix for the given components
-        based on the tau statistics - component.
-
-        Parameters
-        ----------
-        components: str
-            Component of the covariance matrix
-        
-        Returns
-        -------
-        numpy.ndarray
-            Cosmic variance component of the covariance matrix
-        """
-        assert (component in self.component_dict.keys()), ("The component must be in the following list: %s" % self.component_dict.keys())
         tau_b = self.component_dict[component]['eb']
         tau_c = self.component_dict[component]['ec']
+        rho = self.component_dict[component]['bc']
         nbin_ang = kwargs.get("nbin_ang", 20)
         nbin_rad = kwargs.get("nbin_rad", 20)
 
         cv = np.zeros((len(self.bins), len(self.bins)))
         interpolator_tau_b = tau_b['m']
         interpolator_tau_c = tau_c['m']
-        phi_angle = np.linspace(0, np.pi, nbin_ang)
-        phi_radius = np.linspace(1e-1, 250, nbin_rad)
+        interpolator_rho = rho['m']
+        interpolator_xi = self.xi_minus_itp
+        phi_angle = np.linspace(0, 2*np.pi, nbin_ang)
+        phi_radius = np.linspace(1e-1, 1000, nbin_rad)
         for i in range(len(self.bins)):
             for j in range(len(self.bins)):
-                radius_val = np.zeros(len(phi_radius))
-                for k, phi_r in enumerate(phi_radius):
-                    psi_a = np.array([
-                        phi_r-self.bins[i]*np.cos(phi_angle),
-                        -self.bins[i]*np.sin(phi_angle)
-                    ])
-                    psi_b = np.array([
-                        phi_r+self.bins[j]*np.cos(phi_angle),
-                        self.bins[j]*np.sin(phi_angle)
-                    ])
-                    norm_a = np.linalg.norm(psi_a, axis=0)
-                    polar_a = np.arctan2(psi_a[1], psi_a[0])
-                    norm_b = np.linalg.norm(psi_b, axis=0)
-                    polar_b = np.arctan2(psi_b[1], psi_b[0])
-                    #The term coming from the sine will integrate out to 0 so we can only compute terms with cosine
-                    int_tau_b = integrate.simps(interpolator_tau_b(norm_a)*np.cos(4*polar_a), phi_angle)
-                    int_tau_c = integrate.simps(interpolator_tau_c(norm_b)*np.cos(4*polar_b), phi_angle)
-                    radius_val[k] = int_tau_b*int_tau_c*phi_r
-                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(np.pi*self.A)
-        return cv
+                phi_r_mesh, phi_varphi_mesh = np.meshgrid(phi_radius, phi_angle, indexing='ij')
 
+                # Compute psi_a and psi_b in a vectorized manner
+                psi_a_x = (phi_r_mesh * np.cos(phi_varphi_mesh))[:, :, None] - self.bins[i] * np.cos(phi_angle)
+                psi_a_y = (phi_r_mesh * np.sin(phi_varphi_mesh))[:, :, None] - self.bins[i] * np.sin(phi_angle)
+                psi_b_x = (phi_r_mesh * np.cos(phi_varphi_mesh))[:, :, None] + self.bins[j] * np.cos(phi_angle)
+                psi_b_y = (phi_r_mesh * np.sin(phi_varphi_mesh))[:, :, None] + self.bins[j] * np.sin(phi_angle)
+
+                # Compute norms and polar angles
+                norm_a = np.sqrt(psi_a_x**2 + psi_a_y**2)
+                polar_a = np.arctan2(psi_a_y, psi_a_x)
+                norm_b = np.sqrt(psi_b_x**2 + psi_b_y**2)
+                polar_b = np.arctan2(psi_b_y, psi_b_x)
+
+                # Compute integrals using vectorized operations
+                int_tau_b_cos = integrate.simps(interpolator_tau_b(norm_a) * np.cos(4 * polar_a), phi_angle, axis=2)
+                int_tau_c_cos = integrate.simps(interpolator_tau_c(norm_b) * np.cos(4 * polar_b), phi_angle, axis=2)
+                int_tau_b_sin = integrate.simps(interpolator_tau_b(norm_a) * np.sin(4 * polar_a), phi_angle, axis=2)
+                int_tau_c_sin = integrate.simps(interpolator_tau_c(norm_b) * np.sin(4 * polar_b), phi_angle, axis=2)
+                int_xi_cos = integrate.simps(interpolator_xi(norm_a) * np.cos(4 * polar_a), phi_angle, axis=2)
+                int_rho_cos = integrate.simps(interpolator_rho(norm_b) * np.cos(4 * polar_b), phi_angle, axis=2)
+                int_xi_sin = integrate.simps(interpolator_xi(norm_a) * np.sin(4 * polar_a), phi_angle, axis=2)
+                int_rho_sin = integrate.simps(interpolator_rho(norm_b) * np.sin(4 * polar_b), phi_angle, axis=2)
+
+
+                # Compute int_angle in a vectorized manner
+                int_angle = int_tau_b_cos * int_tau_c_cos + int_tau_b_sin * int_tau_c_sin + int_xi_cos * int_rho_cos + int_xi_sin * int_rho_sin
+
+                # Integrate int_angle over phi_angle for each phi_radius
+                int_varphi = integrate.simps(int_angle, phi_angle, axis=1)
+
+                # Compute radius_val in a vectorized manner
+                radius_val = int_varphi * phi_radius
+                cv[i, j] = integrate.simps(radius_val, phi_radius)*1/(2*(2*np.pi)**2*self.A)
+        return cv
 
 
                 

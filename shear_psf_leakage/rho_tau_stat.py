@@ -540,7 +540,7 @@ class RhoStat():
                 rho_0.xip,
                 rho_0.varxip,
                 rho_0.xim,
-                rho_1.varxim,
+                rho_0.varxim,
                 rho_1.xip,
                 rho_1.varxip,
                 rho_1.xim,
