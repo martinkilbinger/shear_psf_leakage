@@ -6,14 +6,14 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: shear_psf_leakage
+#     display_name: sp_validation
 #     language: python
-#     name: shear_psf_leakage
+#     name: python3
 # ---
 
-# # PSF leakage: PSF auto-correlation contributions
+# # PSF contamination: PSF leakage diagnostic
 #
 # Martin Kilbinger <martin.kilbinger@cea.fr>
 
@@ -99,9 +99,9 @@ alpha_4_i = (
 
 
 def get_rho_0(self, idx, jdx):                                        
-	"""Get Alpha Ufloat.                                                     
+	"""Get Rho 0.                                                     
 
-	Return alpha leakage matrix element as array over scales.                
+	Return (i, j) matrix element of rho_0.                
 
 	Parameters                                                               
 	----------                                                               
@@ -127,14 +127,25 @@ def get_rho_0(self, idx, jdx):
 # xi_sys terms
 print("xi_sys terms")
 xi_sys_term_p = (
-    alpha_0_r ** 2 + alpha_0_i ** 2 + alpha_4_r ** 2 + alpha_4_i ** 2
-) * (get_rho_0(obj_scale, 0, 0) + get_rho_0(obj_scale, 1, 1))
+    2 * (
+        alpha_0_r ** 2 + alpha_0_i ** 2 + alpha_4_r ** 2 + alpha_4_i ** 2
+    ) * (get_rho_0(obj_scale, 0, 0) + get_rho_0(obj_scale, 1, 1))
+)
+xi_sys_term_m = 2 * alpha_0_i * alpha_4_i * (
+    (get_rho_0(obj_scale, 0, 0) - get_rho_0(obj_scale, 1, 1))
+)
+xi_sys_term_mixed = (
+    4 * (
+        alpha_0_r * alpha_4_i - alpha_4_r * alpha_0_i
+    ) * get_rho_0(obj_scale, 0, 1)
+)
 print("xi_sys done")
 
- 
-#### For comparison: scalar alpha leakage
+
+#### For comparison: scalar xi sys
 obj_scale.compute_corr_gp_pp_alpha()
 obj_scale.do_alpha()
+obj_scale.compute_xi_sys()
 
 
 # Plot terms
@@ -143,19 +154,23 @@ theta_arcmin = obj_scale.get_theta()
 # +
 y = [
     unumpy.nominal_values(xi_sys_term_p),
-    #xi_theo_p,
+    unumpy.nominal_values(xi_sys_term_m),
+    unumpy.nominal_values(xi_sys_term_mixed),
+    obj_scale.C_sys_p,
 ]
 dy = [
     unumpy.std_devs(xi_sys_term_p),
-    #[np.nan] * len(xi_theo_p), 
+    unumpy.std_devs(xi_sys_term_m),
+    unumpy.std_devs(xi_sys_term_mixed),
+    obj_scale.C_sys_std_p,
 ]
 x = [theta_arcmin] * len(y)
 
 title = r"Bacon et al. (2003) $\xi_{sys}$"
 xlabel = r"$\theta$ [arcmin]" 
 ylabel = "terms"
-out_path = f"{obj_scale._params['output_dir']}/xi_sys.png"                                  
-labels = ["$t_+$"]
+out_path = f"{obj_scale._params['output_dir']}/xi_sys_terms.png"                                  
+labels = ["$t_+$", "$t_-$", r"$t_{\rm mixed}$", "scalar"]
 
 cs_plots.plot_data_1d(
     x,
@@ -168,8 +183,23 @@ cs_plots.plot_data_1d(
     labels=labels,
     shift_x=True,
     xlog=True,
-    ylog=True,
+    ylog=False,
 )
 # -
+obj_scale.C_sys_p
+
+print(unumpy.nominal_values(
+    obj_scale.alpha_leak ** 2 * (
+        get_rho_0(obj_scale, 0, 0) + get_rho_0(obj_scale, 1, 1)
+    )
+))
+print()
+print(obj_scale.alpha_leak ** 2 * obj_scale.r_corr_pp.xip)
+print()
+print(obj_scale.C_sys_p)
+
+obj_scale.alpha_leak
+
+alpha_4_i
 
 
