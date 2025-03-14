@@ -52,9 +52,9 @@ def get_theo_xi(theta, dndz_path):
     z, nz, _ = cs_cat.read_dndz(dndz_path)
     cosmo = cs_cos.get_cosmo_default()
     xi_p, xi_m = cs_cos.xipm_theo(theta, cosmo, z, nz)
-    
 
     return xi_p, xi_m
+
 
 # MKDEBUG TODO: make class function
 def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
@@ -81,7 +81,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     fname = f"{output_dir}/alpha_leakage_{sh}.txt"
     write_ascii_table_file(cols, names, fname)
 
-    
+
 def save_xi_sys(
     theta,
     xi_sys_p,
@@ -696,15 +696,12 @@ class LeakageScale:
         Compute weighted mean of the leakage function alpha.
 
         """
-        self.alpha_leak_mean, self.alpha_leak_std = (
-            calc.weighted_avg_and_std(
-                self.alpha_leak,
-                1/self.sig_alpha_leak**2
-            ) 
+        self.alpha_leak_mean, self.alpha_leak_std = calc.weighted_avg_and_std(
+            self.alpha_leak, 1 / self.sig_alpha_leak**2
         )
-        #calc.transform_nan(
+        # calc.transform_nan(
         #    np.average(self.alpha_leak, weights=1/self.sig_alpha_leak**2)
-        #)
+        # )
         leakage.print_stats(
             f"Weighted average alpha" + f" = {self.alpha_leak_mean:.3g}",
             self._stats_file,
@@ -724,7 +721,7 @@ class LeakageScale:
         res = minimize(
             leakage.loss_bias_lin_1d,
             params,
-            args=(self.r_corr_gp.meanr, self.alpha_leak, self.alpha_leak_std)
+            args=(self.r_corr_gp.meanr, self.alpha_leak, self.alpha_leak_std),
         )
 
         # Save best-fit parameters
@@ -779,7 +776,7 @@ class LeakageScale:
             xlim = [x0, self._params["theta_max_amin"]]
             xlog = True
         else:
-            x0 = x0 ** factor
+            x0 = x0**factor
             x_affine = np.linspace(x0, self._params["theta_max_amin"])
             xlim = [x0, self._params["theta_max_amin"]]
             xlog = False
@@ -1132,6 +1129,39 @@ class LeakageScale:
                 np.dot(self.Xi_gp_ufloat[ndx], self.Xi_pp_inv_ufloat[ndx])
             )
 
+    def get_rho_matrix_element(self, kdx, idx, jdx):
+        """Get Rho Matrix Element.
+
+        Return (idx, jdx) matrix element of rho_kdx.
+
+        Parameters
+        ----------
+                kdx : int
+                        rho statistic number, allowed are between 0 and 5;
+                        currently implemented is kdx=0
+        idx : int
+                row index, allowed are 0 or 1
+        jdx : int
+                column index, allowed are 0 or 1
+
+        Returns
+        -------
+        numpy.ndarray
+                matrix element as array over scales, each entry is
+                of type ufloat
+
+        """
+        mat = []
+        n_theta = self._params["n_theta"]
+
+        if kdx == 0:
+            for ndx in range(n_theta):
+                mat.append(self.Xi_pp_ufloat[ndx][idx, jdx])
+        else:
+            raise IndexError("rho statistics #{kdx} not implemented")
+
+        return np.array(mat)
+
     def get_alpha_ufloat(self, idx, jdx):
         """Get Alpha Ufloat.
 
@@ -1157,37 +1187,25 @@ class LeakageScale:
             mat.append(self.alpha_leak_ufloat[ndx][idx, jdx])
 
         return np.array(mat)
-    
+
     def compute_alpha_spin_coeffs(self):
         """Compute Alpha Spin Coefficients.
-        
+
         Compute the spin coefficients of the PSF leakage alpha(theta) from
         the matrix elements.
-        
+
         """
-        self._alpha_0_r = (
-            0.5 * (
-                self.get_alpha_ufloat(0, 0)
-                + self.get_alpha_ufloat(1, 1)
-            )
+        self._alpha_0_r = 0.5 * (
+            self.get_alpha_ufloat(0, 0) + self.get_alpha_ufloat(1, 1)
         )
-        self._alpha_0_i = (
-            0.5 * (
-                -self.get_alpha_ufloat(0, 1)
-                + self.get_alpha_ufloat(1, 0)
-            )
+        self._alpha_0_i = 0.5 * (
+            -self.get_alpha_ufloat(0, 1) + self.get_alpha_ufloat(1, 0)
         )
-        self._alpha_4_r = (
-            0.5 * (
-                self.get_alpha_ufloat(0, 0)
-                - self.get_alpha_ufloat(1, 1)
-            )
+        self._alpha_4_r = 0.5 * (
+            self.get_alpha_ufloat(0, 0) - self.get_alpha_ufloat(1, 1)
         )
-        self._alpha_4_i = (
-            0.5 * (
-                self.get_alpha_ufloat(0, 1)
-                + self.get_alpha_ufloat(1, 0)
-            )
+        self._alpha_4_i = 0.5 * (
+            self.get_alpha_ufloat(0, 1) + self.get_alpha_ufloat(1, 0)
         )
 
     def do_alpha_matrix(self):

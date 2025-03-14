@@ -159,34 +159,6 @@ alpha_4_i = (
 )
 
 
-# -
-
-def get_rho_0(self, idx, jdx):                                        
-	"""Get Rho 0.                                                     
-
-	Return (i, j) matrix element of rho_0.                
-
-	Parameters                                                               
-	----------                                                               
-	idx : int                                                                
-		line index, allowed are 0 or 1                                       
-	jdx : int                                                                
-		column index, allowed are 0 or 1                                     
-
-	Returns                                                                  
-	-------                                                                  
-	numpy.ndarray                                                            
-		matrix element as array over scales, each entry is                   
-		of type ufloat                                                       
-
-	"""  
-	mat = []                                                                 
-	n_theta = self._params["n_theta"]                                        
-	for ndx in range(n_theta):                                               
-		mat.append(self.Xi_pp_ufloat[ndx][idx, jdx])
-	return np.array(mat)
-
-
 # +
 # xi_sys terms
 
@@ -195,16 +167,16 @@ def get_rho_0(self, idx, jdx):
 
 xi_sys_term_p = (
     (alpha_0_r ** 2 + alpha_0_i ** 2 + alpha_4_r ** 2 + alpha_4_i ** 2)
-    * (get_rho_0(obj_scale, 0, 0) + get_rho_0(obj_scale, 1, 1))
+    * (obj_scale.get_rho_matrix_element(0, 0, 0) + obj_scale.get_rho_matrix_element(0, 1, 1))
 )
 xi_sys_term_m = (
     2 * (alpha_0_r * alpha_4_r + alpha_0_i * alpha_4_i)
-     * (get_rho_0(obj_scale, 0, 0) - get_rho_0(obj_scale, 1, 1))
+     * (obj_scale.get_rho_matrix_element(0, 0, 0) - obj_scale.get_rho_matrix_element(0, 1, 1))
 )
 xi_sys_term_mixed = (
     4 * (
         alpha_0_r * alpha_4_i - alpha_4_r * alpha_0_i
-    ) * get_rho_0(obj_scale, 0, 1)
+    ) * obj_scale.get_rho_matrix_element(0, 0, 1)
 )
 
 xi_sys_tot = xi_sys_term_p + xi_sys_term_m + xi_sys_term_mixed
@@ -296,16 +268,16 @@ cs_plots.plot_data_1d(
 # Using a_ij matrix
 xi_sys_term_m_11 = (
     (obj_scale.get_alpha_ufloat(0, 0) ** 2 + obj_scale.get_alpha_ufloat(1, 0) ** 2)
-    * get_rho_0(obj_scale, 0, 0)
+    * obj_scale.get_rho_matrix_element(0, 0, 0)
 )
 xi_sys_term_m_22 = (
     (obj_scale.get_alpha_ufloat(0, 1) ** 2 + obj_scale.get_alpha_ufloat(1, 1) ** 2)
-    * get_rho_0(obj_scale, 1, 1)
+    * obj_scale.get_rho_matrix_element(0, 1, 1)
 )
 xi_sys_term_m_12 = (
     2 * (obj_scale.get_alpha_ufloat(0, 0) * obj_scale.get_alpha_ufloat(0, 1)
      + obj_scale.get_alpha_ufloat(1, 0) * obj_scale.get_alpha_ufloat(1, 1))
-     * get_rho_0(obj_scale, 0, 1)
+     * obj_scale.get_rho_matrix_element(0, 0, 1)
 )
 
 # Sum of the three terms
@@ -319,7 +291,7 @@ for idx in (0, 1):
             xi_sys_m2_tot +=  (
                 obj_scale.get_alpha_ufloat(idx, kdx)
                 * obj_scale.get_alpha_ufloat(idx, ldx)
-                * get_rho_0(obj_scale, kdx, ldx)
+                * obj_scale.get_rho_matrix_element(kdx, ldx)
             )
 
 y = [
