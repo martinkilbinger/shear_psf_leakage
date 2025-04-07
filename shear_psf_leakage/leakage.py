@@ -20,6 +20,8 @@ from lmfit import minimize, Parameters
 from uncertainties import ufloat
 from astropy.io import fits
 
+from cs_util import args as cs_args
+
 from .plot_style import *
 
 
@@ -1110,6 +1112,30 @@ def affine_corr(
     return m_arr, m_err_arr, tick_name_arr
 
 
+def read_regr_res_from_file(path):
+    
+    with open(path, "r") as f:
+        str_m = f.readline()
+        m = cs_args.my_string_split(str_m, num=2, stop=True)
+        str_m_err = f.readline()
+        m_err = cs_args.my_string_split(str_m_err, num=2, stop=True)
+        str_tick_name = f.readline()
+        tick_name = cs_args.my_string_split(str_tick_name, num=2, stop=True)
+ 
+    return [float(i) for i in m], [float(i) for i in m_err], tick_name
+
+
+def write_regr_res_to_file(m, m_err, tick_name, path):
+    
+    with open(path, "w") as f:
+        f.write(" ".join(map(str, m)))
+        f.write("\n")
+        f.write(" ".join(map(str, m_err)))
+        f.write("\n")
+        f.write(" ".join(map(str, tick_name)))
+        f.write("\n")
+
+
 def affine_corr_n(
     x_arr,
     y,
@@ -1142,7 +1168,7 @@ def affine_corr_n(
         label for slope in the plot legend
     clabel : str, optional, default=None
         label for offset in the plot legend
-    weights : array of double, optional, default=None
+    weights : arragy of double, optional, default=None
         weights of x points
     n_bin : double, optional, default=30
         number of points onto which data are binned
@@ -1165,23 +1191,37 @@ def affine_corr_n(
 
     if out_path_arr is None:
         out_path_arr = [None] * len(x_arr)
+    m_arr = []
+    m_err_arr = []
+    tick_name_arr = []
     for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
-        m_arr, m_err_arr, tick_name_arr = affine_corr(
-            x,
-            y,
-            xlabel,
-            ylabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            weights=weights,
-            n_bin=n_bin,
-            out_path=out_path,
-            title=title,
-            colors=colors,
-            stats_file=stats_file,
-            verbose=verbose,
-            seed=seed_tmp,
-        )
+        
+        out_path_txt = f"{out_path}.txt"
+        if os.path.exists(out_path_txt):
+            print(f"Reading regression result from file {out_path_txt}.")
+            m, m_err, tick_name = read_regr_res_from_file(out_path_txt)
+        else:
+            print(f"Running regression, writing result to file {out_path_txt}.")
+            m, m_err, tick_name = affine_corr(
+                x,
+                y,
+                xlabel,
+                ylabel,
+                mlabel=mlabel,
+                clabel=clabel,
+                weights=weights,
+                n_bin=n_bin,
+                out_path=out_path,
+                title=title,
+                colors=colors,
+                stats_file=stats_file,
+                verbose=verbose,
+                seed=seed_tmp,
+            )
+            write_regr_res_to_file(m, m_err, tick_name, out_path_txt)
+        m_arr.extend(m)
+        m_err_arr.extend(m_err)
+        tick_name_arr.extend(tick_name)
 
     # Summary plot
     plt.figure()

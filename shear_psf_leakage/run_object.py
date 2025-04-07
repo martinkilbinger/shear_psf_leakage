@@ -84,7 +84,7 @@ class LeakageObject:
             "RA_col": "right ascension column name, default={}",
             "Dec_col": "declination column name, default={}",
             "PSF_leakage": "Fit spin-2 consistent PSF leakage relations",
-            "obs_leakage": "Fit leakage relations with abitrary observables",
+            "obs_leakage": "Fit leakage relations with arbitrary observables",
             "cols": "White-space separated list of column names for fit",
             "cols_ratio": "fit as function of ratio of two columns",
             "test": "Fit toy model and exit",
@@ -137,13 +137,13 @@ class LeakageObject:
         Update parameters.
 
         """
-        if self._params["cols"]:
+        if self._params["cols"] and type(self._params["cols"]) != list:
             self._params["cols"] = cs_args.my_string_split(
                 self._params["cols"],
                 verbose=self._params["verbose"],
                 stop=True,
             )
-        if self._params["cols_ratio"]:
+        if self._params["cols_ratio"] and type(self._params["cols_ratio"]) != list:
             self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,
@@ -509,7 +509,7 @@ class LeakageObject:
         Plot also a recap plot of all slopes of the best fits of the e_gal vs quantities
 
         """
-        # Get quantities to fix
+        # Get quantities
         if not self._params["cols"]:
             # Get user input
             print("Data columns names :")
@@ -525,7 +525,7 @@ class LeakageObject:
         # Remove duplicates
         label_quant = list(set(label_quant))
 
-        print("columns selected:", label_quant, end="")
+        print("columns selected:", label_quant)
         if self._params["cols_ratio"]:
             print(
                 " ",
