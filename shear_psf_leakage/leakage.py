@@ -676,6 +676,8 @@ def quad_corr_n_quant(
 
     ticks_positions = np.arange(1, len(slopes) + 1, 1)
 
+
+    # MKDEBUG TODO: Move summary plot to separate function
     # Plot slopes
     plt.figure()
     plt.errorbar(
@@ -1222,31 +1224,8 @@ def affine_corr_n(
         m_arr.extend(m)
         m_err_arr.extend(m_err)
         tick_name_arr.extend(tick_name)
-
-    # Summary plot
-    plt.figure()
-    ticks_positions = np.arange(1, len(m_arr) + 1, 1)
-    plt.errorbar(ticks_positions, m_arr, yerr=m_err_arr, color="peru", fmt=".")
-    plt.xticks(
-        ticks_positions,
-        tick_name_arr,
-        rotation=90,
-        fontsize=10,
-    )
-    plt.yticks(fontsize=10)
-    plt.axhline(
-        y=0,
-        color="black",
-        linestyle="--",
-    )
-    plt.ylabel("m")
-    title = "(e1, e2) systematic tests"
-    plt.title(title, fontsize=10)
-    plt_xmin, plt_xmax = plt.xlim()
-    plt.xlim(plt_xmin, plt_xmax)
-    plt.tight_layout()
-    plt.savefig(out_path_arr[-1])
-    plt.close()
+        
+    return m_arr, m_err_arr, tick_name_arr
 
 
 def save_to_file(data, fname):
