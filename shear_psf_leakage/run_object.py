@@ -1,6 +1,8 @@
 import os
 import numpy as np
 
+from matplotlib import pyplot as plt
+
 from astropy.io import fits
 from lmfit import Parameters
 
@@ -247,9 +249,7 @@ class LeakageObject:
         out_path_arr = [
             f"{self._params['output_dir']}/{name}_lin" for name in out_name_arr
         ]
-        name = "systematics_test_lin"
-        out_path_arr.append(f"{self._params['output_dir']}/{name}")
-        leakage.affine_corr_n(
+        m_arr, m_err_arr, tick_name_arr = leakage.affine_corr_n(
             x_arr,
             e,
             xlabel_arr,
@@ -264,6 +264,68 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
+
+        # Save regression results        
+        self._m_arr = m_arr
+        self._m_err_arr = m_err_arr
+        self._tick_name_arr = tick_name_arr
+        
+        self.plot_summary_obs()
+        
+        # Add ellipticity regression results from earlier if available
+        #try:
+        if True:
+            self._m_arr.insert(0, self.par_best_fit["a11"].value)
+            self._m_arr.insert(1, self.par_best_fit["a22"].value)
+            self._m_arr.insert(2, self.par_best_fit["a12"].value) 
+            self._m_arr.insert(3, self.par_best_fit["a21"].value) 
+ 
+            self._m_err_arr.insert(0, self.par_best_fit["a11"].stderr)
+            self._m_err_arr.insert(1, self.par_best_fit["a22"].stderr)
+            self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr) 
+            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr) 
+
+            self._tick_name_arr.insert(1, "e2_e2")
+            self._tick_name_arr.insert(2, "e1_e2")
+            self._tick_name_arr.insert(3, "e2_e1")
+    
+            self.plot_summary_obs()
+        #except:
+        else:
+            print("Ellipticity regression parameters not found, continuing")
+
+    def plot_summary_obs(self):    
+
+        # Summary plot
+        plt.figure()
+        ticks_positions = np.arange(1, len(self._m_arr) + 1, 1)
+        plt.errorbar(ticks_positions, self._m_arr, yerr=self._m_err_arr, color="peru", fmt=".")
+        plt.xticks(
+            ticks_positions,
+            self._tick_name_arr,
+            rotation=90,
+            fontsize=10,
+        )
+        plt.yticks(fontsize=10)
+        plt.axhline(
+            y=0,
+            color="black",
+            linestyle="--",
+        )
+        plt.ylabel("m")
+        title = "(e1, e2) systematic tests"
+        plt.title(title, fontsize=10)
+        plt_xmin, plt_xmax = plt.xlim()
+        plt.xlim(plt_xmin, plt_xmax)
+        plt.tight_layout()
+        
+        name = "systematics_test_lin_bis"
+        out_path = f"{self._params['output_dir']}/{name}"
+
+        plt.savefig(out_path)
+        plt.close()
+
+
 
     def test(self):
         """Test
