@@ -511,13 +511,8 @@ class LeakageObject:
         """
         # Get quantities
         if not self._params["cols"]:
-            # Get user input
-            print("Data columns names :")
-            print(self._dat.dtype.names)
-            change_header = input(
-                "Enter list of columns (comma-separated, no whitespaces: "
-            )
-            label_quant = [str(col) for col in change_header.split(",")]
+            print("No columns specified, skipping obs_leakage regressions")
+            return
         else:
             # Use command line argument
             label_quant = self._params["cols"]
@@ -525,7 +520,6 @@ class LeakageObject:
         # Remove duplicates
         label_quant = list(set(label_quant))
 
-        print("columns selected:", label_quant)
         if self._params["cols_ratio"]:
             print(
                 " ",
