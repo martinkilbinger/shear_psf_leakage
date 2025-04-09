@@ -300,6 +300,7 @@ class LeakageObject:
             self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr) 
             self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr) 
 
+            self._tick_name_arr.insert(0, "e1_e1")
             self._tick_name_arr.insert(1, "e2_e2")
             self._tick_name_arr.insert(2, "e1_e2")
             self._tick_name_arr.insert(3, "e2_e1")
