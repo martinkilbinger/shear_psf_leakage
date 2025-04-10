@@ -7,25 +7,21 @@ This module sets up a run of the scale-dependent leakage calculations.
 """
 
 import os
-from optparse import OptionParser
 
 import numpy as np
-from scipy.interpolate import CubicSpline
-from lmfit import minimize, Parameters
 import pandas as pd
-from astropy.io import fits
 from astropy import units
-from uncertainties import ufloat, unumpy
-
-from cs_util import logging
-from cs_util import plots
+from astropy.io import fits
+from cs_util import args as cs_args
 from cs_util import calc
 from cs_util import cat as cs_cat
 from cs_util import cosmo as cs_cos
-from cs_util import args as cs_args
+from cs_util import logging, plots
+from lmfit import Parameters, minimize
+from uncertainties import unumpy
 
-from . import leakage
 from . import correlation as corr
+from . import leakage
 
 
 def get_theo_xi(theta, dndz_path):
@@ -52,9 +48,9 @@ def get_theo_xi(theta, dndz_path):
     z, nz, _ = cs_cat.read_dndz(dndz_path)
     cosmo = cs_cos.get_cosmo_default()
     xi_p, xi_m = cs_cos.xipm_theo(theta, cosmo, z, nz)
-    
 
     return xi_p, xi_m
+
 
 # MKDEBUG TODO: make class function
 def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
@@ -81,7 +77,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     fname = f"{output_dir}/alpha_leakage_{sh}.txt"
     write_ascii_table_file(cols, names, fname)
 
-    
+
 def save_xi_sys(
     theta,
     xi_sys_p,
@@ -696,15 +692,12 @@ class LeakageScale:
         Compute weighted mean of the leakage function alpha.
 
         """
-        self.alpha_leak_mean, self.alpha_leak_std = (
-            calc.weighted_avg_and_std(
-                self.alpha_leak,
-                1/self.sig_alpha_leak**2
-            ) 
+        self.alpha_leak_mean, self.alpha_leak_std = calc.weighted_avg_and_std(
+            self.alpha_leak, 1 / self.sig_alpha_leak**2
         )
-        #calc.transform_nan(
+        # calc.transform_nan(
         #    np.average(self.alpha_leak, weights=1/self.sig_alpha_leak**2)
-        #)
+        # )
         leakage.print_stats(
             f"Weighted average alpha" + f" = {self.alpha_leak_mean:.3g}",
             self._stats_file,
@@ -724,7 +717,7 @@ class LeakageScale:
         res = minimize(
             leakage.loss_bias_lin_1d,
             params,
-            args=(self.r_corr_gp.meanr, self.alpha_leak, self.alpha_leak_std)
+            args=(self.r_corr_gp.meanr, self.alpha_leak, self.alpha_leak_std),
         )
 
         # Save best-fit parameters
