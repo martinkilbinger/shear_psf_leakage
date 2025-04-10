@@ -247,7 +247,7 @@ class Catalogs:
         if output is not None:
             self._output = output
 
-    def read_shear_cat(self, path_gal, path_psf, hdu=1, store=False):
+    def read_shear_cat(self, path_gal, path_psf, hdu=1):
         """
         read_shear_cat
 
