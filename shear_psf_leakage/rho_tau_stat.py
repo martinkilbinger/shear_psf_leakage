@@ -1184,7 +1184,7 @@ class TauStat:
             taus = [tau_0, tau_2]
             if self.use_eta:
                 taus += [tau_5]
-            cov = treecorr.estimate_multi_cov(taus, var_method, func)
+            cov = treecorr.estimate_multi_cov(taus, var_method, func=func)
 
             use_eta_str = "" if self.use_eta else "no_eta"
             np.save(
