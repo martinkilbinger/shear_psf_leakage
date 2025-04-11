@@ -269,12 +269,9 @@ class LeakageObject:
         self._m_arr = m_arr
         self._m_err_arr = m_err_arr
         self._tick_name_arr = tick_name_arr
-        
-        self.plot_summary_obs()
-        
+                
         # Add ellipticity regression results from earlier if available
-        #try:
-        if True:
+        try:
             self._m_arr.insert(0, self.par_best_fit["a11"].value)
             self._m_arr.insert(1, self.par_best_fit["a22"].value)
             self._m_arr.insert(2, self.par_best_fit["a12"].value) 
@@ -290,17 +287,38 @@ class LeakageObject:
             self._tick_name_arr.insert(2, "e1_e2")
             self._tick_name_arr.insert(3, "e2_e1")
     
-            self.plot_summary_obs()
-        #except:
-        else:
+        except:
             print("Ellipticity regression parameters not found, continuing")
 
-    def plot_summary_obs(self):    
+        self.plot_summary_obs(mode="ylin")
+        self.plot_summary_obs(mode="ylog")
+        self.plot_summary_obs(mode="ysig")
+
+    def plot_summary_obs(self, mode="ylin"):
 
         # Summary plot
         plt.figure()
+
         ticks_positions = np.arange(1, len(self._m_arr) + 1, 1)
-        plt.errorbar(ticks_positions, self._m_arr, yerr=self._m_err_arr, color="peru", fmt=".")
+
+        dy = np.array(self._m_err_arr)
+        
+        if mode == "ylin":
+            y = np.array(self._m_arr)
+            plt.ylabel(r"$m$")
+
+        elif mode == "ylog":
+            y = np.abs(self._m_arr)
+            plt.ylabel(r"$|m|$")
+            plt.yscale("log")
+            
+        elif mode == "ysig":
+            y = np.abs(self._m_arr) / np.array(self._m_err_arr)
+            dy = np.zeros_like(dy)
+            plt.ylabel(r"$|m| / \sigma$")
+
+        plt.errorbar(ticks_positions, y, yerr=dy, color="peru", fmt=".")
+ 
         plt.xticks(
             ticks_positions,
             self._tick_name_arr,
@@ -313,20 +331,13 @@ class LeakageObject:
             color="black",
             linestyle="--",
         )
-        plt.ylabel("m")
-        title = "(e1, e2) systematic tests"
+        title = r"($e_1$, $e_2$) dependence"
         plt.title(title, fontsize=10)
-        plt_xmin, plt_xmax = plt.xlim()
-        plt.xlim(plt_xmin, plt_xmax)
         plt.tight_layout()
-        
-        name = "systematics_test_lin_bis"
-        out_path = f"{self._params['output_dir']}/{name}"
-
+            
+        out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}"
         plt.savefig(out_path)
         plt.close()
-
-
 
     def test(self):
         """Test
