@@ -1115,7 +1115,21 @@ def affine_corr(
 
 
 def read_regr_res_from_file(path):
+    """Read Regr Res From File.
     
+    Read regression result from ASCII file.
+    
+    Parameters
+    ----------
+    path: str
+        path to the file
+    
+    Returns
+    -------
+    list
+        list of slopes
+
+    """
     with open(path, "r") as f:
         str_m = f.readline()
         m = cs_args.my_string_split(str_m, num=2, stop=True)
@@ -1128,7 +1142,22 @@ def read_regr_res_from_file(path):
 
 
 def write_regr_res_to_file(m, m_err, tick_name, path):
+    """Write Regr Res To File.
     
+    Write regression result to ASCII file.
+    
+    Parameters
+    ----------
+    m: list
+        slopes for first and second ellipticity component
+    m_err: list
+        errors of the slopes for first and second ellipticity component
+    tick_name: list
+        names of the quantities associated to each slope
+    path: str
+        path to the file     
+    
+    """
     with open(path, "w") as f:
         f.write(" ".join(map(str, m)))
         f.write("\n")
@@ -1315,4 +1344,3 @@ def param_order2spin(p_dp, order, mix):
         s_ds["y6"] = 0.25 * (p_dp["q211"] - p_dp["q222"] + p_dp["q112"])
 
     return s_ds
-
