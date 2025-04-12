@@ -1199,7 +1199,7 @@ def affine_corr_n(
         label for slope in the plot legend
     clabel : str, optional, default=None
         label for offset in the plot legend
-    weights : arragy of double, optional, default=None
+    weights : array of double, optional, default=None
         weights of x points
     n_bin : double, optional, default=30
         number of points onto which data are binned
