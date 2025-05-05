@@ -1085,6 +1085,12 @@ class RhoStat:
 
         title : str, optional
             global plot tite, default is ``None``
+
+        show : bool, optional
+            If True, display the plot. Default is False.
+
+        close : bool, optional
+            If True, close the plot after saving. Default is True.
         """
         # To adapt to the new boolean argument
         fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(15, 9))
@@ -1559,6 +1565,8 @@ class TauStat:
         savefig=None,
         plot_tau_m=True,
         legend="inside",
+        show=False,
+        close=True,
     ):
         """
         plot_tau_stats
@@ -1584,6 +1592,12 @@ class TauStat:
 
         legend : str, optional
             allowed are "each" (default; legends in each panel), "outside" (legend outside of panels)
+
+        show : bool, optional
+            If True, displays the plot. Default is False.
+
+        close : bool, optional
+            If True, closes the plot after saving/showing. Default is True.
 
         Return
         ------
@@ -1670,14 +1684,16 @@ class TauStat:
 
         plt.tight_layout()
         if savefig is not None:
-            plt.savefig(self.catalogs._output+'/'+savefig, bbox_inches='tight')
+            plt.savefig(
+                self.catalogs._output + "/" + savefig, bbox_inches="tight"
+            )
 
         if show:
             plt.show()
 
         if close:
             plt.close()
-            
+
         return fig, ax
 
 
@@ -2552,7 +2568,9 @@ class PSFErrorFit:
             plt.savefig("xi_psf_sys.png")
             plt.close()
 
-    def plot_xi_psf_sys_terms(self, cat_id, theta, out_path, yscale="log"):
+    def plot_xi_psf_sys_terms(
+        self, cat_id, theta, out_path, yscale="log", show=False
+    ):
 
         ls = [
             "dotted",
@@ -2624,7 +2642,7 @@ class PSFErrorFit:
         plt.legend(loc="best", fontsize="small")
         plt.ylim(ylim)
         plt.tight_layout()
-        plt.savefig(out_path, bbox_inches='tight')
+        plt.savefig(out_path, bbox_inches="tight")
         if show:
             plt.show()
         plt.close()
