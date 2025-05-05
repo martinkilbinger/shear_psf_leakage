@@ -1,16 +1,13 @@
 import os
-import numpy as np
+from contextlib import contextmanager
 
+import numpy as np
 from astropy.io import fits
+from cs_util import args as cs_args
+from cs_util import logging
 from lmfit import Parameters
 
-from optparse import OptionParser
-
-from cs_util import logging
-from cs_util import args as cs_args
-
-from . import leakage
-from . import plots
+from . import leakage, plots
 
 
 class LeakageObject:
@@ -22,6 +19,7 @@ class LeakageObject:
 
     def __init__(self):
         # Set default parameters
+        self._dat = None
         self.params_default()
 
     def set_params_from_command_line(self, args):
@@ -180,6 +178,22 @@ class LeakageObject:
         self._dat = hdu_list[1].data
         hdu_list.close()
 
+    @contextmanager
+    def temporarily_read_data(self):
+        if self._dat is None:
+            do_nothing = False
+        else:
+            print("Catalogs already loaded, doing nothing.")
+            do_nothing = True
+
+        try:
+            if not do_nothing:
+                self.read_data()
+            yield self._dat
+        finally:
+            if not do_nothing:
+                self._dat = None
+
     def corr_any_quant(self, label_quant=None, ratio=None):
         """Corr_any_quant.
 
@@ -317,11 +331,7 @@ class LeakageObject:
 
         # Ground-truth 2D (y_1, y_2) data
         y1, y2 = leakage.func_bias_2d(
-            p_gt,
-            x_arr[0],
-            x_arr[1],
-            order="quad",
-            mix=True
+            p_gt, x_arr[0], x_arr[1], order="quad", mix=True
         )
 
         # Perturbation
@@ -339,7 +349,7 @@ class LeakageObject:
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
                 )
-                
+
                 # Create plots
                 out_base = f"{self._params['output_dir']}/test_{order}_{mix}"
                 plots.plots_all_corr_2d(
@@ -358,9 +368,7 @@ class LeakageObject:
                     par_ground_truth=p_gt,
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
-        )
-
-
+                )
 
         print("Ground truth:")
         for par in p_gt:
@@ -472,7 +480,9 @@ class LeakageObject:
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
 
-        out_path_arr = [f"{self._params['output_dir']}/{name}" for name in out_name_arr]
+        out_path_arr = [
+            f"{self._params['output_dir']}/{name}" for name in out_name_arr
+        ]
         name = "systematics_test"
         out_path_arr.append(f"{self._params['output_dir']}/{name}")
         leakage.affine_corr_n(
@@ -518,7 +528,10 @@ class LeakageObject:
         print("columns selected:", label_quant, end="")
         if self._params["cols_ratio"]:
             print(
-                " ", self._params["cols_ratio"][0], "/", self._params["cols_ratio"][1]
+                " ",
+                self._params["cols_ratio"][0],
+                "/",
+                self._params["cols_ratio"][1],
             )
         self.corr_any_quant(label_quant, ratio=self._params["cols_ratio"])
 
