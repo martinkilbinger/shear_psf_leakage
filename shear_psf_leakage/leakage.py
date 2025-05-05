@@ -20,6 +20,8 @@ from lmfit import minimize, Parameters
 from uncertainties import ufloat
 from astropy.io import fits
 
+from cs_util import args as cs_args
+
 from .plot_style import *
 
 
@@ -674,6 +676,8 @@ def quad_corr_n_quant(
 
     ticks_positions = np.arange(1, len(slopes) + 1, 1)
 
+
+    # MKDEBUG TODO: Move summary plot to separate function
     # Plot slopes
     plt.figure()
     plt.errorbar(
@@ -1110,6 +1114,59 @@ def affine_corr(
     return m_arr, m_err_arr, tick_name_arr
 
 
+def read_regr_res_from_file(path):
+    """Read Regr Res From File.
+    
+    Read regression result from ASCII file.
+    
+    Parameters
+    ----------
+    path: str
+        path to the file
+    
+    Returns
+    -------
+    list
+        list of slopes
+
+    """
+    with open(path, "r") as f:
+        str_m = f.readline()
+        m = cs_args.my_string_split(str_m, num=2, stop=True)
+        str_m_err = f.readline()
+        m_err = cs_args.my_string_split(str_m_err, num=2, stop=True)
+        str_tick_name = f.readline()
+        tick_name = cs_args.my_string_split(str_tick_name, num=2, stop=True)
+ 
+    return [float(i) for i in m], [float(i) for i in m_err], tick_name
+
+
+def write_regr_res_to_file(m, m_err, tick_name, path):
+    """Write Regr Res To File.
+    
+    Write regression result to ASCII file.
+    
+    Parameters
+    ----------
+    m: list
+        slopes for first and second ellipticity component
+    m_err: list
+        errors of the slopes for first and second ellipticity component
+    tick_name: list
+        names of the quantities associated to each slope
+    path: str
+        path to the file     
+    
+    """
+    with open(path, "w") as f:
+        f.write(" ".join(map(str, m)))
+        f.write("\n")
+        f.write(" ".join(map(str, m_err)))
+        f.write("\n")
+        f.write(" ".join(map(str, tick_name)))
+        f.write("\n")
+
+
 def affine_corr_n(
     x_arr,
     y,
@@ -1165,48 +1222,39 @@ def affine_corr_n(
 
     if out_path_arr is None:
         out_path_arr = [None] * len(x_arr)
+    m_arr = []
+    m_err_arr = []
+    tick_name_arr = []
     for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
-        m_arr, m_err_arr, tick_name_arr = affine_corr(
-            x,
-            y,
-            xlabel,
-            ylabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            weights=weights,
-            n_bin=n_bin,
-            out_path=out_path,
-            title=title,
-            colors=colors,
-            stats_file=stats_file,
-            verbose=verbose,
-            seed=seed_tmp,
-        )
-
-    # Summary plot
-    plt.figure()
-    ticks_positions = np.arange(1, len(m_arr) + 1, 1)
-    plt.errorbar(ticks_positions, m_arr, yerr=m_err_arr, color="peru", fmt=".")
-    plt.xticks(
-        ticks_positions,
-        tick_name_arr,
-        rotation=90,
-        fontsize=10,
-    )
-    plt.yticks(fontsize=10)
-    plt.axhline(
-        y=0,
-        color="black",
-        linestyle="--",
-    )
-    plt.ylabel("m")
-    title = "(e1, e2) systematic tests"
-    plt.title(title, fontsize=10)
-    plt_xmin, plt_xmax = plt.xlim()
-    plt.xlim(plt_xmin, plt_xmax)
-    plt.tight_layout()
-    plt.savefig(out_path_arr[-1])
-    plt.close()
+        
+        out_path_txt = f"{out_path}.txt"
+        if os.path.exists(out_path_txt):
+            print(f"Reading regression result from file {out_path_txt}.")
+            m, m_err, tick_name = read_regr_res_from_file(out_path_txt)
+        else:
+            print(f"Running regression, writing result to file {out_path_txt}.")
+            m, m_err, tick_name = affine_corr(
+                x,
+                y,
+                xlabel,
+                ylabel,
+                mlabel=mlabel,
+                clabel=clabel,
+                weights=weights,
+                n_bin=n_bin,
+                out_path=out_path,
+                title=title,
+                colors=colors,
+                stats_file=stats_file,
+                verbose=verbose,
+                seed=seed_tmp,
+            )
+            write_regr_res_to_file(m, m_err, tick_name, out_path_txt)
+        m_arr.extend(m)
+        m_err_arr.extend(m_err)
+        tick_name_arr.extend(tick_name)
+        
+    return m_arr, m_err_arr, tick_name_arr
 
 
 def save_to_file(data, fname):
@@ -1296,4 +1344,3 @@ def param_order2spin(p_dp, order, mix):
         s_ds["y6"] = 0.25 * (p_dp["q211"] - p_dp["q222"] + p_dp["q112"])
 
     return s_ds
-

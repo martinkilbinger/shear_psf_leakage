@@ -6,6 +6,7 @@ from astropy.io import fits
 from cs_util import args as cs_args
 from cs_util import logging
 from lmfit import Parameters
+from matplotlib import pyplot as plt
 
 from . import leakage, plots
 
@@ -84,7 +85,7 @@ class LeakageObject:
             "RA_col": "right ascension column name, default={}",
             "Dec_col": "declination column name, default={}",
             "PSF_leakage": "Fit spin-2 consistent PSF leakage relations",
-            "obs_leakage": "Fit leakage relations with abitrary observables",
+            "obs_leakage": "Fit leakage relations with arbitrary observables",
             "cols": "White-space separated list of column names for fit",
             "cols_ratio": "fit as function of ratio of two columns",
             "test": "Fit toy model and exit",
@@ -137,13 +138,16 @@ class LeakageObject:
         Update parameters.
 
         """
-        if self._params["cols"]:
+        if self._params["cols"] and type(self._params["cols"]) != list:
             self._params["cols"] = cs_args.my_string_split(
                 self._params["cols"],
                 verbose=self._params["verbose"],
                 stop=True,
             )
-        if self._params["cols_ratio"]:
+        if (
+            self._params["cols_ratio"]
+            and type(self._params["cols_ratio"]) != list
+        ):
             self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,
@@ -261,9 +265,7 @@ class LeakageObject:
         out_path_arr = [
             f"{self._params['output_dir']}/{name}_lin" for name in out_name_arr
         ]
-        name = "systematics_test_lin"
-        out_path_arr.append(f"{self._params['output_dir']}/{name}")
-        leakage.affine_corr_n(
+        m_arr, m_err_arr, tick_name_arr = leakage.affine_corr_n(
             x_arr,
             e,
             xlabel_arr,
@@ -278,6 +280,80 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
+
+        # Save regression results
+        self._m_arr = m_arr
+        self._m_err_arr = m_err_arr
+        self._tick_name_arr = tick_name_arr
+
+        # Add ellipticity regression results from earlier if available
+        try:
+            self._m_arr.insert(0, self.par_best_fit["a11"].value)
+            self._m_arr.insert(1, self.par_best_fit["a22"].value)
+            self._m_arr.insert(2, self.par_best_fit["a12"].value)
+            self._m_arr.insert(3, self.par_best_fit["a21"].value)
+
+            self._m_err_arr.insert(0, self.par_best_fit["a11"].stderr)
+            self._m_err_arr.insert(1, self.par_best_fit["a22"].stderr)
+            self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr)
+            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr)
+
+            self._tick_name_arr.insert(0, "e1_e1")
+            self._tick_name_arr.insert(1, "e2_e2")
+            self._tick_name_arr.insert(2, "e1_e2")
+            self._tick_name_arr.insert(3, "e2_e1")
+
+        except:
+            print("Ellipticity regression parameters not found, continuing")
+
+        self.plot_summary_obs(mode="ylin")
+        self.plot_summary_obs(mode="ylog")
+        self.plot_summary_obs(mode="ysig")
+
+    def plot_summary_obs(self, mode="ylin"):
+
+        # Summary plot
+        plt.figure()
+
+        ticks_positions = np.arange(1, len(self._m_arr) + 1, 1)
+
+        dy = np.array(self._m_err_arr)
+
+        if mode == "ylin":
+            y = np.array(self._m_arr)
+            plt.ylabel(r"$m$")
+
+        elif mode == "ylog":
+            y = np.abs(self._m_arr)
+            plt.ylabel(r"$|m|$")
+            plt.yscale("log")
+
+        elif mode == "ysig":
+            y = np.abs(self._m_arr) / np.array(self._m_err_arr)
+            dy = np.zeros_like(dy)
+            plt.ylabel(r"$|m| / \sigma$")
+
+        plt.errorbar(ticks_positions, y, yerr=dy, color="peru", fmt=".")
+
+        plt.xticks(
+            ticks_positions,
+            self._tick_name_arr,
+            rotation=90,
+            fontsize=10,
+        )
+        plt.yticks(fontsize=10)
+        plt.axhline(
+            y=0,
+            color="black",
+            linestyle="--",
+        )
+        title = r"($e_1$, $e_2$) dependence"
+        plt.title(title, fontsize=10)
+        plt.tight_layout()
+
+        out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}"
+        plt.savefig(out_path)
+        plt.close()
 
     def test(self):
         """Test
@@ -509,15 +585,10 @@ class LeakageObject:
         Plot also a recap plot of all slopes of the best fits of the e_gal vs quantities
 
         """
-        # Get quantities to fix
+        # Get quantities
         if not self._params["cols"]:
-            # Get user input
-            print("Data columns names :")
-            print(self._dat.dtype.names)
-            change_header = input(
-                "Enter list of columns (comma-separated, no whitespaces: "
-            )
-            label_quant = [str(col) for col in change_header.split(",")]
+            print("No columns specified, skipping obs_leakage regressions")
+            return
         else:
             # Use command line argument
             label_quant = self._params["cols"]
@@ -525,7 +596,6 @@ class LeakageObject:
         # Remove duplicates
         label_quant = list(set(label_quant))
 
-        print("columns selected:", label_quant, end="")
         if self._params["cols_ratio"]:
             print(
                 " ",
