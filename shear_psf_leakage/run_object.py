@@ -1,18 +1,14 @@
 import os
-import numpy as np
+from contextlib import contextmanager
 
+import numpy as np
+from astropy.io import fits
+from cs_util import args as cs_args
+from cs_util import logging
+from lmfit import Parameters
 from matplotlib import pyplot as plt
 
-from astropy.io import fits
-from lmfit import Parameters
-
-from optparse import OptionParser
-
-from cs_util import logging
-from cs_util import args as cs_args
-
-from . import leakage
-from . import plots
+from . import leakage, plots
 
 
 class LeakageObject:
@@ -24,6 +20,7 @@ class LeakageObject:
 
     def __init__(self):
         # Set default parameters
+        self._dat = None
         self.params_default()
 
     def set_params_from_command_line(self, args):
@@ -147,7 +144,10 @@ class LeakageObject:
                 verbose=self._params["verbose"],
                 stop=True,
             )
-        if self._params["cols_ratio"] and type(self._params["cols_ratio"]) != list:
+        if (
+            self._params["cols_ratio"]
+            and type(self._params["cols_ratio"]) != list
+        ):
             self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,
@@ -181,6 +181,22 @@ class LeakageObject:
         hdu_list = fits.open(self._params["input_path_shear"])
         self._dat = hdu_list[1].data
         hdu_list.close()
+
+    @contextmanager
+    def temporarily_read_data(self):
+        if self._dat is None:
+            do_nothing = False
+        else:
+            print("Catalogs already loaded, doing nothing.")
+            do_nothing = True
+
+        try:
+            if not do_nothing:
+                self.read_data()
+            yield self._dat
+        finally:
+            if not do_nothing:
+                self._dat = None
 
     def corr_any_quant(self, label_quant=None, ratio=None):
         """Corr_any_quant.
@@ -265,28 +281,28 @@ class LeakageObject:
             verbose=self._params["verbose"],
         )
 
-        # Save regression results        
+        # Save regression results
         self._m_arr = m_arr
         self._m_err_arr = m_err_arr
         self._tick_name_arr = tick_name_arr
-                
+
         # Add ellipticity regression results from earlier if available
         try:
             self._m_arr.insert(0, self.par_best_fit["a11"].value)
             self._m_arr.insert(1, self.par_best_fit["a22"].value)
-            self._m_arr.insert(2, self.par_best_fit["a12"].value) 
-            self._m_arr.insert(3, self.par_best_fit["a21"].value) 
- 
+            self._m_arr.insert(2, self.par_best_fit["a12"].value)
+            self._m_arr.insert(3, self.par_best_fit["a21"].value)
+
             self._m_err_arr.insert(0, self.par_best_fit["a11"].stderr)
             self._m_err_arr.insert(1, self.par_best_fit["a22"].stderr)
-            self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr) 
-            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr) 
+            self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr)
+            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr)
 
             self._tick_name_arr.insert(0, "e1_e1")
             self._tick_name_arr.insert(1, "e2_e2")
             self._tick_name_arr.insert(2, "e1_e2")
             self._tick_name_arr.insert(3, "e2_e1")
-    
+
         except:
             print("Ellipticity regression parameters not found, continuing")
 
@@ -302,7 +318,7 @@ class LeakageObject:
         ticks_positions = np.arange(1, len(self._m_arr) + 1, 1)
 
         dy = np.array(self._m_err_arr)
-        
+
         if mode == "ylin":
             y = np.array(self._m_arr)
             plt.ylabel(r"$m$")
@@ -311,14 +327,14 @@ class LeakageObject:
             y = np.abs(self._m_arr)
             plt.ylabel(r"$|m|$")
             plt.yscale("log")
-            
+
         elif mode == "ysig":
             y = np.abs(self._m_arr) / np.array(self._m_err_arr)
             dy = np.zeros_like(dy)
             plt.ylabel(r"$|m| / \sigma$")
 
         plt.errorbar(ticks_positions, y, yerr=dy, color="peru", fmt=".")
- 
+
         plt.xticks(
             ticks_positions,
             self._tick_name_arr,
@@ -334,7 +350,7 @@ class LeakageObject:
         title = r"($e_1$, $e_2$) dependence"
         plt.title(title, fontsize=10)
         plt.tight_layout()
-            
+
         out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}"
         plt.savefig(out_path)
         plt.close()
@@ -391,11 +407,7 @@ class LeakageObject:
 
         # Ground-truth 2D (y_1, y_2) data
         y1, y2 = leakage.func_bias_2d(
-            p_gt,
-            x_arr[0],
-            x_arr[1],
-            order="quad",
-            mix=True
+            p_gt, x_arr[0], x_arr[1], order="quad", mix=True
         )
 
         # Perturbation
@@ -413,7 +425,7 @@ class LeakageObject:
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
                 )
-                
+
                 # Create plots
                 out_base = f"{self._params['output_dir']}/test_{order}_{mix}"
                 plots.plots_all_corr_2d(
@@ -432,9 +444,7 @@ class LeakageObject:
                     par_ground_truth=p_gt,
                     stats_file=self._stats_file,
                     verbose=self._params["verbose"],
-        )
-
-
+                )
 
         print("Ground truth:")
         for par in p_gt:
@@ -546,7 +556,9 @@ class LeakageObject:
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
 
-        out_path_arr = [f"{self._params['output_dir']}/{name}" for name in out_name_arr]
+        out_path_arr = [
+            f"{self._params['output_dir']}/{name}" for name in out_name_arr
+        ]
         name = "systematics_test"
         out_path_arr.append(f"{self._params['output_dir']}/{name}")
         leakage.affine_corr_n(
@@ -586,7 +598,10 @@ class LeakageObject:
 
         if self._params["cols_ratio"]:
             print(
-                " ", self._params["cols_ratio"][0], "/", self._params["cols_ratio"][1]
+                " ",
+                self._params["cols_ratio"][0],
+                "/",
+                self._params["cols_ratio"][1],
             )
         self.corr_any_quant(label_quant, ratio=self._params["cols_ratio"])
 
