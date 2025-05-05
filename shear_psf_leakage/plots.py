@@ -9,12 +9,12 @@
 
 """
 
-import numpy as np
-from scipy import stats
-from matplotlib import pylab as plt
-from uncertainties import ufloat
 import getdist
-from getdist import plots, MCSamples
+import numpy as np
+from getdist import MCSamples, plots
+from matplotlib import pylab as plt
+from scipy import stats
+from uncertainties import ufloat
 
 from . import leakage
 
@@ -490,7 +490,7 @@ def plot_corr_2d(
     if out_base:
         plt.savefig(f"{out_base}.png", bbox_inches="tight")
 
-def plot_contours(sample_list, names, labels, savefig=None, **kwargs):
+def plot_contours(sample_list, names, labels, savefig=None, show=False, close=True, **kwargs):
     """
     plot_contours
 
@@ -502,8 +502,14 @@ def plot_contours(sample_list, names, labels, savefig=None, **kwargs):
         A list containing np.array with samples in each entry.
     names : list str
         Names of the variable (See getdist documentation)
-    labels : list str
+    labels : list str 
         Labels of the parameters
+    savefig : str, optional
+        If not None, saves the figure with this filename
+    show : bool, optional
+        If True, displays the plot
+    close : bool, optional
+        If True, closes the plot after saving/showing
     """
     sample_list = [MCSamples(samples=samps, names=names, labels=labels) for samps in sample_list]
     g = plots.get_subplot_plotter()
@@ -511,6 +517,12 @@ def plot_contours(sample_list, names, labels, savefig=None, **kwargs):
 
     if savefig is not None:
         plt.savefig(savefig)
+        
+    if show:
+        plt.show()
+        
+    if close:
+        plt.close()
 
 
 def plots_all_corr_2d(
