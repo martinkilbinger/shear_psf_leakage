@@ -7,6 +7,7 @@ This module sets up a run of the scale-dependent leakage calculations.
 """
 
 import os
+from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
@@ -145,6 +146,8 @@ class LeakageScale:
     def __init__(self):
         # Set default parameters
         self.params_default()
+        self.dat_shear = None
+        self.dat_PSF = None
 
     def set_params_from_command_line(self, args):
         """Set Params From Command Line.
@@ -278,33 +281,48 @@ class LeakageScale:
         if "verbose" not in self._params:
             self._params["verbose"] = False
 
-    def read_data(self):
+    def read_data(self, shear=True, psf=True):
         """Read Data.
 
         Read input galaxy and PSF catalogues.
 
         """
-        # Read input shear
-        dat_shear = self.read_shear_cat()
-
-        # Apply cuts to galaxy catalogue if required
-        dat_shear = leakage.cut_data(
-            dat_shear, self._params["cut"], self._params["verbose"]
-        )
-
-        # Read star catalogue
-        dat_PSF = leakage.open_fits_or_npy(
-            self._params["input_path_PSF"],
-            hdu_no=self._params["hdu_psf"],
-        )
+        if shear:
+            # Read input shear
+            dat_shear = self.read_shear_cat()
+            # Apply cuts to galaxy catalogue if required
+            dat_shear = leakage.cut_data(
+                dat_shear, self._params["cut"], self._params["verbose"]
+            )
+            self.dat_shear = dat_shear
 
         # Deal with close objects in PSF catalogue (= stars on same position
         # from different exposures)
-        dat_PSF = self.handle_close_objects(dat_PSF)
+        if psf:
+            # Read star catalogue
+            dat_PSF = leakage.open_fits_or_npy(
+                self._params["input_path_PSF"],
+                hdu_no=self._params["hdu_psf"],
+            )
+            dat_PSF = self.handle_close_objects(dat_PSF)
+            self.dat_PSF = dat_PSF
 
-        # Set instance variables
-        self.dat_shear = dat_shear
-        self.dat_PSF = dat_PSF
+    @contextmanager
+    def temporarily_read_data(self, shear=True, psf=True):
+        if (shear and self.dat_shear is None) or (psf and self.dat_PSF is None):
+            do_nothing = False
+        else:
+            print("Catalogs already loaded, doing nothing.")
+            do_nothing = True
+
+        try:
+            if not do_nothing:
+                self.read_data(shear=shear, psf=psf)
+            yield self.dat_shear, self.dat_PSF
+        finally:
+            if not do_nothing:
+                self.dat_shear = None
+                self.dat_PSF = None
 
     def prepare_output(self):
         """Prepare Output.
