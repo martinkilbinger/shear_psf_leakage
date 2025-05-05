@@ -234,9 +234,9 @@ complex_gal = (
     + np.average(e2_gal, weights=weights_gal) * 1j
 )
 
-e1_star = obj_scale.dat_PSF["E1_STAR_HSM"]
-e2_star = obj_scale.dat_PSF["E2_STAR_HSM"]
-complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
+e1_psf = obj_scale.dat_PSF["E1_PSF_HSM"]
+e2_psf = obj_scale.dat_PSF["E2_PSF_HSM"]
+complex_psf = np.mean(e1_psf) + np.mean(e2_psf) * 1j
 
 # +
 # At the moment we compute the scalar xi_sys here using centered correlation functions.
