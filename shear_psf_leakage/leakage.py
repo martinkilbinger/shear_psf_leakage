@@ -13,6 +13,7 @@
 
 import os
 import pickle
+import re
 
 import matplotlib.pylab as plt
 import numpy as np
