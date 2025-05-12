@@ -12,15 +12,14 @@
 """
 
 import os
-
-import numpy as np
 import pickle
-import matplotlib.pylab as plt
-from lmfit import minimize, Parameters
-from uncertainties import ufloat
-from astropy.io import fits
 
+import matplotlib.pylab as plt
+import numpy as np
+from astropy.io import fits
 from cs_util import args as cs_args
+from lmfit import Parameters, minimize
+from uncertainties import ufloat
 
 from .plot_style import *
 
@@ -42,6 +41,7 @@ def open_stats_file(directory, file_name):
     stats_file = open("{}/{}".format(directory, file_name), "w")
 
     return stats_file
+
 
 def print_stats(msg, stats_file, verbose=False):
     """Print stats.
@@ -144,7 +144,8 @@ def cut_data(data, cut, verbose=False):
             raise ValueError(f"cut '{cut}' has incorrect syntax")
         if len(res.groups()) != 3:
             raise ValueError(
-                f"cut criterium '{cut}' does not match syntax " "'field rel val'"
+                f"cut criterium '{cut}' does not match syntax "
+                "'field rel val'"
             )
         field, rel, val = res.groups()
 
@@ -465,7 +466,6 @@ def quad_corr_quant(
     if weights is None:
         weights = np.ones_like(y[0])
 
-
     size_all = len(y[0])
     for idx in range(1, n_y):
         if len(y[idx]) != size_all:
@@ -649,7 +649,9 @@ def quad_corr_n_quant(
 
     if out_path_arr is None:
         out_path_arr = [None] * len(x_arr)
-    for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
+    for x, xlabel, out_path, seed_tmp in zip(
+        x_arr, xlabel_arr, out_path_arr, seeds
+    ):
         slope, qslope, ticks_names, m_err, q_err = quad_corr_quant(
             x,
             y,
@@ -675,7 +677,6 @@ def quad_corr_n_quant(
             qerr.append(q_err[i])
 
     ticks_positions = np.arange(1, len(slopes) + 1, 1)
-
 
     # MKDEBUG TODO: Move summary plot to separate function
     # Plot slopes
@@ -1079,7 +1080,9 @@ def affine_corr(
         params = Parameters()
         params.add("m", value=0.01)
         params.add("c", value=0.01)
-        res = minimize(loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights)))
+        res = minimize(
+            loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
+        )
 
         m_arr.append(res.params["m"].value)
         # MKDEBUG float required?
@@ -1089,8 +1092,15 @@ def affine_corr(
         m_dm = ufloat(res.params["m"].value, res.params["m"].stderr)
         c_dc = ufloat(res.params["c"].value, res.params["c"].stderr)
         label = rf"${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$"
-        plt.plot(x_bin, func_bias_lin_1d(res.params, x_bin), c=colors[jdx], label=label)
-        plt.errorbar(x_bin, y_bin[jdx], yerr=err_bin[jdx], c=colors[jdx], fmt=".")
+        plt.plot(
+            x_bin,
+            func_bias_lin_1d(res.params, x_bin),
+            c=colors[jdx],
+            label=label,
+        )
+        plt.errorbar(
+            x_bin, y_bin[jdx], yerr=err_bin[jdx], c=colors[jdx], fmt="."
+        )
 
         if stats_file:
             msg = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
@@ -1116,14 +1126,14 @@ def affine_corr(
 
 def read_regr_res_from_file(path):
     """Read Regr Res From File.
-    
+
     Read regression result from ASCII file.
-    
+
     Parameters
     ----------
     path: str
         path to the file
-    
+
     Returns
     -------
     list
@@ -1137,15 +1147,15 @@ def read_regr_res_from_file(path):
         m_err = cs_args.my_string_split(str_m_err, num=2, stop=True)
         str_tick_name = f.readline()
         tick_name = cs_args.my_string_split(str_tick_name, num=2, stop=True)
- 
+
     return [float(i) for i in m], [float(i) for i in m_err], tick_name
 
 
 def write_regr_res_to_file(m, m_err, tick_name, path):
     """Write Regr Res To File.
-    
+
     Write regression result to ASCII file.
-    
+
     Parameters
     ----------
     m: list
@@ -1155,8 +1165,8 @@ def write_regr_res_to_file(m, m_err, tick_name, path):
     tick_name: list
         names of the quantities associated to each slope
     path: str
-        path to the file     
-    
+        path to the file
+
     """
     with open(path, "w") as f:
         f.write(" ".join(map(str, m)))
@@ -1225,8 +1235,10 @@ def affine_corr_n(
     m_arr = []
     m_err_arr = []
     tick_name_arr = []
-    for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
-        
+    for x, xlabel, out_path, seed_tmp in zip(
+        x_arr, xlabel_arr, out_path_arr, seeds
+    ):
+
         out_path_txt = f"{out_path}.txt"
         if os.path.exists(out_path_txt):
             print(f"Reading regression result from file {out_path_txt}.")
@@ -1253,7 +1265,7 @@ def affine_corr_n(
         m_arr.extend(m)
         m_err_arr.extend(m_err)
         tick_name_arr.extend(tick_name)
-        
+
     return m_arr, m_err_arr, tick_name_arr
 
 
