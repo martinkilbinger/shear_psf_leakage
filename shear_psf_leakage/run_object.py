@@ -492,9 +492,9 @@ class LeakageObject:
         ylabel_arr = [r"$e_1^{\rm g}$", r"$e_2^{\rm g}$"]
 
         xlabel_arr = [
-            r"$e_{1}^{\rm p}$",
-            r"$e_{2}^{\rm p}$",
-            r"$\mathrm{FWHM}^{\rm p}$ [arcsec]",
+            r"$e_{1}^{p}$",
+            r"$e_{2}^{p}$",
+            r"$\mathrm{FWHM}^{p}$ [arcsec]",
         ]
 
         e, weights = self.get_ellipticity_weights()
