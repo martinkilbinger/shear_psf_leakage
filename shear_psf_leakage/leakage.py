@@ -924,6 +924,7 @@ def corr_2d(
 
     # Mininise loss function
     err = 1 / np.sqrt(weights) if weights is not None else np.ones_like(y[0])
+    # MKDEBUG: In some cases the following crashes
     res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix))
     if stats_file:
         print_stats(
@@ -954,6 +955,7 @@ def affine_corr(
     verbose=False,
     seed=None,
     rng=None,
+    do_plots=True,
 ):
     """Affine Corr.
 
@@ -989,6 +991,8 @@ def affine_corr(
         Seed to initialize the randoms. [Default: None]
     rng: numpy.random.RandomState
         Random generator. [Default: None]
+    do_plots : bool, optional
+            create plots if ``True`` (default)
 
     Returns
     -------
@@ -1032,6 +1036,10 @@ def affine_corr(
     diff_size = size_all - size_bin
 
     # Prepare arrays for binned data
+    x = np.asarray(x)
+    weights = np.asarray(weights)
+    for j in range(len(y)):
+        y[j] = np.asarray(y[j])
     x_arg_sort = np.argsort(x)
     x_bin = []
     y_bin = []
@@ -1040,6 +1048,7 @@ def affine_corr(
     for idx in range(len(y)):
         y_bin.append([])
         err_bin.append([])
+
 
     # Bin data for plot
     for idx in range(n_bin):
@@ -1053,12 +1062,15 @@ def affine_corr(
             starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
         ]
 
-        x_bin.append(np.mean(x[ind]))
-
+        x_ind = x[ind]
+        weights_ind = weights[ind]
+        
+        x_bin.append(np.mean(x_ind))
         for j in range(len(y)):
+            y_j_ind = y[j][ind]
             r_jk = jackknife_mean_std(
-                y[j][ind],
-                weights[ind],
+                y_j_ind,
+                weights_ind,
                 remove_size=0.2,
                 n_realization=50,
             )
@@ -1107,20 +1119,21 @@ def affine_corr(
             msg = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
             print_stats(msg, stats_file, verbose=verbose)
 
-    # Finalise plots
-    plt_xmin, plt_xmax = plt.xlim()
-    plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.legend()
+    if do_plots:
+        # Finalise plots
+        plt_xmin, plt_xmax = plt.xlim()
+        plt.xlim(plt_xmin, plt_xmax)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.legend()
 
-    plt.title(title)
-    plt.tight_layout()
+        plt.title(title)
+        plt.tight_layout()
+    
+        if out_path:
+            plt.savefig(out_path, bbox_inches="tight")
 
-    if out_path:
-        plt.savefig(out_path, bbox_inches="tight")
-
-    plt.close()
+        plt.close()
 
     return m_arr, m_err_arr, tick_name_arr
 
@@ -1193,6 +1206,7 @@ def affine_corr_n(
     stats_file=None,
     verbose=False,
     seed=None,
+    do_plots=True,
 ):
     """Affine Corr N.
 
@@ -1226,6 +1240,8 @@ def affine_corr_n(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
+    do_plots : bool, optional
+            create plots if ``True`` (default)
 
     """
     master_rng = np.random.RandomState(seed)
@@ -1241,11 +1257,10 @@ def affine_corr_n(
     ):
 
         out_path_txt = f"{out_path}.txt"
-        if os.path.exists(out_path_txt):
+        if os.path.exists(out_path_txt) and out_path_txt != "None.txt":
             print(f"Reading regression result from file {out_path_txt}.")
             m, m_err, tick_name = read_regr_res_from_file(out_path_txt)
         else:
-            print(f"Running regression, writing result to file {out_path_txt}.")
             m, m_err, tick_name = affine_corr(
                 x,
                 y,
@@ -1261,8 +1276,10 @@ def affine_corr_n(
                 stats_file=stats_file,
                 verbose=verbose,
                 seed=seed_tmp,
+                do_plots=do_plots,
             )
-            write_regr_res_to_file(m, m_err, tick_name, out_path_txt)
+            if out_path_txt != "None.txt":
+                write_regr_res_to_file(m, m_err, tick_name, out_path_txt)
         m_arr.extend(m)
         m_err_arr.extend(m_err)
         tick_name_arr.extend(tick_name)
