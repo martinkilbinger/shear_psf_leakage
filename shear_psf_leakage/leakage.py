@@ -856,12 +856,44 @@ def print_fit_report(res, file=None):
     print(f"bic = {res.bic}", file=file)
 
 
+def init_parameters(order="lin", mix=True):
+    """Init Parameters for minimization best-fit.
+    
+    """
+    # Initialise parameters of model to fit
+    params = Parameters()
+
+    val_init = 0.0
+
+    # Affine parameters
+    for p_affine in ["a11", "a22", "c1", "c2"]:
+        params.add(p_affine, value=val_init)
+
+    if mix:
+        # Linear mixing pararmeters
+        params.add("a12", value=val_init)
+        params.add("a21", value=val_init)
+
+    if order == "quad":
+        # Quadratic parameters
+        for p_quad in ["q111", "q222"]:
+            params.add(p_quad, value=val_init)
+
+        if mix:
+            # Quadratic mixing parameters
+            for p_quad_mix in ["q112", "q122", "q212", "q211"]:
+                params.add(p_quad_mix, value=val_init)
+
+    return params
+
+
 def corr_2d(
     x,
     y,
     weights=None,
     order="lin",
     mix=False,
+    params=None,
     stats_file=None,
     verbose=False,
 ):
@@ -898,34 +930,13 @@ def corr_2d(
     if any(len(y[0]) != c for c in {len(y[1]), len(x[0]), len(x[1])}):
         raise IndexError("Input data has inconsistent length")
 
-    # Initialise parameters of model to fit
-    params = Parameters()
-
-    val_init = 0.0
-
-    # Affine parameters
-    for p_affine in ["a11", "a22", "c1", "c2"]:
-        params.add(p_affine, value=val_init)
-
-    if mix:
-        # Linear mixing pararmeters
-        params.add("a12", value=val_init)
-        params.add("a21", value=val_init)
-
-    if order == "quad":
-        # Quadratic parameters
-        for p_quad in ["q111", "q222"]:
-            params.add(p_quad, value=val_init)
-
-        if mix:
-            # Quadratic mixing parameters
-            for p_quad_mix in ["q112", "q122", "q212", "q211"]:
-                params.add(p_quad_mix, value=val_init)
-
+    if params is None:
+        params = init_parameters(mix, order)
+        
     # Mininise loss function
     err = 1 / np.sqrt(weights) if weights is not None else np.ones_like(y[0])
     # MKDEBUG: In some cases the following crashes
-    res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix))
+    res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix), method="leastsq")
     if stats_file:
         print_stats(
             f"2D fit order={order} mix={mix}:",

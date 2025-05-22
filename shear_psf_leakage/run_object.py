@@ -497,7 +497,7 @@ class LeakageObject:
                 + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
             )
 
-    def PSF_leakage(self, mix=True, order="lin", do_plots=True):
+    def PSF_leakage(self, mix=True, order="lin", params=None, do_plots=True):
         """PSF Leakage.
 
         Compute and plot object-by-object PSF spin-consistent leakage relations.
@@ -508,6 +508,9 @@ class LeakageObject:
             Component mixing (spin-consistent); default is ``True``
         order : str, optional
             regression order; allowed are "lin" (default) and "quad"
+        params : lmfit.Parameters, optional
+            pre-initialized Parameters object with parameters to be fitted;
+            default is ``None`` (initialized in function)
         do_plots : bool, optional
             create plots if ``True`` (default)
 
@@ -548,6 +551,7 @@ class LeakageObject:
                 weights=weights,
                 order=order,
                 mix=mix,
+                params=params,
                 stats_file=self._stats_file,
                 verbose=self._params["verbose"],
             )
