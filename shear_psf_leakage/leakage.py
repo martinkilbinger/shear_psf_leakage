@@ -949,12 +949,12 @@ def corr_2d(
             print_fit_report(res, file=stats_file)
         if verbose:
             print_fit_report(res)
+        return res.params
     except Exception as e:
         if verbose:
             print("Minimizing failed, str(e)")
-        
-    return res.params
-
+        # Return prior parameter
+        return params
 
 def affine_corr(
     x,
