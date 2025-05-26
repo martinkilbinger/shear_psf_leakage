@@ -935,18 +935,24 @@ def corr_2d(
         
     # Mininise loss function
     err = 1 / np.sqrt(weights) if weights is not None else np.ones_like(y[0])
-    # MKDEBUG: In some cases the following crashes
-    res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix), method="leastsq")
+    
     if stats_file:
         print_stats(
             f"2D fit order={order} mix={mix}:",
             stats_file,
             verbose=verbose,
         )
-        print_fit_report(res, file=stats_file)
-    if verbose:
-        print_fit_report(res)
 
+    try:
+        res = minimize(loss_bias_2d, params, args=(x, y, err, order, mix), method="leastsq")
+        if stats_file:
+            print_fit_report(res, file=stats_file)
+        if verbose:
+            print_fit_report(res)
+    except Exception as e:
+        if verbose:
+            print("Minimizing failed, str(e)")
+        
     return res.params
 
 
