@@ -268,6 +268,7 @@ class LeakageObject:
             colors=colors,
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
+            do_plots=do_plots,
         )
 
         if self._params["verbose"]:
@@ -555,7 +556,8 @@ class LeakageObject:
                 stats_file=self._stats_file,
                 verbose=self._params["verbose"],
             )
-            leakage.save_to_file(self.par_best_fit, out_path)
+            if self._params["output_dir"] != "":
+                leakage.save_to_file(self.par_best_fit, out_path)
         else:
             if self._params["verbose"]:
                 print(f"Reading best-fit parameters from file {out_path}")
