@@ -675,7 +675,7 @@ class RhoStat:
         if self.use_eta:
             self.rho_stats = Table(
                 [
-                    rho_0.rnom,
+                    rho_0.meanr,
                     rho_0.xip,
                     rho_0.varxip,
                     rho_0.xim,
@@ -733,7 +733,7 @@ class RhoStat:
         else:
             self.rho_stats = Table(
                 [
-                    rho_0.rnom,
+                    rho_0.meanr,
                     rho_0.xip,
                     rho_0.varxip,
                     rho_0.xim,
@@ -1129,7 +1129,7 @@ class TauStat:
 
             self.tau_stats = Table(
                 [
-                    tau_0.rnom,
+                    tau_0.meanr,
                     tau_0.xip,
                     tau_0.varxip,
                     tau_0.xim,
@@ -1164,7 +1164,7 @@ class TauStat:
 
             self.tau_stats = Table(
                 [
-                    tau_0.rnom,
+                    tau_0.meanr,
                     tau_0.xip,
                     tau_0.varxip,
                     tau_0.xim,
