@@ -392,7 +392,10 @@ class CovTauTh:
             Auto-correlation tau_0/tau_0
         """
         cov_00 = self.compute_sn('00', **kwargs) + self.compute_mt('00', **kwargs) + self.compute_cv_rho_plus('00', **kwargs) +\
-            self.compute_cv_tau_plus('00', **kwargs) + self.compute_cv_minus('00', **kwargs)
+            self.compute_cv_tau_plus('00', **kwargs)
+        compute_minus = kwargs.get("compute_minus", True)
+        if compute_minus:
+            cov_00 += self.compute_cv_minus('00', **kwargs)
         return cov_00
 
     def compute_02_comp(self, **kwargs):
@@ -405,7 +408,10 @@ class CovTauTh:
             Cross-correlation tau_0/tau_2
         """
         cov_02 = self.compute_sn('02', **kwargs) + self.compute_mt('02', **kwargs) + self.compute_cv_rho_plus('02', **kwargs) +\
-            self.compute_cv_tau_plus('02', **kwargs) + self.compute_cv_minus('02', **kwargs)
+            self.compute_cv_tau_plus('02', **kwargs)
+        compute_minus = kwargs.get("compute_minus", True)
+        if compute_minus:
+            cov_02 += self.compute_cv_minus('02', **kwargs)
         return cov_02
 
     def compute_05_comp(self, **kwargs):
@@ -418,7 +424,10 @@ class CovTauTh:
             Cross-correlation tau_0/tau_5
         """
         cov_05 = self.compute_sn('05', **kwargs) + self.compute_mt('05', **kwargs) + self.compute_cv_rho_plus('05', **kwargs) +\
-            self.compute_cv_tau_plus('05', **kwargs) + self.compute_cv_minus('05', **kwargs)
+            self.compute_cv_tau_plus('05', **kwargs)
+        compute_minus = kwargs.get("compute_minus", True)
+        if compute_minus:
+            cov_05 += self.compute_cv_minus('05', **kwargs)
         return cov_05
 
     def compute_25_comp(self, **kwargs):
@@ -431,7 +440,10 @@ class CovTauTh:
             Cross-correlation tau_2/tau_5
         """
         cov_25 = self.compute_sn('25', **kwargs) + self.compute_mt('25', **kwargs) + self.compute_cv_rho_plus('25', **kwargs) +\
-            self.compute_cv_tau_plus('25', **kwargs) + self.compute_cv_minus('25', **kwargs)
+            self.compute_cv_tau_plus('25', **kwargs)
+        compute_minus = kwargs.get("compute_minus", True)
+        if compute_minus:
+            cov_25 += self.compute_cv_minus('25', **kwargs)
         return cov_25
 
     def compute_22_comp(self, **kwargs):
@@ -444,7 +456,10 @@ class CovTauTh:
             Auto-correlation tau_2/tau_2
         """
         cov_22 = self.compute_sn('22', **kwargs) + self.compute_mt('22', **kwargs) +self.compute_cv_rho_plus('22', **kwargs) +\
-            self.compute_cv_tau_plus('22', **kwargs) + self.compute_cv_minus('22', **kwargs)
+            self.compute_cv_tau_plus('22', **kwargs)
+        compute_minus = kwargs.get("compute_minus", True)
+        if compute_minus:
+            cov_22 += self.compute_cv_minus('22', **kwargs)
         return cov_22
 
     def compute_55_comp(self, **kwargs):
@@ -457,7 +472,10 @@ class CovTauTh:
             Auto-correlation tau_5/tau_5
         """
         cov_55 = self.compute_sn('55', **kwargs) + self.compute_mt('55', **kwargs) + self.compute_cv_rho_plus('55', **kwargs) +\
-            self.compute_cv_tau_plus('55', **kwargs) + self.compute_cv_minus('55', **kwargs)
+            self.compute_cv_tau_plus('55', **kwargs)
+        compute_minus = kwargs.get("compute_minus", True)
+        if compute_minus:
+            cov_55 += self.compute_cv_minus('55', **kwargs)
         return cov_55
     
     def compute_sn(self, component, **kwargs):
