@@ -163,6 +163,8 @@ class CovTauTh:
             "w_col": "w",
             "ra_col": "RA",
             "dec_col": "Dec",
+            "ra_PSF_col": "RA",
+            "dec_PSF_col": "Dec",
             "e1_PSF_col": "E1_PSF_HSM",
             "e2_PSF_col": "E2_PSF_HSM",
             "e1_star_col": "E1_STAR_HSM",
@@ -268,13 +270,13 @@ class CovTauTh:
         )
 
         psf = treecorr.Catalog(
-            ra=cat_psf[self._params['ra_col']], dec=cat_psf[self._params['dec_col']],
+            ra=cat_psf[self._params['ra_PSF_col']], dec=cat_psf[self._params['dec_PSF_col']],
             g1=cat_psf[self._params['e1_PSF_col']], g2=cat_psf[self._params['e2_PSF_col']],
             ra_units=ra_units, dec_units=dec_units
         )
 
         psf_error = treecorr.Catalog(
-            ra=cat_psf[self._params['ra_col']], dec=cat_psf[self._params['dec_col']],
+            ra=cat_psf[self._params['ra_PSF_col']], dec=cat_psf[self._params['dec_PSF_col']],
             g1=cat_psf[self._params['e1_star_col']]-cat_psf[self._params['e1_PSF_col']],
             g2=cat_psf[self._params['e2_star_col']]-cat_psf[self._params['e2_PSF_col']],
             ra_units=ra_units, dec_units=dec_units
@@ -286,7 +288,7 @@ class CovTauTh:
             (cat_psf[self._params['star_size']]-cat_psf[self._params['PSF_size']])/cat_psf[self._params['star_size']]
 
             size_error = treecorr.Catalog(
-                ra=cat_psf[self._params['ra_col']], dec=cat_psf[self._params['dec_col']],
+                ra=cat_psf[self._params['ra_PSF_col']], dec=cat_psf[self._params['dec_PSF_col']],
                 g1=cat_psf[self._params['e1_star_col']]*size_resid,
                 g2=cat_psf[self._params['e2_star_col']]*size_resid,
                 ra_units=ra_units, dec_units=dec_units
