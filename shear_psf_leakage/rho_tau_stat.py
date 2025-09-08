@@ -214,12 +214,18 @@ class Catalogs:
             "dec_col": "Dec",
             "ra_PSF_col": "RA",
             "dec_PSF_col": "Dec",
+            "ra_PSF_col": "RA",
+            "dec_PSF_col": "Dec",
             "e1_PSF_col": "E1_PSF_HSM",
             "e2_PSF_col": "E2_PSF_HSM",
             "e1_star_col": "E1_STAR_HSM",
             "e2_star_col": "E2_STAR_HSM",
             "PSF_size": "SIGMA_PSF_HSM",
             "star_size": "SIGMA_STAR_HSM",
+            "M_4_1_psf_col": "M_4_PSF_1",
+            "M_4_2_psf_col": "M_4_PSF_2",
+            "M_4_1_star_col": "M_4_STAR_1",
+            "M_4_2_star_col": "M_4_STAR_2",
             "M_4_1_psf_col": "M_4_PSF_1",
             "M_4_2_psf_col": "M_4_PSF_2",
             "M_4_1_star_col": "M_4_STAR_1",
@@ -304,7 +310,10 @@ class Catalogs:
         """
 
         allowed_types = ['gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error']
+        allowed_types = ['gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error']
 
+        assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
+                                           "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'.")
         assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
                                            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'.")
 
@@ -328,7 +337,7 @@ class Catalogs:
         else:
             #Add a mask?
             #mask = (self.dat_psf[self._params["FLAG_PSF_HSM"]]==0) & (self.dat_psf[self._params["FLAG_STAR_HSM"]]==0)
-            if self._params.get("ra_PSF_col", None) is not None: #Check if a name for the columns of the PSF coordinates is given
+            if self._params["ra_PSF_col"] is not None: #Check if a name for the columns of the PSF coordinates is given
                 ra = cat[self._params["ra_PSF_col"]]
                 dec = cat[self._params["dec_PSF_col"]]
             else: #Else takes the same than the galaxy catalogue
@@ -540,6 +549,7 @@ class RhoStat:
             self._treecorr_config = treecorr_config
         self.use_eta = use_eta
         self.scalar_eta = scalar_eta
+        self.use_fourth_moment = use_fourth_moment
         self.use_fourth_moment = use_fourth_moment
 
         if self.scalar_eta and not self.use_eta:
@@ -759,7 +769,7 @@ class RhoStat:
         elif self.use_fourth_moment and not self.use_eta:
             self.rho_stats = Table(
                 [
-                    rho_0.rnom,
+                    rho_0.meanr,
                     rho_0.xip,
                     rho_0.varxip,
                     rho_0.xim,
@@ -849,7 +859,7 @@ class RhoStat:
         elif self.use_fourth_moment and self.use_eta:
             self.rho_stats = Table(
                 [
-                    rho_0.rnom,
+                    rho_0.meanr,
                     rho_0.xip,
                     rho_0.varxip,
                     rho_0.xim,
@@ -1011,6 +1021,7 @@ class RhoStat:
             )
 
 
+
         if self.verbose:
             print("Done...")
 
@@ -1024,8 +1035,11 @@ class RhoStat:
                 rhos += [rho_6, rho_7, rho_8, rho_9, rho_10, rho_11, rho_12]
             if self.use_fourth_moment and self.use_eta:
                 rhos += [rho_13, rho_14]
-            cov = treecorr.estimate_multi_cov(rhos, var_method, func=func)
+            cov = treecorr.estimate_multi_cov(rhos, var_method, func)
 
+            use_eta_str = '' if self.use_eta else 'no_eta'
+            use_fourth_moment_str = '' if not self.use_fourth_moment else 'w_fourth_moment'
+            np.save(self.catalogs._output+'/'+'cov_rho_'+catalog_id+use_eta_str+use_fourth_moment_str, cov)
             use_eta_str = '' if self.use_eta else 'no_eta'
             use_fourth_moment_str = '' if not self.use_fourth_moment else 'w_fourth_moment'
             np.save(self.catalogs._output+'/'+'cov_rho_'+catalog_id+use_eta_str+use_fourth_moment_str, cov)
@@ -1209,6 +1223,7 @@ class TauStat:
         self.use_eta = use_eta
         self.scalar_eta = scalar_eta
         self.use_fourth_moment = use_fourth_moment
+        self.use_fourth_moment = use_fourth_moment
         if self.scalar_eta and not self.use_eta:
             print(
                 "Warning: scalar_eta is set to True but use_eta is set to False. Setting use_eta to True."
@@ -1276,6 +1291,10 @@ class TauStat:
                 mask=mask,
             )
             if self.use_eta:
+                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
+            if self.use_fourth_moment:
+                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment', key='psf_fourth_moment_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
+                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment_error', key='psf_fourth_moment_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
                 self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
             if self.use_fourth_moment:
                 self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment', key='psf_fourth_moment_'+catalog_id, patch_centers=patch_centers, square_size=square_size, mask=mask)
@@ -1408,7 +1427,7 @@ class TauStat:
 
             self.tau_stats = Table(
                 [
-                    tau_0.rnom,
+                    tau_0.meanr,
                     tau_0.xip,
                     tau_0.varxip,
                     tau_0.xim,
@@ -1451,7 +1470,7 @@ class TauStat:
 
             self.tau_stats = Table(
                 [
-                    tau_0.rnom,
+                    tau_0.meanr,
                     tau_0.xip,
                     tau_0.varxip,
                     tau_0.xim,
@@ -1949,7 +1968,7 @@ class PSFErrorFit:
 
     def run_chain(
         self,
-        init=np.array([0.0, 0.0,0.0, 0.0,  0.0]),
+        init=np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
         nwalkers=124,
         nsamples=10000,
         discard=300,
@@ -2003,11 +2022,15 @@ class PSFErrorFit:
         np.array:
             Error bars at the 68% confidence level.
         """
-        ndim = 3
-        assert (self.rho_stat_handler.rho_stats is not None), ("Please load rho statistics data.") #Check if data was loaded
-        assert (self.tau_stat_handler.tau_stats is not None), ("Please load tau statistics data.")
-        #assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
-        #Check that the abssiss are the same
+        ndim = 5
+        assert (
+            self.rho_stat_handler.rho_stats is not None
+        ), "Please load rho statistics data."  # Check if data was loaded
+        assert (
+            self.tau_stat_handler.tau_stats is not None
+        ), "Please load tau statistics data."
+        # assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
+        # Check that the abssiss are the same
 
         assert self.cov_tau is not None, "Please load a covariance matrix"
 
@@ -2217,6 +2240,13 @@ class PSFErrorFit:
         if rho is None:
             rho_stats = self.rho_stat_handler.rho_stats
             for i in range(n_thetas):
+                if self.use_eta:
+                    rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_5_p"][i]]
+                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_4_p'][i]]
+                    rho_matrix[i+2*n_thetas] = [rho_stats['rho_5_p'][i], rho_stats['rho_4_p'][i], rho_stats['rho_3_p'][i]]
+                else:
+                    rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i]]
+                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i]]
                 if (self.use_eta) and (not self.use_fourth_moment):
                     rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_5_p"][i]]
                     rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_4_p'][i]]
@@ -2238,11 +2268,22 @@ class PSFErrorFit:
         else:
             rho_stats = rho
             for i in range(n_thetas):
-                if self.use_eta:
+                if (self.use_eta) and (not self.use_fourth_moment):
                     rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[5, i]]
                     rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[4, i]]
                     rho_matrix[i+2*n_thetas] = [rho_stats[5, i], rho_stats[4, i], rho_stats[3, i]]
-                else:
+                elif (self.use_eta) and (self.use_fourth_moment):
+                    rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[5, i], rho_stats[7, i], rho_stats[12, i]]
+                    rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[4, i], rho_stats[8, i], rho_stats[11, i]]
+                    rho_matrix[i+2*n_thetas] = [rho_stats[5, i], rho_stats[4, i], rho_stats[3, i], rho_stats[13, i], rho_stats[14, i]]
+                    rho_matrix[i+3*n_thetas] = [rho_stats[7, i], rho_stats[8, i], rho_stats[13, i], rho_stats[6, i], rho_stats[10, i]]
+                    rho_matrix[i+4*n_thetas] = [rho_stats[12, i], rho_stats[11, i], rho_stats[14, i], rho_stats[10, i], rho_stats[9, i]]
+                elif (not self.use_eta) and (self.use_fourth_moment):
+                    rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[4, i], rho_stats[9, i]]
+                    rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[5, i], rho_stats[8, i]]
+                    rho_matrix[i+2*n_thetas] = [rho_stats[4, i], rho_stats[5, i], rho_stats[3, i], rho_stats[7, i]]
+                    rho_matrix[i+3*n_thetas] = [rho_stats[9, i], rho_stats[8, i], rho_stats[7, i], rho_stats[6, i]]
+                elif (not self.use_eta) and (not self.use_fourth_moment):
                     rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i]]
                     rho_matrix[i + n_thetas] = [
                         rho_stats[2, i],
@@ -2342,10 +2383,12 @@ class PSFErrorFit:
         rho_stats = self.rho_stat_handler.rho_stats
         rho_mean = [rho_stats["rho_0_p"], rho_stats["rho_1_p"], rho_stats["rho_2_p"]]
         if self.use_eta:
-            rho_mean = np.array([rho_stats["rho_0_p"], rho_stats["rho_1_p"], rho_stats["rho_2_p"], rho_stats["rho_3_p"],
-                                rho_stats["rho_4_p"], rho_stats["rho_5_p"]]).flatten()
-        else:
-            rho_mean = np.array([rho_stats["rho_0_p"], rho_stats["rho_1_p"], rho_stats["rho_2_p"]]).flatten()
+            rho_mean += [rho_stats["rho_3_p"], rho_stats["rho_4_p"], rho_stats["rho_5_p"]]
+        if self.use_fourth_moment:
+            rho_mean += [rho_stats["rho_6_p"], rho_stats["rho_7_p"], rho_stats["rho_8_p"], rho_stats["rho_9_p"], rho_stats["rho_10_p"], rho_stats["rho_11_p"], rho_stats["rho_12_p"]]
+        if self.use_eta and self.use_fourth_moment:
+            rho_mean += [rho_stats["rho_13_p"], rho_stats["rho_14_p"]]
+        rho_mean = np.array(rho_mean).flatten()
         tau_stats = self.tau_stat_handler.tau_stats
         tau_mean = [tau_stats["tau_0_p"], tau_stats["tau_2_p"]]
         if self.use_eta:
