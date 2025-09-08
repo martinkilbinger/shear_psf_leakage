@@ -316,7 +316,7 @@ class Catalogs():
         else:
             #Add a mask?
             #mask = (self.dat_psf[self._params["FLAG_PSF_HSM"]]==0) & (self.dat_psf[self._params["FLAG_STAR_HSM"]]==0)
-            if self._params["ra_PSF_col"] is not None: #Check if a name for the columns of the PSF coordinates is given
+            if self._params.get("ra_PSF_col", None) is not None: #Check if a name for the columns of the PSF coordinates is given
                 ra = cat[self._params["ra_PSF_col"]]
                 dec = cat[self._params["dec_PSF_col"]]
             else: #Else takes the same than the galaxy catalogue
