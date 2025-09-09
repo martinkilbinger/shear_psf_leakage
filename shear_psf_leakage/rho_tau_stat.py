@@ -1035,7 +1035,7 @@ class RhoStat:
                 rhos += [rho_6, rho_7, rho_8, rho_9, rho_10, rho_11, rho_12]
             if self.use_fourth_moment and self.use_eta:
                 rhos += [rho_13, rho_14]
-            cov = treecorr.estimate_multi_cov(rhos, var_method, func)
+            cov = treecorr.estimate_multi_cov(rhos, var_method, func=func)
 
             use_eta_str = '' if self.use_eta else 'no_eta'
             use_fourth_moment_str = '' if not self.use_fourth_moment else 'w_fourth_moment'
@@ -1576,6 +1576,7 @@ class TauStat:
     def load_tau_stats(self, filename):
         self.tau_stats = fits.getdata(self.catalogs._output + "/" + filename)
 
+<<<<<<< HEAD
     def plot_tau_stats(
         self,
         filenames,
@@ -1587,6 +1588,9 @@ class TauStat:
         show=False,
         close=True,
     ):
+=======
+    def plot_tau_stats(self, filenames, colors, catalog_ids, savefig=None, plot_tau_m=True, legend="inside", show=False, close=True):
+>>>>>>> 731193f (Update shear_psf_leakage to cosmo_val.)
         """
         plot_tau_stats
 
@@ -1713,6 +1717,12 @@ class TauStat:
         if close:
             plt.close()
 
+        if show:
+            plt.show()
+
+        if close:
+            plt.close()
+            
         return fig, ax
 
 
@@ -2615,6 +2625,7 @@ class PSFErrorFit:
         self, cat_id, theta, out_path, yscale="log", show=False
     ):
 
+<<<<<<< HEAD
         ls = [
             "dotted",
             "dashed",
@@ -2623,6 +2634,11 @@ class PSFErrorFit:
             (0, (1, 10)),
             (0, (5, 5)),
         ]
+=======
+    def plot_xi_psf_sys_terms(self, cat_id, theta, out_path, yscale="log", show=False):
+
+        ls = ["dotted", "dashed", "dashdot", (-1, (3, 5, 1, 5, 1, 5)), (0, (1, 10)), (0, (5, 5))]
+>>>>>>> 731193f (Update shear_psf_leakage to cosmo_val.)
         color = ["green", "blue", "red", "magenta", "cyan", "orange"]
 
         plt.figure(figsize=(15, 6))
@@ -2685,7 +2701,11 @@ class PSFErrorFit:
         plt.legend(loc="best", fontsize="small")
         plt.ylim(ylim)
         plt.tight_layout()
+<<<<<<< HEAD
         plt.savefig(out_path, bbox_inches="tight")
+=======
+        plt.savefig(out_path, bbox_inches='tight')
+>>>>>>> 731193f (Update shear_psf_leakage to cosmo_val.)
         if show:
             plt.show()
         plt.close()
