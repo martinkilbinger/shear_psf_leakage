@@ -214,8 +214,6 @@ class Catalogs:
             "dec_col": "Dec",
             "ra_PSF_col": "RA",
             "dec_PSF_col": "Dec",
-            "ra_PSF_col": "RA",
-            "dec_PSF_col": "Dec",
             "e1_PSF_col": "E1_PSF_HSM",
             "e2_PSF_col": "E2_PSF_HSM",
             "e1_star_col": "E1_STAR_HSM",
@@ -1576,7 +1574,6 @@ class TauStat:
     def load_tau_stats(self, filename):
         self.tau_stats = fits.getdata(self.catalogs._output + "/" + filename)
 
-<<<<<<< HEAD
     def plot_tau_stats(
         self,
         filenames,
@@ -1588,9 +1585,6 @@ class TauStat:
         show=False,
         close=True,
     ):
-=======
-    def plot_tau_stats(self, filenames, colors, catalog_ids, savefig=None, plot_tau_m=True, legend="inside", show=False, close=True):
->>>>>>> 731193f (Update shear_psf_leakage to cosmo_val.)
         """
         plot_tau_stats
 
@@ -2625,7 +2619,6 @@ class PSFErrorFit:
         self, cat_id, theta, out_path, yscale="log", show=False
     ):
 
-<<<<<<< HEAD
         ls = [
             "dotted",
             "dashed",
@@ -2634,11 +2627,6 @@ class PSFErrorFit:
             (0, (1, 10)),
             (0, (5, 5)),
         ]
-=======
-    def plot_xi_psf_sys_terms(self, cat_id, theta, out_path, yscale="log", show=False):
-
-        ls = ["dotted", "dashed", "dashdot", (-1, (3, 5, 1, 5, 1, 5)), (0, (1, 10)), (0, (5, 5))]
->>>>>>> 731193f (Update shear_psf_leakage to cosmo_val.)
         color = ["green", "blue", "red", "magenta", "cyan", "orange"]
 
         plt.figure(figsize=(15, 6))
@@ -2701,11 +2689,7 @@ class PSFErrorFit:
         plt.legend(loc="best", fontsize="small")
         plt.ylim(ylim)
         plt.tight_layout()
-<<<<<<< HEAD
-        plt.savefig(out_path, bbox_inches="tight")
-=======
         plt.savefig(out_path, bbox_inches='tight')
->>>>>>> 731193f (Update shear_psf_leakage to cosmo_val.)
         if show:
             plt.show()
         plt.close()
