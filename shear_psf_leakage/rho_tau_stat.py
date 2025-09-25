@@ -548,7 +548,6 @@ class RhoStat:
         self.use_eta = use_eta
         self.scalar_eta = scalar_eta
         self.use_fourth_moment = use_fourth_moment
-        self.use_fourth_moment = use_fourth_moment
 
         if self.scalar_eta and not self.use_eta:
             print(
@@ -1196,6 +1195,7 @@ class TauStat:
         use_eta=True,
         scalar_eta=False,
         treecorr_config=None,
+        use_fourth_moment=False,
         catalogs=None,
         verbose=False,
     ):
@@ -1220,7 +1220,6 @@ class TauStat:
 
         self.use_eta = use_eta
         self.scalar_eta = scalar_eta
-        self.use_fourth_moment = use_fourth_moment
         self.use_fourth_moment = use_fourth_moment
         if self.scalar_eta and not self.use_eta:
             print(
@@ -1891,7 +1890,7 @@ class PSFErrorFit:
 
         def log_prior(theta):
             alpha, beta, eta, alpha_4, beta_4 = theta
-            if low_alpha <= alpha <= high_alpha and low_beta <= beta <= high_beta and low_eta <=eta <= high_eta and low_alpha_4 <= alpha <= high_alpha_4 and low_beta_4 <= beta <= high_beta_4:
+            if low_alpha <= alpha <= high_alpha and low_beta <= beta <= high_beta and low_eta <=eta <= high_eta and low_alpha_4 <= alpha_4 <= high_alpha_4 and low_beta_4 <= beta_4 <= high_beta_4:
                 return 0.0
             return -np.inf
 
@@ -1964,11 +1963,11 @@ class PSFErrorFit:
         inv_cov : np.array
             Inverse of the covariane matrix.
         """
-
         lp = self.log_prior(theta)
         if not np.isfinite(lp):
             return -np.inf
-        return lp + self.log_likelihood(theta, y, inv_cov)
+        log_posterior = lp + self.log_likelihood(theta, y, inv_cov)
+        return log_posterior
 
     def run_chain(
         self,
@@ -2083,7 +2082,7 @@ class PSFErrorFit:
 
         if savefig is not None:
             fig, axes = plt.subplots(
-                3, figsize=(10, 7), sharex=True
+                5, figsize=(10, 7), sharex=True
             )  # Result completely unconstrained. have another look at the covariance matrix
             samples = sampler.get_chain()
             for i in range(ndim):
@@ -2401,7 +2400,7 @@ class PSFErrorFit:
             tau_mean += [tau_stats["tau_6_p"], tau_stats["tau_7_p"]]
         tau_mean = np.array(tau_mean).flatten()
 
-        for i in tqdm(range(nsamples)):
+        for i in tqdm(range(n_samples)):
             rho = np.random.multivariate_normal(rho_mean, self.cov_rho)
             if self.use_eta and not self.use_fourth_moment:
                 rho = rho.reshape((6, -1))
