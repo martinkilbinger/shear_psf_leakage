@@ -3,12 +3,12 @@ from contextlib import contextmanager
 
 import numpy as np
 
-from matplotlib import pyplot as plt
-
 from astropy.io import fits
 from cs_util import args as cs_args
 from cs_util import logging
 from lmfit import Parameters
+
+from matplotlib import pyplot as plt
 
 from . import leakage, plots
 
@@ -146,7 +146,11 @@ class LeakageObject:
                 verbose=self._params["verbose"],
                 stop=True,
             )
-        if self._params["cols_ratio"] and type(self._params["cols_ratio"]) != list:
+
+        if (
+            self._params["cols_ratio"]
+            and type(self._params["cols_ratio"]) != list
+        ):
             self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,
@@ -280,28 +284,29 @@ class LeakageObject:
             verbose=self._params["verbose"],
         )
 
-        # Save regression results        
+
+        # Save regression results
         self._m_arr = m_arr
         self._m_err_arr = m_err_arr
         self._tick_name_arr = tick_name_arr
-                
+
         # Add ellipticity regression results from earlier if available
         try:
             self._m_arr.insert(0, self.par_best_fit["a11"].value)
             self._m_arr.insert(1, self.par_best_fit["a22"].value)
-            self._m_arr.insert(2, self.par_best_fit["a12"].value) 
-            self._m_arr.insert(3, self.par_best_fit["a21"].value) 
- 
+            self._m_arr.insert(2, self.par_best_fit["a12"].value)
+            self._m_arr.insert(3, self.par_best_fit["a21"].value)
+
             self._m_err_arr.insert(0, self.par_best_fit["a11"].stderr)
             self._m_err_arr.insert(1, self.par_best_fit["a22"].stderr)
-            self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr) 
-            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr) 
+            self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr)
+            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr)
 
             self._tick_name_arr.insert(0, "e1_e1")
             self._tick_name_arr.insert(1, "e2_e2")
             self._tick_name_arr.insert(2, "e1_e2")
             self._tick_name_arr.insert(3, "e2_e1")
-    
+
         except:
             print("Ellipticity regression parameters not found, continuing")
 
@@ -317,7 +322,7 @@ class LeakageObject:
         ticks_positions = np.arange(1, len(self._m_arr) + 1, 1)
 
         dy = np.array(self._m_err_arr)
-        
+
         if mode == "ylin":
             y = np.array(self._m_arr)
             plt.ylabel(r"$m$")
@@ -326,14 +331,14 @@ class LeakageObject:
             y = np.abs(self._m_arr)
             plt.ylabel(r"$|m|$")
             plt.yscale("log")
-            
+
         elif mode == "ysig":
             y = np.abs(self._m_arr) / np.array(self._m_err_arr)
             dy = np.zeros_like(dy)
             plt.ylabel(r"$|m| / \sigma$")
 
         plt.errorbar(ticks_positions, y, yerr=dy, color="peru", fmt=".")
- 
+
         plt.xticks(
             ticks_positions,
             self._tick_name_arr,
@@ -349,7 +354,7 @@ class LeakageObject:
         title = r"($e_1$, $e_2$) dependence"
         plt.title(title, fontsize=10)
         plt.tight_layout()
-            
+
         out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}"
         plt.savefig(out_path)
         plt.close()

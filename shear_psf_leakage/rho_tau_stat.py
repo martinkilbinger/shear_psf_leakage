@@ -672,16 +672,22 @@ class RhoStat:
             self.catalogs.get_cat("psf_error_" + catalog_id),
             self.catalogs.get_cat("psf_" + catalog_id),
         )
+        rho_3 = treecorr.GGCorrelation(self._treecorr_config)
         if self.use_eta:
-            rho_3 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_3.process(self.catalogs.get_cat('psf_size_error_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            rho_3.process(
+                self.catalogs.get_cat("psf_size_error_" + catalog_id),
+                self.catalogs.get_cat("psf_size_error_" + catalog_id),
+            )
             rho_4 = treecorr.GGCorrelation(self._treecorr_config)
             rho_4.process(
                 self.catalogs.get_cat("psf_error_" + catalog_id),
                 self.catalogs.get_cat("psf_size_error_" + catalog_id),
             )
             rho_5 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_5.process(self.catalogs.get_cat('psf_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            rho_5.process(
+                self.catalogs.get_cat("psf_" + catalog_id),
+                self.catalogs.get_cat("psf_size_error_" + catalog_id),
+            )
 
         if self.use_fourth_moment:
             rho_6 = treecorr.GGCorrelation(self._treecorr_config)
@@ -1017,8 +1023,6 @@ class RhoStat:
                 ),
             )
 
-
-
         if self.verbose:
             print("Done...")
 
@@ -1176,7 +1180,7 @@ class RhoStat:
 
         if show:
             plt.show()
-        
+
         if close:
             plt.close()
 
@@ -1709,12 +1713,6 @@ class TauStat:
 
         if close:
             plt.close()
-
-        if show:
-            plt.show()
-
-        if close:
-            plt.close()
             
         return fig, ax
 
@@ -1829,8 +1827,8 @@ class PSFErrorFit:
                 target_shape = 3*nbins
             assert self.cov_rho.shape[0] == target_shape, "The shape of the covariance matrix is not correct."
         else:
-            self.cov_tau = np.load(self.data_directory+'/'+filename)
-            nbins = self.tau_stat_handler.tau_stats['theta'].shape[0]
+            self.cov_tau = np.load(self.data_directory + "/" + filename)
+            nbins = self.tau_stat_handler.tau_stats["theta"].shape[0]
             if not self.use_eta:
                 self.cov_tau = self.cov_tau[:2*nbins, :2*nbins]
             #Check shape
@@ -2254,14 +2252,25 @@ class PSFErrorFit:
             rho_matrix = np.zeros((4*n_thetas, 4))
         elif (not self.use_eta) and (not self.use_fourth_moment):
             rho_matrix = np.zeros((2*n_thetas, 2))
-
         if rho is None:
             rho_stats = self.rho_stat_handler.rho_stats
             for i in range(n_thetas):
                 if self.use_eta:
-                    rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_5_p"][i]]
-                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_4_p'][i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats['rho_5_p'][i], rho_stats['rho_4_p'][i], rho_stats['rho_3_p'][i]]
+                    rho_matrix[i] = [
+                        rho_stats["rho_0_p"][i],
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_5_p"][i],
+                    ]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_1_p"][i],
+                        rho_stats["rho_4_p"][i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats["rho_5_p"][i],
+                        rho_stats["rho_4_p"][i],
+                        rho_stats["rho_3_p"][i],
+                    ]
                 else:
                     rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i]]
                     rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i]]
@@ -2468,7 +2477,6 @@ class PSFErrorFit:
             print(
                 f"Chi square: {self.eval_chi_square(result[1,:], npatch=npatch, apply_debias=apply_debias)}"
             )
-
         return samples, result, q
 
     def eval_chi_square(self, theta, npatch=200, apply_debias=False):
@@ -2739,7 +2747,6 @@ class PSFErrorFit:
             alpha, beta = theta
             eta = 0.
             alpha_4, beta_4 = 0., 0.
-        
         if term == 0:
             prefactor = alpha**2
         elif term == 1:
