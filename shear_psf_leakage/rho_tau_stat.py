@@ -2025,7 +2025,18 @@ class PSFErrorFit:
         np.array:
             Error bars at the 68% confidence level.
         """
-        ndim = 5
+        if (not self.use_eta) and (not self.use_fourth_moment):
+            ndim = 2
+            dim_to_use = [0, 1]
+        elif (not self.use_eta) and (self.use_fourth_moment):
+            ndim = 4
+            dim_to_use = [0, 1, 3, 4]
+        elif (self.use_eta) and (not self.use_fourth_moment):
+            ndim = 3
+            dim_to_use = [0, 1, 2]
+        elif (self.use_eta) and (self.use_fourth_moment):
+            ndim = 5
+            dim_to_use = [0, 1, 2, 3, 4]
         assert (
             self.rho_stat_handler.rho_stats is not None
         ), "Please load rho statistics data."  # Check if data was loaded
@@ -2062,10 +2073,10 @@ class PSFErrorFit:
         if apply_debias:
             inv_cov = (npatch - output.shape[0] - 2) / (npatch - 1) * inv_cov
 
-        init = init + 1e-1 * np.random.randn(nwalkers, ndim)
+        init = init + 1e-1 * np.random.randn(nwalkers, 5)
 
         sampler = emcee.EnsembleSampler(
-            nwalkers, ndim, self.log_probability, args=(output, inv_cov)
+            nwalkers, 5, self.log_probability, args=(output, inv_cov)
         )
 
         print("Run MCMC analysis...")
@@ -2106,17 +2117,21 @@ class PSFErrorFit:
 
             print("Parameters constraints")
             print("----------------------")
-            for i in range(ndim):
+            for i, param in enumerate(dim_to_use):
                 print(
                     "Parameter: "
-                    + labels[i]
-                    + f"={mcmc_result[1, i]:.4f}^+{q[0, i]:.4f}_{q[1, i]:.4f}"
+                    + labels[param]
+                    + f"={mcmc_result[1, param]:.4f}^+{q[0, param]:.4f}_{q[1, param]:.4f}"
                 )
 
             print(
                 f"Max log_likelihood: {self.log_likelihood(mcmc_result[1,:], output, inv_cov)}"
             )
 
+        flat_samples = flat_samples[:, dim_to_use]
+        mcmc_result = mcmc_result[:, dim_to_use]
+        q = q[:, dim_to_use]
+        
         return flat_samples, mcmc_result, q
 
     def get_sample_path(self, catalog_id):
