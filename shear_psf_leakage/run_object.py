@@ -2,10 +2,12 @@ import os
 from contextlib import contextmanager
 
 import numpy as np
+
 from astropy.io import fits
 from cs_util import args as cs_args
 from cs_util import logging
 from lmfit import Parameters
+
 from matplotlib import pyplot as plt
 
 from . import leakage, plots
@@ -147,6 +149,7 @@ class LeakageObject:
                 verbose=self._params["verbose"],
                 stop=True,
             )
+
         if (
             self._params["cols_ratio"]
             and type(self._params["cols_ratio"]) != list
@@ -296,6 +299,7 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
+
 
         # Save regression results
         self._m_arr = m_arr
