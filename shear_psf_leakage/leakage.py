@@ -133,7 +133,7 @@ def cut_data(data, cut, verbose=False):
     """
     if cut is None:
         if verbose:
-            print("No cuts applied to input galaxy catalogue")
+            print("No cuts applied to input galaxy catalogue(s)")
 
         return data
 

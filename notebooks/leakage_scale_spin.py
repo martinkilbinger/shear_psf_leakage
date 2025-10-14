@@ -1,30 +1,8 @@
-# ---
-# jupyter:
-#   jupytext:
-#     cell_metadata_json: true
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.15.1
-#   kernelspec:
-#     display_name: sp_validation
-#     language: python
-#     name: python3
-# ---
+# %%
+# leakage_scale_spin.py
 
-# # PSF contamination: Scale-dependent PSF leakage
-#
-# ## Spin-consistent formalism
-#
-# Martin Kilbinger <martin.kilbinger@cea.fr>
 
-# %reload_ext autoreload
-# %autoreload 2
-# %matplotlib inline
-
-# +
+# %%
 import os
 import sys
 import matplotlib.pylab as plt
@@ -36,16 +14,14 @@ from cs_util import args
 
 from shear_psf_leakage import run_scale
 from shear_psf_leakage.leakage import *
-# -
 
-# ## Set up
+# %%
+# Set up
 
 # Create instance of scale-dependent leakage object
 obj_scale = run_scale.LeakageScale()
 
-
-# ### Set input parameters
-
+# Set input parameters
 # Read python parameter file or get user input
 params_upd = args.read_param_script(
     "params_leakage_scale.py",
@@ -55,132 +31,147 @@ params_upd = args.read_param_script(
 for key in params_upd:
     obj_scale._params[key] = params_upd[key]
 
-# ### Run
+# Other input parameters
+params_other = {}
+keys_other = ["output_base_path_corr", "read_if_exists"]
+for key in keys_other:
+    params_other[key] = params_upd[key] if key in params_upd else None
 
-# +
+# %%
+# Run
+
 # Check parameter validity
 obj_scale.check_params()
 
 # Prepare output directory and stats file
 obj_scale.prepare_output()
-# -
 
-# ### Read input catalogues
-
+# %%
 # Read input galaxy and star catalogue
 obj_scale.read_data()
 
-# #### Compute correlation function and alpha matrices
+# %%
+# Compute correlation function and alpha matrices
 # The following command calls `treecorr` to compute auto- and cross-correlation functions.
-# This can take a few minutes.
 
-obj_scale.compute_corr_gp_pp_alpha_matrix()
+obj_scale.compute_corr_gp_pp_alpha_matrix(
+    output_base_path=params_other["output_base_path_corr"],
+    read_if_exists=params_other["read_if_exists"],
+)
 
 obj_scale.alpha_matrix()
 
-#### For comparison: scalar alpha leakage
-obj_scale.compute_corr_gp_pp_alpha()
+# For comparison: scalar alpha leakage
+obj_scale.compute_corr_gp_pp_alpha(
+    output_base_path=params_other["output_base_path_corr"],
+    read_if_exists=params_other["read_if_exists"],
+)
 obj_scale.do_alpha()
 
-# #### PSF auto-correlation function correlation matrix
-#
-# $$
-# r = \frac{ \left( \xi_{12}^\textrm{p,p} \right)^2 }
-#     { \xi_{11}^\textrm{p,p} \, \xi_{22}^\textrm{p,p} }
-#   = \frac{ \left( \rho_{12, 0} \right)^2 }
-#       { \rho_{11, 0} \, \rho_{22, 0} }
-# $$
+# %%
+def plot_and_check_r(obj_scale, theta, xlim):
 
-# Check symmetry of PSF auto-correlation matrix
-diff = obj_scale.Xi_pp_m[0][1] - obj_scale.Xi_pp_m[1][0]
-print(
-    "Is r symmetrical? max abs (rel) diff ="
-    + f" {max(np.abs(diff)):.3e}"
-    + f" ({max(np.abs(diff / obj_scale.Xi_pp_m[0][1])):.3e})",
-)
+    # Check symmetry of PSF auto-correlation matrix
+    diff = obj_scale.Xi_pp_m[0][1] - obj_scale.Xi_pp_m[1][0]
+    print(
+        "Is r symmetrical? max abs (rel) diff ="
+        + f" {max(np.abs(diff)):.3e}"
+        + f" ({max(np.abs(diff / obj_scale.Xi_pp_m[0][1])):.3e})",
+    )
 
-# +
-# Plot r and ratios of r
+    # Plot r and ratios of r
 
+    # Exact: Using centered correlation functions
+    r = []
+    r_ratio_1 = []
+    r_ratio_2 = []
+    for ndx in range(len(theta)):
+        my_r = (
+            obj_scale.Xi_pp_ufloat[ndx][0, 1] ** 2
+            / (obj_scale.Xi_pp_ufloat[ndx][0, 0] * obj_scale.Xi_pp_ufloat[ndx][1, 1])
+        )
+        r.append(my_r)
+        if my_r != 1:
+            r_ratio_1.append(1 / (1 - my_r))
+            r_ratio_2.append(my_r / (1 - my_r)) 
+        else:
+            r_ratio_1.append(0)
+            r_ratio_2.append(0)
+
+    print("min max mean r = ", np.min(r), np.max(r), np.mean(r))
+
+    # Approximate: Using uncentered correlation functions
+    r_fast = obj_scale.xi_pp_m[0][1] ** 2 / (obj_scale.xi_pp_m[0][0] * obj_scale.xi_pp_m[1][1])
+
+    n = 6
+    theta_arr = [theta] * n
+    r_arr = []
+    dr_arr = []
+    
+    r_arr.append(unumpy.nominal_values(r))
+    r_arr.append(unumpy.nominal_values(r_ratio_1))
+    r_arr.append(unumpy.nominal_values(r_ratio_2))
+    r_arr.append(r_fast)
+    r_arr.append(1 / (1 - r_fast))
+    r_arr.append(r_fast / (1 - r_fast))
+
+    dr_arr.append(unumpy.std_devs(r))
+    dr_arr.append(unumpy.std_devs(r_ratio_1))
+    dr_arr.append(unumpy.std_devs(r_ratio_2))
+    for idx in range(3):
+        dr_arr.append(np.nan)
+
+    labels = ["$r$", "$1/(1-r)$", "$r/(1-r)$", "", "", ""]
+    colors = ["blue", "orange", "green", "blue", "orange", "green"]
+    linestyles = ["-"] * 3 + ["--"] * 3
+    linewidths = [2] * 3 + [1] * 3
+
+    xlabel = r"$\theta$ [arcmin]"
+    ylabel = r"functions of $r(\theta)$"
+
+    ylim = (-0.5, 2)
+
+    out_path = f"{obj_scale._params['output_dir']}/r.png"
+
+    title = ""
+
+    cs_plots.plot_data_1d(
+        theta_arr,
+        r_arr,
+        dr_arr,
+        title,
+        xlabel,
+        ylabel,
+        out_path,
+        labels=labels,
+        xlog=True,
+        xlim=xlim,
+        ylim=ylim,
+        colors=colors,
+        linewidths=linewidths,
+        linestyles=linestyles,
+        close_fig=False,
+        shift_x=True,
+    )
+
+
+# Global plot parameters
+
+# Angular scales
 theta = obj_scale.get_theta()
 
-# Exact: Using centered correlation functions
-r = []
-r_ratio_1 = []
-r_ratio_2 = []
-for ndx in range(len(theta)):
-    my_r = (
-        obj_scale.Xi_pp_ufloat[ndx][0, 1] ** 2
-        / (obj_scale.Xi_pp_ufloat[ndx][0, 0] * obj_scale.Xi_pp_ufloat[ndx][1, 1])
-    )
-    r.append(my_r)
-    r_ratio_1.append(1 / (1 - my_r))
-    r_ratio_2.append(my_r / (1 - my_r)) 
-
-print("min max mean r = ", np.min(r), np.max(r), np.mean(r))
-
-# Approximate: Using uncentered correlation functions
-r_fast = obj_scale.xi_pp_m[0][1] ** 2 / (obj_scale.xi_pp_m[0][0] * obj_scale.xi_pp_m[1][1])
-
-n = 6
-theta_arr = [theta] * n
-r_arr = []
-dr_arr = []
-    
-r_arr.append(unumpy.nominal_values(r))
-r_arr.append(unumpy.nominal_values(r_ratio_1))
-r_arr.append(unumpy.nominal_values(r_ratio_2))
-r_arr.append(r_fast)
-r_arr.append(1 / (1 - r_fast))
-r_arr.append(r_fast / (1 - r_fast))
-
-dr_arr.append(unumpy.std_devs(r))
-dr_arr.append(unumpy.std_devs(r_ratio_1))
-dr_arr.append(unumpy.std_devs(r_ratio_2))
-for idx in range(3):
-    dr_arr.append(np.nan)
-
-labels = ["$r$", "$1/(1-r)$", "$r/(1-r)$", "", "", ""]
-colors = ["blue", "orange", "green", "blue", "orange", "green"]
-linestyles = ["-"] * 3 + ["--"] * 3
-linewidths = [2] * 3 + [1] * 3
-
-xlabel = r"$\theta$ [arcmin]"
-ylabel = r"functions of $r(\theta)$"
-
+# Axes limits
 fac = 0.9
 xlim = [
     obj_scale._params["theta_min_amin"] * fac,
     obj_scale._params["theta_max_amin"],
 ]
-ylim = (-0.5, 2)
 
-out_path = f"{obj_scale._params['output_dir']}/r.png"
+# %%
+plot_and_check_r(obj_scale, theta, xlim)
 
-title = ""
-
-cs_plots.plot_data_1d(
-    theta_arr,
-    r_arr,
-    dr_arr,
-    title,
-    xlabel,
-    ylabel,
-    out_path,
-    labels=labels,
-    xlog=True,
-    xlim=xlim,
-    ylim=ylim,
-    colors=colors,
-    linewidths=linewidths,
-    linestyles=linestyles,
-    close_fig=False,
-    shift_x=True,
-)
-
-# +
+# %%
 # Plot alpha matrix elements
-
 ylim = obj_scale._params["leakage_alpha_ylim"]
 
 n = 4
@@ -224,9 +215,8 @@ cs_plots.plot_data_1d(
     shift_x=True,
 )
 
-# +
+# %%
 # Plot spin coefficients
-
 obj_scale.compute_alpha_spin_coeffs()
 
 n = 4
@@ -305,12 +295,10 @@ cs_plots.plot_data_1d(
     close_fig=False,
     shift_x=True,
 )
-# + \xi_ {"incorrectly_encoded_metadata": "{22}^\\textrm{g,p} \\, \\xi_{11}^\\textrm{p,p}"}
-# #### Consistency relations for scalar leakage
 
+# %%
+# Consistency relations for scalar leakage
 # If the leakage is a scalar function, it can be expressed in three different ways.
-
-# +
 alpha_1 = []
 alpha_2 = []
 for ndx in range(len(theta)):
@@ -378,11 +366,9 @@ cs_plots.plot_data_1d(
     markers=markers,
     linestyles=linestyles,
 )
-# -
 
+# %%
 # If alpha is a scalar, the mixed-component centered cross-correlation functions should be identical.
-
-# +
 Xi_12 = []
 Xi_21 = []
 Xi_tr = []
@@ -403,7 +389,7 @@ dy = [
 ]
 theta_arr = [theta] * len(y)
 
-labels = [r"$\tau_{0, 12}$", r"$\tau_{0,21}$", r"tr$\tau_{0}$"]
+labels = [r"$\tau_{0, 12}$", r"$\tau_{0,21}$", r"tr$\,\tau_{0}$"]
 xlabel = r"$\theta$ [arcmin]"
 ylabel = r"correlation functions $\tau_{0,ij}$"
 title = ""
@@ -428,9 +414,8 @@ cs_plots.plot_data_1d(
     linestyles=linestyles,
 )
 
-# +
+# %%
 # For comparison, plot the same for the PSF - PSF correlations
-
 Xi_12 = []
 Xi_21 = []
 Xi_tr = []
@@ -451,9 +436,9 @@ dy = [
 ]
 theta_arr = [theta] * len(y)
 
-labels = [r"$\rho_{0,12}$", r"$\rho_{0,21}$", r"tr$\rho_0$"]
+labels = [r"$\rho_{0,12}$", r"$\rho_{0,21}$", r"tr$\,\rho_0$"]
 xlabel = r"$\theta$ [arcmin]"
-ylabel = r"Centered correlation functions"
+ylabel = r"correlation functions $\rho_{0,ij}$"
 title = ""
 out_path = f"{obj_scale._params['output_dir']}/Xi_pp_mixed_consistency.png"
 markers = ["o", "s", "d"]
@@ -475,6 +460,3 @@ cs_plots.plot_data_1d(
     markers=markers,
     linestyles=linestyles,
 )
-# -
-
-

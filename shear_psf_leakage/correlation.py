@@ -10,6 +10,7 @@
 
 """
 
+import os
 import numpy as np
 import treecorr
 
@@ -168,7 +169,10 @@ def xi_a_b(
     theta_min_amin=2,
     theta_max_amin=200,
     n_theta=20,
+    var_method="shot",
     output_path=None,
+    read_if_exists=True,
+    verbose=False,
 ):
     """Xi A B.
 
@@ -202,8 +206,16 @@ def xi_a_b(
         minimum angular scale in arc minutes; default is 200
     n_theta : int, optional
         number of angular scales; default is 20
+    var_method : str, optional
+        method for error and covariance estimate, allowed are "shot" (default);
+        "jackknife"
     output_path : str, optional
         output file path; default is ``None`` (no file written)
+    read_if_exist : str, optional
+        read from file ``output_path`` if exists, do not carry out correlation
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
+
 
     Returns
     -------
@@ -213,25 +225,12 @@ def xi_a_b(
     """
     unit = "degrees"
 
-    cat_a = treecorr.Catalog(
-        ra=ra_a,
-        dec=dec_a,
-        g1=e1_a,
-        g2=e2_a,
-        w=w_a,
-        ra_units=unit,
-        dec_units=unit,
-    )
-    cat_b = treecorr.Catalog(
-        ra=ra_b,
-        dec=dec_b,
-        g1=e1_b,
-        g2=e2_b,
-        w=w_b,
-        ra_units=unit,
-        dec_units=unit,
-    )
+    if var_method == "jackknife":
+        npatch = 50
+    else:
+        npatch = 1
 
+    # Create correlation object
     TreeCorrConfig = {
         "ra_units": unit,
         "dec_units": unit,
@@ -239,13 +238,55 @@ def xi_a_b(
         "min_sep": theta_min_amin,
         "max_sep": theta_max_amin,
         "nbins": n_theta,
+        "var_method": var_method,
     }
-    gg = treecorr.GGCorrelation(TreeCorrConfig)
+    verb = 1 if verbose else 0
+    gg = treecorr.GGCorrelation(TreeCorrConfig, verbose=verb)
 
-    gg.process(cat_a, cat_b)
+    gg_read = False
+    if read_if_exists:
+        if output_path:
+            if os.path.exists(output_path):
+                if verbose:
+                    print(f"Reading correlation from file {output_path}")
+                gg.read(output_path)
+                gg_read = True
+            else:
+                if verbose:
+                    print(f"Correlation file {output_path} not found, continuing")
+        else:
+            if verbose:
+                print(f"Correlation file path not given, continuing")
 
-    if output_path:
-        gg.write(output_path)
+    if not gg_read:
+        if verbose:
+            print("Computing correlations...")
+
+        cat_a = treecorr.Catalog(
+            ra=ra_a,
+            dec=dec_a,
+            g1=e1_a,
+            g2=e2_a,
+            w=w_a,
+            ra_units=unit,
+            dec_units=unit,
+            npatch=npatch,
+        )
+        cat_b = treecorr.Catalog(
+            ra=ra_b,
+            dec=dec_b,
+            g1=e1_b,
+            g2=e2_b,
+            w=w_b,
+            ra_units=unit,
+            dec_units=unit,
+            npatch=npatch,
+        )
+
+        gg.process(cat_a, cat_b)
+
+        if output_path:
+            gg.write(output_path)
 
     return gg
 
@@ -263,7 +304,10 @@ def correlation_ab_bb(
     theta_min_amin=2,
     theta_max_amin=200,
     n_theta=20,
+    var_method="shot",
     output_base_path=None,
+    read_if_exists=False,
+    verbose=False,
 ):
     """Correlation ab bb.
 
@@ -288,8 +332,16 @@ def correlation_ab_bb(
         maximum angular scale in arcmin, default is 200
     n_theta : int, optional
         number of angular scales, default is 20
+    var_method : str, optional
+        method for error and covariance estimate, allowed are "shot" (default);
+        "jackknife"
     out_base_path : str, optional
         output file base path; default is ``None`` (no files written)
+    read_if_exist : str, optional                                            
+        read from files wit base `output_base_path`` if existing,        
+        do not carry out correlations
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
 
     Returns
     -------
@@ -304,6 +356,8 @@ def correlation_ab_bb(
         output_path_ab = None
         output_path_aa = None
 
+    if verbose:
+        print("Correlate a-b")
     r_corr_ab = xi_a_b(
         ra_a,
         dec_a,
@@ -317,8 +371,14 @@ def correlation_ab_bb(
         theta_min_amin=theta_min_amin,
         theta_max_amin=theta_max_amin,
         n_theta=n_theta,
+        var_method=var_method,
         output_path=output_path_ab,
+        read_if_exists=read_if_exists,
+        verbose=verbose,
     )
+    
+    if verbose:
+        print("Correlate b-b")
     r_corr_bb = xi_a_b(
         ra_b,
         dec_b,
@@ -332,7 +392,10 @@ def correlation_ab_bb(
         theta_min_amin=theta_min_amin,
         theta_max_amin=theta_max_amin,
         n_theta=n_theta,
+        var_method=var_method,
         output_path=output_path_aa,
+        read_if_exists=read_if_exists,
+        verbose=verbose,
     )
 
     return r_corr_ab, r_corr_bb
@@ -351,6 +414,10 @@ def correlation_ab_bb_matrix(
     theta_min_amin=2,
     theta_max_amin=200,
     n_theta=20,
+    var_method="shot",
+    output_base_path=None,
+    read_if_exists=False,
+    verbose=False,
 ):
     """Correlation ab bb Matrix.
 
@@ -375,6 +442,16 @@ def correlation_ab_bb_matrix(
         maximum angular scale in arcmin; default is 200
     n_theta : int, optional
         number of angular scales; default is 20
+    var_method : str, optional
+        method for error and covariance estimate, allowed are "shot" (default);
+        "jackknife"
+    out_base_path : str, optional
+        output file base path; default is ``None`` (no files written)
+    read_if_exist : str, optional                                            
+        read from files wit base `output_base_path`` if existing,        
+        do not carry out correlations
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
 
     Returns
     -------
@@ -409,6 +486,11 @@ def correlation_ab_bb_matrix(
 
     for idx in (0, 1):
         for jdx in (0, 1):
+            if verbose:
+                    print(f"Correlate a-b {idx}{jdx}")
+
+            output_path = f"{output_base_path}_{idx}_{jdx}_a_a.txt" if output_base_path else None
+
             xi_ab[idx][jdx] = xi_a_b(
                 ra_a,
                 dec_a,
@@ -421,8 +503,18 @@ def correlation_ab_bb_matrix(
                 ell_b_zero,
                 theta_min_amin=theta_min_amin,
                 theta_max_amin=theta_max_amin,
+                var_method=var_method,
                 n_theta=n_theta,
+                output_path=output_path,
+                read_if_exists=read_if_exists,
+                verbose=verbose,
             )
+
+            if verbose:
+                    print(f"Correlate b-b {idx}{jdx}")
+
+            output_path = f"{output_base_path}_{idx}_{jdx}_a_b.txt" if output_base_path else None
+
             xi_bb[idx][jdx] = xi_a_b(
                 ra_b,
                 dec_b,
@@ -436,6 +528,8 @@ def correlation_ab_bb_matrix(
                 theta_min_amin=theta_min_amin,
                 theta_max_amin=theta_max_amin,
                 n_theta=n_theta,
+                var_method=var_method,
+                verbose=verbose,
             )
 
     return xi_ab, xi_bb

@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from astropy import units
 from astropy.io import fits
+
 from cs_util import args as cs_args
 from cs_util import calc
 from cs_util import cat as cs_cat
@@ -53,32 +54,31 @@ def get_theo_xi(theta, dndz_path):
     return xi_p, xi_m
 
 
+#def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
+#"""Save Alpha.
+#
+    #Save scale-dependent alpha
+#
+    #Parameters
+    #----------
+    #theta : list
+        #angular scales
+    #alpha_leak : list
+        #leakage alpha(theta)
+    #sig_alpha_leak : list
+        #standard deviation of alpha(theta)
+    #sh : str
+        #shape measurement method, e.g. 'ngmix'
+    #output_dir : str
+        #output directory
+#
+    #"""
+    #cols = [theta, alpha_leak, sig_alpha_leak]
+    #names = ["# theta[arcmin]", "alpha", "sig_alpha"]
+    #fname = f"{output_dir}/alpha_leakage_{sh}.txt"
+    #write_ascii_table_file(cols, names, fname)
+
 # MKDEBUG TODO: make class function
-def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
-    """Save Alpha.
-
-    Save scale-dependent alpha
-
-    Parameters
-    ----------
-    theta : list
-        angular scales
-    alpha_leak : list
-        leakage alpha(theta)
-    sig_alpha_leak : list
-        standard deviation of alpha(theta)
-    sh : str
-        shape measurement method, e.g. 'ngmix'
-    output_dir : str
-        output directory
-
-    """
-    cols = [theta, alpha_leak, sig_alpha_leak]
-    names = ["# theta[arcmin]", "alpha", "sig_alpha"]
-    fname = f"{output_dir}/alpha_leakage_{sh}.txt"
-    write_ascii_table_file(cols, names, fname)
-
-
 def save_xi_sys(
     theta,
     xi_sys_p,
@@ -199,6 +199,7 @@ class LeakageScale:
             "theta_min_amin": 1,
             "theta_max_amin": 300,
             "n_theta": 20,
+            "var_method": "shot",
             "leakage_alpha_ylim": [-0.03, 0.1],
             "leakage_xi_sys_ylim": [-4e-5, 5e-5],
             "leakage_xi_sys_log_ylim": [2e-13, 5e-5],
@@ -258,6 +259,7 @@ class LeakageScale:
             "theta_min_amin": "mininum angular scale [arcmin], default={}",
             "theta_max_amin": "maximum angular scale [arcmin], default={}",
             "n_theta": "number of angular scales on input, default={}",
+            "var_method": "error and covariance estimator, defaul={}",
         }
 
     def check_params(self):
@@ -277,6 +279,12 @@ class LeakageScale:
             raise ValueError("No input star/PSF catalogue given")
         if not self._params["dndz_path"]:
             raise ValueError("No input n(z) file given")
+        allowed = ("shot", "jackknife")
+        if not self._params["var_method"] in allowed:
+            raise ValueError(
+                f"Invalid var method {self._params['var_method']}, allowed"
+                + f" are {allowed}"
+            )
 
         if "verbose" not in self._params:
             self._params["verbose"] = False
@@ -370,6 +378,9 @@ class LeakageScale:
 
         # xi_sys function
         self.do_xi_sys()
+        
+        # Clear treecorr objects
+        self.clear()
 
     def read_shear_cat(self):
         """Read Shear Cat.
@@ -618,7 +629,11 @@ class LeakageScale:
 
         return ra, dec, e1, e2, weights
 
-    def compute_corr_gp_pp_alpha(self, output_base_path=None):
+    def compute_corr_gp_pp_alpha(
+        self,
+        output_base_path=None,
+        read_if_exists=False,
+    ):
         """Compute Corr GP PP Alpha.
 
         Compute and plot scale-dependent PSF leakage functions.
@@ -627,8 +642,14 @@ class LeakageScale:
         ----------
         out_path : str, optional
                 output file path; default is ``None`` (no file written)
+        read_if_exist : str, optional
+                read from files wit base `output_base_path`` if existing,
+                do not carry out correlations
 
         """
+        if self._params["verbose"]:
+            print("Compute correlation functions")
+
         ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
         ra_star, dec_star, e1_star, e2_star, _ = self.get_cat_fields("star")
 
@@ -646,7 +667,10 @@ class LeakageScale:
             theta_min_amin=self._params["theta_min_amin"],
             theta_max_amin=self._params["theta_max_amin"],
             n_theta=self._params["n_theta"],
+            read_if_exists=read_if_exists,
             output_base_path=output_base_path,
+            var_method=self._params["var_method"],
+            verbose=self._params["verbose"],
         )
 
         # Check consistency of angular scales
@@ -656,10 +680,22 @@ class LeakageScale:
         self.r_corr_gp = r_corr_gp
         self.r_corr_pp = r_corr_pp
 
-    def compute_corr_gp_pp_alpha_matrix(self):
+    def compute_corr_gp_pp_alpha_matrix(
+        self,
+        output_base_path=None,
+        read_if_exists=False,
+    ):
         """Compute Corr GP PP Alpha Matrix.
 
         Compute and plot scale-dependent PSF leakage matrix.
+
+        Parameters
+        ----------
+        out_path : str, optional
+                output file path; default is ``None`` (no file written)
+        read_if_exist : str, optional
+                read from files wit base `output_base_path`` if existing,
+                do not carry out correlations
 
         """
         ra, dec, e1_gal, e2_gal, weights = self.get_cat_fields("gal")
@@ -679,6 +715,10 @@ class LeakageScale:
             theta_min_amin=self._params["theta_min_amin"],
             theta_max_amin=self._params["theta_max_amin"],
             n_theta=self._params["n_theta"],
+            var_method=self._params["var_method"],
+            read_if_exists=read_if_exists,
+            output_base_path=output_base_path,
+            verbose=self._params["verbose"],
         )
 
         # Check consistency of angular scales
@@ -1254,6 +1294,7 @@ class LeakageScale:
 
         """
 
+
     def save_alpha(self):
         """Save Alpha.
 
@@ -1283,6 +1324,21 @@ class LeakageScale:
         fname = f"{self._params['output_dir']}/alpha_leakage_matrix.txt"
         cs_cat.write_ascii_table_file(cols, names, fname)
 
+    def clear(self):
+        """Clear.
+        
+        Clear treecorr objects savely.
+        
+        """
+        objects = ["r_corr_gp", "r_corr_pp", "r_corr_gp_m", "r_corr_pp_m"]
+        for obj in objects:
+            if hasattr(self, obj):
+                print("MKDEBUG get ", obj)
+                attr = getattr(self, obj)
+                print("MKDEBUG remove ", obj)
+                attr.clear()
+                print("MKDEBUG set to None ", obj)
+                setattr(self, obj, None)
 
 def run_leakage_scale(*args):
     """Run Leakage Scale.
