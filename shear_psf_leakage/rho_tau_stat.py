@@ -390,7 +390,7 @@ class Catalogs:
         npatch=None,
         patch_centers=None,
         square_size=False,
-        mask=False,
+        mask=None,
     ):
         """
         build_catalogue
@@ -412,8 +412,8 @@ class Catalogs:
         square_size : bool
             If True, the size computed in the catalogue is squared (Default: False)
 
-        mask : bool
-            If True, use PSF and star flags to mask the data. (Default: False)
+        mask : np.array
+            A mask array to select only the relevant objects in the catalogue. If None, no mask is applied. (Default: None)
         """
 
         if npatch is None:
@@ -423,33 +423,27 @@ class Catalogs:
             cat, cat_type, square_size
         )
 
-        if mask:
-            flag_psf = cat[self._params["PSF_flag"]]
-            flag_star = cat[self._params["star_flag"]]
-            mask_arr = (flag_psf == 0) & (flag_star == 0)
-            if weights is not None:
-                weights = weights[mask_arr]
-        else:
-            mask_arr = np.array([True for i in ra])
+        if mask is None:
+            mask = np.ones_like(ra, dtype=bool)
 
         if patch_centers is None:
             cat_tc = treecorr.Catalog(
-                ra=ra[mask_arr],
-                dec=dec[mask_arr],
-                g1=g1[mask_arr],
-                g2=g2[mask_arr],
-                w=weights,
+                ra=ra[mask],
+                dec=dec[mask],
+                g1=g1[mask],
+                g2=g2[mask],
+                w=weights[mask] if weights is not None else None,
                 ra_units=self._params["ra_units"],
                 dec_units=self._params["dec_units"],
                 npatch=npatch,
             )
         else:
             cat_tc = treecorr.Catalog(
-                ra=ra[mask_arr],
-                dec=dec[mask_arr],
-                g1=g1[mask_arr],
-                g2=g2[mask_arr],
-                w=weights,
+                ra=ra[mask],
+                dec=dec[mask],
+                g1=g1[mask],
+                g2=g2[mask],
+                w=weights[mask] if weights is not None else None,
                 ra_units=self._params["ra_units"],
                 dec_units=self._params["dec_units"],
                 patch_centers=patch_centers,
@@ -558,7 +552,7 @@ class RhoStat:
         self.verbose = verbose
 
     def build_cat_to_compute_rho(
-        self, path_cat_star, catalog_id="", square_size=False, mask=False, hdu=1
+        self, path_cat_star, catalog_id="", square_size=False, mask=None, hdu=1
     ):
         """
         build_cat_to_compute_rho
@@ -574,8 +568,8 @@ class RhoStat:
         square_size : bool
             If True, the size computed in the catalogue is squared (Default: False)
 
-        mask : bool
-            If True, use PSF and star flags to mask the data. (Default: False)
+        mask : np.array
+            A mask array to select only the relevant objects in the catalogue. If None, no mask is applied. (Default: None)
 
         hdu : int, optional
             HDU number of input FITS file, default is 1
@@ -1238,7 +1232,7 @@ class TauStat:
         cat_type,
         catalog_id="",
         square_size=False,
-        mask=False,
+        mask=None,
         hdu=1,
     ):
         """
@@ -1258,8 +1252,8 @@ class TauStat:
         square_size : bool
             If True, the size computed in the catalogue is squared (Default: False)
 
-        mask : bool
-            If True, use PSF and star flags to mask the data. (Default: False)
+        mask : np.array
+            A mask array to select only the relevant stars in the catalogue. If None, no mask is applied. (Default: None)
 
         hdu : int, optional
             HDU number of input FITS file, default is 1
@@ -1324,6 +1318,7 @@ class TauStat:
                 cat=gal_cat,
                 cat_type="gal",
                 key="gal_" + catalog_id,
+                mask=mask,
                 patch_centers=patch_centers,
             )
 
