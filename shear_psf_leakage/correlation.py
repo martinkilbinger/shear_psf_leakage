@@ -226,7 +226,7 @@ def xi_a_b(
     unit = "degrees"
 
     if var_method == "jackknife":
-        npatch = 50
+        npatch = 100
     else:
         npatch = 1
 

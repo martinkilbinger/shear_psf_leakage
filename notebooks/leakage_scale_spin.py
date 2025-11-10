@@ -145,13 +145,13 @@ def plot_and_check_r(obj_scale, theta, xlim):
         out_path,
         labels=labels,
         xlog=True,
+        shift_x=True,
         xlim=xlim,
         ylim=ylim,
         colors=colors,
         linewidths=linewidths,
         linestyles=linestyles,
         close_fig=False,
-        shift_x=True,
     )
 
 
@@ -206,13 +206,13 @@ cs_plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,
+    shift_x=True,
     xlim=xlim,
     ylim=ylim,
     colors=colors,
     linestyles=linestyles,
     markers=markers,
     close_fig=False,
-    shift_x=True,
 )
 
 # %%
@@ -237,8 +237,8 @@ dy_arr = [
 labels = [
     r"$\alpha^\Re_0$",
     r"$\alpha^\Im_0$",
-    r"$\alpha^\Re_r$",
-    r"$\alpha^\Im_r$"
+    r"$\alpha^\Re_4$",
+    r"$\alpha^\Im_4$"
 ]
 colors = ["blue", "orange", "green", "magenta"]
 markers = ["o", "s", "^", "v"]
@@ -259,12 +259,12 @@ cs_plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,
+    shift_x=True,
     xlim=xlim,
     ylim=ylim,
     colors=colors,
     markers=markers,
     close_fig=False,
-    shift_x=True,
 )
 
 # Including scalar leakage for comparison
@@ -287,13 +287,13 @@ cs_plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,
+    shift_x=True,
     xlim=xlim,
     ylim=ylim,
     colors=colors,
     markers=markers,
     linestyles=linestyles,
     close_fig=False,
-    shift_x=True,
 )
 
 # %%
@@ -358,10 +358,10 @@ cs_plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,
+    shift_x=True,
     xlim=xlim,
     ylim=ylim,
     close_fig=False,
-    shift_x=True,
     colors=colors,
     markers=markers,
     linestyles=linestyles,
@@ -407,9 +407,9 @@ cs_plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,
+    shift_x=True,
     xlim=xlim,
     close_fig=False,
-    shift_x=True,
     markers=markers,
     linestyles=linestyles,
 )
@@ -419,10 +419,11 @@ cs_plots.plot_data_1d(
 Xi_12 = []
 Xi_21 = []
 Xi_tr = []
+# Fixed bug in Xi_tr
 for ndx in range(len(theta)):
     Xi_12.append(obj_scale.Xi_pp_ufloat[ndx][0, 1])
     Xi_21.append(obj_scale.Xi_pp_ufloat[ndx][1, 0])
-    Xi_tr.append(obj_scale.Xi_pp_ufloat[ndx][0, 0] + obj_scale.Xi_pp_ufloat[ndx][0, 0])
+    Xi_tr.append(obj_scale.Xi_pp_ufloat[ndx][0, 0] + obj_scale.Xi_pp_ufloat[ndx][1, 1])
 
 y = [
     unumpy.nominal_values(Xi_12),
@@ -454,9 +455,9 @@ cs_plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,
+    shift_x=True,
     xlim=xlim,
     close_fig=False,
-    shift_x=True,
     markers=markers,
     linestyles=linestyles,
 )
