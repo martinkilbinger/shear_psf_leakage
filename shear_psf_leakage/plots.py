@@ -9,10 +9,24 @@
 
 """
 
-import getdist
+import sys
 import numpy as np
-from getdist import MCSamples, plots
 from matplotlib import pylab as plt
+
+# Preserve matplotlib backend before importing getdist
+_mpl_backend = None
+if 'matplotlib' in sys.modules:
+    import matplotlib
+    _mpl_backend = matplotlib.get_backend()
+
+from getdist import MCSamples, plots
+
+# Restore backend if changed by getdist
+if _mpl_backend is not None:
+    import matplotlib
+    if matplotlib.get_backend() != _mpl_backend:
+        plt.switch_backend(_mpl_backend)
+
 from scipy import stats
 from uncertainties import ufloat
 
