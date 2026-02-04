@@ -299,7 +299,8 @@ class Catalogs:
         np.array
             e2
         np.array
-            weights; 'None' is cat_type is not 'gal'. Returns a one_like array if weights are not specified
+            weights; 'None' if cat_type is not 'gal'. Returns a one_like array
+            if weights are not specified
 
         Raises
         ------
@@ -308,13 +309,9 @@ class Catalogs:
         """
 
         allowed_types = ['gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error']
-        allowed_types = ['gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error']
 
         assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
                                            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'.")
-        assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
-                                           "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'.")
-
         if cat_type == "gal":
             if self._params["w_col"] is not None:
                 weights = cat[self._params["w_col"]]
