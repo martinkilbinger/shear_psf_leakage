@@ -64,6 +64,7 @@ class LeakageObject:
             "PSF_leakage": True,
             "obs_leakage": False,
             "cols": None,
+            "col_labels": None,
             "cols_ratio": None,
             "test": False,
         }
@@ -89,6 +90,7 @@ class LeakageObject:
             "PSF_leakage": "Fit spin-2 consistent PSF leakage relations",
             "obs_leakage": "Fit leakage relations with arbitrary observables",
             "cols": "White-space separated list of column names for fit",
+            "col_labels": "White-space separated list of column labels for fit",
             "cols_ratio": "fit as function of ratio of two columns",
             "test": "Fit toy model and exit",
         }
@@ -133,6 +135,12 @@ class LeakageObject:
                 "Column names for e1_PSF and e2_PSF are identical, "
                 + "this is surely a mistake"
             )
+        if len(self._params["cols"]) != len(self._params["col_labels"]):
+            raise ValueError(
+                "Inconsistent lengths of aux columns names and labels"
+                + f" {len(self._params['cols'])} and"
+                + f" {len(self._params['col_labels'])}"
+            )
 
     def update_params(self):
         """Update Params.
@@ -140,13 +148,13 @@ class LeakageObject:
         Update parameters.
 
         """
-        if self._params["cols"] and type(self._params["cols"]) != list:
-            self._params["cols"] = cs_args.my_string_split(
-                self._params["cols"],
-                verbose=self._params["verbose"],
-                stop=True,
-            )
-
+        for key in ("cols", "col_labels"):
+            if self._params[key] and type(self._params[key]) != list:
+                self._params[key] = cs_args.my_string_split(
+                    self._params[key],
+                    verbose=self._params["verbose"],
+                    stop=True,
+                )
         if (
             self._params["cols_ratio"]
             and type(self._params["cols_ratio"]) != list
@@ -201,7 +209,7 @@ class LeakageObject:
             if not do_nothing:
                 self._dat = None
 
-    def corr_any_quant(self, label_quant=None, ratio=None):
+    def corr_any_quant(self, cols_quant=None, label_quant=None, ratio=None):
         """Corr_any_quant.
 
         Compute and plot object-by-object ellipticity and any quantities relations.
@@ -221,47 +229,55 @@ class LeakageObject:
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
 
+        fit_quad = False
+        combine_e1e2 = True
+
         e, weights = self.get_ellipticity_weights()
 
         x_arr = []
         out_name_arr = []
         xlabel_arr = []
 
-        if label_quant:
-            xlabel_arr = label_quant
-            for colname in xlabel_arr:
+        if cols_quant:
+            for colname in cols_quant:
+                # Get data columns
                 x_arr.append(self._dat[colname])
+                # Set output name
                 out_name_arr.append(colname + "_vs_e_gal")
+            # Set x-axis labels
+            xlabel_arr = label_quant
 
         if ratio:
             x_arr.append(self._dat[ratio[0]] / self._dat[ratio[1]])
             xlabel_arr.append(f"{ratio[0]}/{ratio[1]}")
             out_name_arr.append(f"{ratio[0]}_div_{ratio[1]}_vs_e_gal")
 
-        if self._params["verbose"]:
-            print("Quadratic fit")
-        out_path_arr = [
-            f"{self._params['output_dir']}/{name}_quad" for name in out_name_arr
-        ]
-        name = "systematics_test_quad"
-        out_path_arr.append(f"{self._params['output_dir']}/{name}")
-        qlabel = ["q_1", "q_2"]
-        leakage.quad_corr_n_quant(
-            x_arr,
-            e,
-            xlabel_arr,
-            ylabel,
-            qlabel=qlabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            title="quadratic model",
-            weights=weights,
-            n_bin=n_bin,
-            out_path_arr=out_path_arr,
-            colors=colors,
-            stats_file=self._stats_file,
-            verbose=self._params["verbose"],
-        )
+        if fit_quad:
+            if self._params["verbose"]:
+                print("Quadratic fit")
+            out_path_arr = [
+                f"{self._params['output_dir']}/{name}_quad"
+                for name in out_name_arr
+            ]
+            name = "systematics_test_quad"
+            out_path_arr.append(f"{self._params['output_dir']}/{name}")
+            qlabel = ["q_1", "q_2"]
+            leakage.quad_corr_n_quant(
+                x_arr,
+                e,
+                xlabel_arr,
+                ylabel,
+                qlabel=qlabel,
+                mlabel=mlabel,
+                clabel=clabel,
+                title="quadratic model",
+                weights=weights,
+                n_bin=n_bin,
+                out_path_arr=out_path_arr,
+                colors=colors,
+                stats_file=self._stats_file,
+                verbose=self._params["verbose"],
+            )
 
         if self._params["verbose"]:
             print("Linear fit")
@@ -283,7 +299,15 @@ class LeakageObject:
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
         )
-
+        # Overwrite tick names with input labels
+        tick_name_arr = []
+        for xlabel in xlabel_arr:
+            if combine_e1e2:
+                tick_name_arr.append(xlabel)
+            else:
+                # Separate labels for both ellipticity components
+                for idx in (1, 2):
+                    tick_name_arr.append(f"{xlabel} e_{idx}")
 
         # Save regression results
         self._m_arr = m_arr
@@ -302,24 +326,32 @@ class LeakageObject:
             self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr)
             self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr)
 
-            self._tick_name_arr.insert(0, "e1_e1")
-            self._tick_name_arr.insert(1, "e2_e2")
-            self._tick_name_arr.insert(2, "e1_e2")
-            self._tick_name_arr.insert(3, "e2_e1")
+            if combine_e1e2:
+                self._tick_name_arr.insert(0, r"$e_{1, {\rm psf}}$")
+                self._tick_name_arr.insert(1, r"$e_{2, {\rm psf}}$")
+            else:
+                # Separate labels for both ellipticity components
+                self._tick_name_arr.insert(0, r"$e_1$ $e_{1, {\rm psf}}$")
+                self._tick_name_arr.insert(1, r"$e_2$ $e_{2, {\rm psf}}$")
+                self._tick_name_arr.insert(2, r"$e_1$ $e_{2, {\rm psf}}$")
+                self._tick_name_arr.insert(3, r"$e_2$ $e_{1, {\rm psf}}$")
 
         except:
             print("Ellipticity regression parameters not found, continuing")
 
-        self.plot_summary_obs(mode="ylin")
-        self.plot_summary_obs(mode="ylog")
-        self.plot_summary_obs(mode="ysig")
+        self.plot_summary_obs(mode="ylin", combine_e1e2=combine_e1e2)
+        self.plot_summary_obs(mode="ylog", combine_e1e2=combine_e1e2)
+        self.plot_summary_obs(mode="ysig", combine_e1e2=combine_e1e2)
 
-    def plot_summary_obs(self, mode="ylin"):
+    def plot_summary_obs(self, mode="ylin", combine_e1e2=False):
 
         # Summary plot
         plt.figure()
 
-        ticks_positions = np.arange(1, len(self._m_arr) + 1, 1)
+        n_ticks = len(self._m_arr)
+        if combine_e1e2:
+            n_ticks /= 2
+        ticks_positions = np.arange(1, n_ticks + 1, 1)
 
         dy = np.array(self._m_err_arr)
 
@@ -334,10 +366,47 @@ class LeakageObject:
 
         elif mode == "ysig":
             y = np.abs(self._m_arr) / np.array(self._m_err_arr)
+            # dy is unused
             dy = np.zeros_like(dy)
             plt.ylabel(r"$|m| / \sigma$")
 
-        plt.errorbar(ticks_positions, y, yerr=dy, color="peru", fmt=".")
+        if combine_e1e2:
+            offset = 0.15
+            colors = ["#1AFF1A", "#4B0092"]
+            formats = ["o", "s"]
+            sign = [-1, 1]
+            markersize = 8
+
+            # Split y and yerr into two arrays
+            y_sep = []
+            dy_sep = []
+            for idx in (0, 1):
+                y_sep.append(y[idx::2])
+                dy_sep.append(dy[idx::2])
+
+            # Plot separately with offsets
+            for idx in (0, 1):
+                if mode != "ysig":
+                    plt.errorbar(
+                        ticks_positions - sign[idx] * offset,
+                        y_sep[idx],
+                        yerr=dy_sep[idx],
+                        color=colors[idx],
+                        fmt=formats[idx],
+                        ms=markersize,
+                        label=f"$e_{idx+1}$",
+                    )
+                else:
+                    plt.scatter(
+                        ticks_positions - sign[idx] * offset,
+                        y_sep[idx],
+                        color=colors[idx],
+                        marker=formats[idx],
+                        s=markersize ** 2,
+                        label=f"$e_{idx+1}$",
+                    )
+        else:
+            plt.errorbar(ticks_positions, y, yerr=dy, color="peru", fmt=".")
 
         plt.xticks(
             ticks_positions,
@@ -351,8 +420,7 @@ class LeakageObject:
             color="black",
             linestyle="--",
         )
-        title = r"($e_1$, $e_2$) dependence"
-        plt.title(title, fontsize=10)
+        plt.legend()
         plt.tight_layout()
 
         out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}"
@@ -594,10 +662,11 @@ class LeakageObject:
             print("No columns specified, skipping obs_leakage regressions")
             return
         else:
-            # Use command line argument
-            label_quant = self._params["cols"]
+            cols_quant = self._params["cols"]
+            label_quant = self._params["col_labels"]
 
         # Remove duplicates
+        cols_quant = list(set(cols_quant))
         label_quant = list(set(label_quant))
 
         if self._params["cols_ratio"]:
@@ -607,7 +676,11 @@ class LeakageObject:
                 "/",
                 self._params["cols_ratio"][1],
             )
-        self.corr_any_quant(label_quant, ratio=self._params["cols_ratio"])
+        self.corr_any_quant(
+            cols_quant,
+            label_quant,
+            ratio=self._params["cols_ratio"],
+        )
 
     def run(self, mix=None, order=None):
         """Run.
