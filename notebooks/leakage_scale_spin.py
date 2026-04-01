@@ -36,6 +36,7 @@ from cs_util import args
 
 from shear_psf_leakage import run_scale
 from shear_psf_leakage.leakage import *
+
 # -
 
 # ## Set up
@@ -48,9 +49,7 @@ obj_scale = run_scale.LeakageScale()
 
 # Read python parameter file or get user input
 params_upd = args.read_param_script(
-    "params_leakage_scale.py",
-    obj_scale._params,
-    verbose=True
+    "params_leakage_scale.py", obj_scale._params, verbose=True
 )
 for key in params_upd:
     obj_scale._params[key] = params_upd[key]
@@ -109,24 +108,25 @@ r = []
 r_ratio_1 = []
 r_ratio_2 = []
 for ndx in range(len(theta)):
-    my_r = (
-        obj_scale.Xi_pp_ufloat[ndx][0, 1] ** 2
-        / (obj_scale.Xi_pp_ufloat[ndx][0, 0] * obj_scale.Xi_pp_ufloat[ndx][1, 1])
+    my_r = obj_scale.Xi_pp_ufloat[ndx][0, 1] ** 2 / (
+        obj_scale.Xi_pp_ufloat[ndx][0, 0] * obj_scale.Xi_pp_ufloat[ndx][1, 1]
     )
     r.append(my_r)
     r_ratio_1.append(1 / (1 - my_r))
-    r_ratio_2.append(my_r / (1 - my_r)) 
+    r_ratio_2.append(my_r / (1 - my_r))
 
 print("min max mean r = ", np.min(r), np.max(r), np.mean(r))
 
 # Approximate: Using uncentered correlation functions
-r_fast = obj_scale.xi_pp_m[0][1] ** 2 / (obj_scale.xi_pp_m[0][0] * obj_scale.xi_pp_m[1][1])
+r_fast = obj_scale.xi_pp_m[0][1] ** 2 / (
+    obj_scale.xi_pp_m[0][0] * obj_scale.xi_pp_m[1][1]
+)
 
 n = 6
 theta_arr = [theta] * n
 r_arr = []
 dr_arr = []
-    
+
 r_arr.append(unumpy.nominal_values(r))
 r_arr.append(unumpy.nominal_values(r_ratio_1))
 r_arr.append(unumpy.nominal_values(r_ratio_2))
@@ -185,12 +185,12 @@ ylim = obj_scale._params["leakage_alpha_ylim"]
 
 n = 4
 theta_arr = [theta] * n
-    
+
 alpha = []
 yerr = []
 labels = []
 for idx in (0, 1):
-    for jdx in (0, 1):   
+    for jdx in (0, 1):
         alpha_ufloat = obj_scale.get_alpha_ufloat(idx, jdx)
         alpha.append(unumpy.nominal_values(alpha_ufloat))
         yerr.append(unumpy.std_devs(alpha_ufloat))
@@ -248,11 +248,11 @@ labels = [
     r"$\alpha^\Re_0$",
     r"$\alpha^\Im_0$",
     r"$\alpha^\Re_r$",
-    r"$\alpha^\Im_r$"
+    r"$\alpha^\Im_r$",
 ]
 colors = ["blue", "orange", "green", "magenta"]
 markers = ["o", "s", "^", "v"]
-linestyles = ["-"] * 4 
+linestyles = ["-"] * 4
 
 xlabel = r"$\theta$ [arcmin]"
 ylabel = r"Components of leakage matrix"
@@ -314,9 +314,13 @@ cs_plots.plot_data_1d(
 alpha_1 = []
 alpha_2 = []
 for ndx in range(len(theta)):
-    my_a1 = obj_scale.Xi_gp_ufloat[ndx][0, 0] / obj_scale.Xi_pp_ufloat[ndx][0, 0]
+    my_a1 = (
+        obj_scale.Xi_gp_ufloat[ndx][0, 0] / obj_scale.Xi_pp_ufloat[ndx][0, 0]
+    )
     alpha_1.append(my_a1)
-    my_a2 = obj_scale.Xi_gp_ufloat[ndx][1, 1] / obj_scale.Xi_pp_ufloat[ndx][1, 1]
+    my_a2 = (
+        obj_scale.Xi_gp_ufloat[ndx][1, 1] / obj_scale.Xi_pp_ufloat[ndx][1, 1]
+    )
     alpha_2.append(my_a2)
 
 # TODO: Use centered functions for all cases
@@ -344,7 +348,9 @@ labels = [
 xlabel = r"$\theta$ [arcmin]"
 ylabel = r"$\alpha(\theta)$"
 title = ""
-out_path = f"{obj_scale._params['output_dir']}/alpha_leakage_scalar_consistency.png"
+out_path = (
+    f"{obj_scale._params['output_dir']}/alpha_leakage_scalar_consistency.png"
+)
 colors = ["cyan", "black", "grey", "blue"]
 markers = ["x", "h", "o", "o"]
 linestyles = ["--", "--", "--", "-"]
@@ -378,7 +384,9 @@ Xi_tr = []
 for ndx in range(len(theta)):
     Xi_12.append(obj_scale.Xi_gp_ufloat[ndx][0, 1])
     Xi_21.append(obj_scale.Xi_gp_ufloat[ndx][1, 0])
-    Xi_tr.append(obj_scale.Xi_gp_ufloat[ndx][0, 0] + obj_scale.Xi_gp_ufloat[ndx][0, 0])
+    Xi_tr.append(
+        obj_scale.Xi_gp_ufloat[ndx][0, 0] + obj_scale.Xi_gp_ufloat[ndx][0, 0]
+    )
 
 y = [
     unumpy.nominal_values(Xi_12),
@@ -426,7 +434,9 @@ Xi_tr = []
 for ndx in range(len(theta)):
     Xi_12.append(obj_scale.Xi_pp_ufloat[ndx][0, 1])
     Xi_21.append(obj_scale.Xi_pp_ufloat[ndx][1, 0])
-    Xi_tr.append(obj_scale.Xi_pp_ufloat[ndx][0, 0] + obj_scale.Xi_pp_ufloat[ndx][0, 0])
+    Xi_tr.append(
+        obj_scale.Xi_pp_ufloat[ndx][0, 0] + obj_scale.Xi_pp_ufloat[ndx][0, 0]
+    )
 
 y = [
     unumpy.nominal_values(Xi_12),
@@ -465,5 +475,3 @@ cs_plots.plot_data_1d(
     linestyles=linestyles,
 )
 # -
-
-

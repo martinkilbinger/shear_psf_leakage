@@ -66,6 +66,10 @@ class LeakageObject:
             "cols": None,
             "col_labels": None,
             "cols_ratio": None,
+            "regr_on_binned": False,
+            "error_method": "jackknife",
+            "regr_error_method": "covariance",
+            "n_bootstrap": 1000,
             "test": False,
         }
         self._short_options = {
@@ -74,6 +78,10 @@ class LeakageObject:
             "test": "-t",
         }
         self._types = {
+            "regr_on_binned": "bool",
+            "error_method": "str",
+            "regr_error_method": "str",
+            "n_bootstrap": "int",
             "test": "bool",
         }
         self._help_strings = {
@@ -92,6 +100,10 @@ class LeakageObject:
             "cols": "White-space separated list of column names for fit",
             "col_labels": "White-space separated list of column labels for fit",
             "cols_ratio": "fit as function of ratio of two columns",
+            "regr_on_binned": "perform regression on binned data (faster for large catalogues)",
+            "error_method": "binning error method: 'analytical', 'jackknife' (default), or 'jackknife_random'",
+            "regr_error_method": "regression parameter uncertainty method: 'covariance' (default) or 'bootstrap'",
+            "n_bootstrap": "number of bootstrap samples (default=1000, only used if regr_error_method='bootstrap')",
             "test": "Fit toy model and exit",
         }
 
@@ -255,12 +267,13 @@ class LeakageObject:
         if fit_quad:
             if self._params["verbose"]:
                 print("Quadratic fit")
+            regr_suffix = "_binned" if self._params["regr_on_binned"] else "_unbinned"
             out_path_arr = [
-                f"{self._params['output_dir']}/{name}_quad"
+                f"{self._params['output_dir']}/{name}_quad{regr_suffix}"
                 for name in out_name_arr
             ]
             name = "systematics_test_quad"
-            out_path_arr.append(f"{self._params['output_dir']}/{name}")
+            out_path_arr.append(f"{self._params['output_dir']}/{name}{regr_suffix}")
             qlabel = ["q_1", "q_2"]
             leakage.quad_corr_n_quant(
                 x_arr,
@@ -281,10 +294,12 @@ class LeakageObject:
 
         if self._params["verbose"]:
             print("Linear fit")
+        regr_suffix = "_binned" if self._params["regr_on_binned"] else "_unbinned"
         out_path_arr = [
-            f"{self._params['output_dir']}/{name}_lin" for name in out_name_arr
+            f"{self._params['output_dir']}/{name}_lin{regr_suffix}"
+            for name in out_name_arr
         ]
-        m_arr, m_err_arr, tick_name_arr = leakage.affine_corr_n(
+        m_arr, m_err_arr, c_arr, c_err_arr, tick_name_arr = leakage.affine_corr_n(
             x_arr,
             e,
             xlabel_arr,
@@ -298,7 +313,12 @@ class LeakageObject:
             colors=colors,
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
+            regr_on_binned=self._params["regr_on_binned"],
+            error_method=self._params["error_method"],
+            regr_error_method=self._params["regr_error_method"],
+            n_bootstrap=self._params["n_bootstrap"],
         )
+
         # Overwrite tick names with input labels
         tick_name_arr = []
         for xlabel in xlabel_arr:
@@ -312,19 +332,31 @@ class LeakageObject:
         # Save regression results
         self._m_arr = m_arr
         self._m_err_arr = m_err_arr
+        self._c_arr = c_arr
+        self._c_err_arr = c_err_arr
         self._tick_name_arr = tick_name_arr
 
         # Add ellipticity regression results from earlier if available
         try:
             self._m_arr.insert(0, self.par_best_fit["a11"].value)
-            self._m_arr.insert(1, self.par_best_fit["a22"].value)
+            self._m_arr.insert(1, self.par_best_fit["a21"].value)
             self._m_arr.insert(2, self.par_best_fit["a12"].value)
-            self._m_arr.insert(3, self.par_best_fit["a21"].value)
+            self._m_arr.insert(3, self.par_best_fit["a22"].value)
 
             self._m_err_arr.insert(0, self.par_best_fit["a11"].stderr)
-            self._m_err_arr.insert(1, self.par_best_fit["a22"].stderr)
+            self._m_err_arr.insert(1, self.par_best_fit["a21"].stderr)
             self._m_err_arr.insert(2, self.par_best_fit["a12"].stderr)
-            self._m_err_arr.insert(3, self.par_best_fit["a21"].stderr)
+            self._m_err_arr.insert(3, self.par_best_fit["a22"].stderr)
+
+            self._c_arr.insert(0, self.par_best_fit["c1"].value)
+            self._c_arr.insert(1, self.par_best_fit["c1"].value)
+            self._c_arr.insert(2, self.par_best_fit["c2"].value)
+            self._c_arr.insert(3, self.par_best_fit["c2"].value)
+
+            self._c_err_arr.insert(0, self.par_best_fit["c1"].stderr)
+            self._c_err_arr.insert(1, self.par_best_fit["c1"].stderr)
+            self._c_err_arr.insert(2, self.par_best_fit["c2"].stderr)
+            self._c_err_arr.insert(3, self.par_best_fit["c2"].stderr)
 
             if combine_e1e2:
                 self._tick_name_arr.insert(0, r"$e_{1, {\rm psf}}$")
@@ -345,6 +377,7 @@ class LeakageObject:
 
     def plot_summary_obs(self, mode="ylin", combine_e1e2=False):
 
+        slope = "b"
         # Summary plot
         plt.figure()
 
@@ -357,18 +390,18 @@ class LeakageObject:
 
         if mode == "ylin":
             y = np.array(self._m_arr)
-            plt.ylabel(r"$m$")
+            plt.ylabel(rf"${slope}$")
 
         elif mode == "ylog":
             y = np.abs(self._m_arr)
-            plt.ylabel(r"$|m|$")
+            plt.ylabel(rf"$|{slope}|$")
             plt.yscale("log")
 
         elif mode == "ysig":
             y = np.abs(self._m_arr) / np.array(self._m_err_arr)
             # dy is unused
             dy = np.zeros_like(dy)
-            plt.ylabel(r"$|m| / \sigma$")
+            plt.ylabel(rf"$|{slope}| / \sigma$")
 
         if combine_e1e2:
             offset = 0.15
@@ -388,7 +421,7 @@ class LeakageObject:
             for idx in (0, 1):
                 if mode != "ysig":
                     plt.errorbar(
-                        ticks_positions - sign[idx] * offset,
+                        ticks_positions + sign[idx] * offset,
                         y_sep[idx],
                         yerr=dy_sep[idx],
                         color=colors[idx],
@@ -398,7 +431,7 @@ class LeakageObject:
                     )
                 else:
                     plt.scatter(
-                        ticks_positions - sign[idx] * offset,
+                        ticks_positions + sign[idx] * offset,
                         y_sep[idx],
                         color=colors[idx],
                         marker=formats[idx],
@@ -423,7 +456,8 @@ class LeakageObject:
         plt.legend()
         plt.tight_layout()
 
-        out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}"
+        regr_suffix = "_binned" if self._params["regr_on_binned"] else "_unbinned"
+        out_path = f"{self._params['output_dir']}/systematics_test_lin_{mode}{regr_suffix}"
         plt.savefig(out_path)
         plt.close()
 
@@ -628,11 +662,13 @@ class LeakageObject:
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
 
+        regr_suffix = "_binned" if self._params["regr_on_binned"] else "_unbinned"
         out_path_arr = [
-            f"{self._params['output_dir']}/{name}" for name in out_name_arr
+            f"{self._params['output_dir']}/{name}{regr_suffix}"
+            for name in out_name_arr
         ]
         name = "systematics_test"
-        out_path_arr.append(f"{self._params['output_dir']}/{name}")
+        out_path_arr.append(f"{self._params['output_dir']}/{name}{regr_suffix}")
         leakage.affine_corr_n(
             x_arr,
             e,
@@ -647,6 +683,8 @@ class LeakageObject:
             colors=colors,
             stats_file=self._stats_file,
             verbose=self._params["verbose"],
+            regr_on_binned=self._params["regr_on_binned"],
+            error_method=self._params["error_method"],
         )
 
     def obs_leakage(self):
@@ -665,10 +703,6 @@ class LeakageObject:
             cols_quant = self._params["cols"]
             label_quant = self._params["col_labels"]
 
-        # Remove duplicates
-        cols_quant = list(set(cols_quant))
-        label_quant = list(set(label_quant))
-
         if self._params["cols_ratio"]:
             print(
                 " ",
@@ -680,6 +714,36 @@ class LeakageObject:
             cols_quant,
             label_quant,
             ratio=self._params["cols_ratio"],
+        )
+
+        # Print summary of all regression results to stats file
+        self.print_obs_leakage_summary()
+
+    def print_obs_leakage_summary(self):
+        """Print Obs Leakage Summary.
+
+        Print summary of all regression results from obs_leakage to stats file.
+
+        """
+        from uncertainties import ufloat
+
+        regr_mode = "binned" if self._params["regr_on_binned"] else "unbinned"
+        leakage.print_stats(
+            f"\n=== obs_leakage regression summary ({regr_mode}) ===",
+            self._stats_file,
+            verbose=self._params["verbose"],
+        )
+
+        for idx, tick_name in enumerate(self._tick_name_arr):
+            m = ufloat(self._m_arr[idx], self._m_err_arr[idx])
+            c = ufloat(self._c_arr[idx], self._c_err_arr[idx])
+            msg = f"{tick_name}: m={m:.2ugP}, c={c:.2ugP}"
+            leakage.print_stats(msg, self._stats_file, verbose=self._params["verbose"])
+
+        leakage.print_stats(
+            f"=== end obs_leakage summary ({regr_mode}) ===\n",
+            self._stats_file,
+            verbose=self._params["verbose"],
         )
 
     def run(self, mix=None, order=None):

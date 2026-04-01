@@ -21,6 +21,7 @@
 
 # +
 import matplotlib
+
 matplotlib.use("agg")
 
 import os, sys
@@ -32,27 +33,28 @@ from cs_util import args
 import shear_psf_leakage.run_object as run
 from shear_psf_leakage import leakage
 
-
 # ## Compute leakage
 
 # Create leakage instance
 obj = run.LeakageObject()
 
 # Set instance parameters, copy from above
-params_upd = args.read_param_script("params_object.py", obj._params, verbose=True)
+params_upd = args.read_param_script(
+    "params_object.py", obj._params, verbose=True
+)
 for key in params_upd:
     obj._params[key] = params_upd[key]
 
-#for key in obj._params:
-    #print(key, obj._params[key])
+# for key in obj._params:
+# print(key, obj._params[key])
 
 # +
-#vos_dir = f"vos:cfis/weak_lensing/DataReleases/v1.0/ShapePipe/{patch}"
-#canfar.download(
-    #f"{vos_dir}/{obj_params['input_path_shear']}",
-    #obj._params["input_path_shear"],
-    #verbose=obj._params["verbose"],
-#)
+# vos_dir = f"vos:cfis/weak_lensing/DataReleases/v1.0/ShapePipe/{patch}"
+# canfar.download(
+# f"{vos_dir}/{obj_params['input_path_shear']}",
+# obj._params["input_path_shear"],
+# verbose=obj._params["verbose"],
+# )
 # -
 
 # ### Run
@@ -84,7 +86,7 @@ obj.read_data()
 if obj._params["PSF_leakage"]:
     # Object-by-object spin-consistent PSF leakage
     for order in ("lin", "quad"):
-            obj.PSF_leakage(mix=True, order=order)
+        obj.PSF_leakage(mix=True, order=order)
 
 if obj._params["obs_leakage"]:
     # Object-by-object spin-consistent PSF leakage

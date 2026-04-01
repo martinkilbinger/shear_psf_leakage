@@ -490,14 +490,12 @@ def alpha(
         mean_in_numer = 0
         mean_in_denom = 0
 
-
-    alpha_leak = (
-        (r_corr_gp.xip - mean_in_numer)
-        / (r_corr_pp.xip - mean_in_denom)
+    alpha_leak = (r_corr_gp.xip - mean_in_numer) / (
+        r_corr_pp.xip - mean_in_denom
     )
     sig_alpha_leak = np.abs(alpha_leak) * np.sqrt(
-        r_corr_gp.varxip / r_corr_gp.xip ** 2
-        + r_corr_pp.varxip / r_corr_pp.xip ** 2
+        r_corr_gp.varxip / r_corr_gp.xip**2
+        + r_corr_pp.varxip / r_corr_pp.xip**2
     )
 
     return alpha_leak, sig_alpha_leak

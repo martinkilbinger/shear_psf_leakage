@@ -130,11 +130,10 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
 
 def get_bias(p_dp, par_ground_truth, key):
 
-    return (
-        (p_dp[key].nominal_value - par_ground_truth[key].value)
-        / p_dp[key].std_dev
-    )
-    
+    return (p_dp[key].nominal_value - par_ground_truth[key].value) / p_dp[
+        key
+    ].std_dev
+
 
 def set_labels(p_dp, order, mix, par_ground_truth=None):
     """Set Labels.
@@ -164,18 +163,26 @@ def set_labels(p_dp, order, mix, par_ground_truth=None):
 
     if par_ground_truth:
         bias = get_bias(p_dp, par_ground_truth, "a11")
-        label["A"] = f"{label['A']} ({par_ground_truth['a11'].value}, {bias:.1f}$\sigma$)"
+        label["A"] = (
+            f"{label['A']} ({par_ground_truth['a11'].value}, {bias:.1f}$\sigma$)"
+        )
         bias = get_bias(p_dp, par_ground_truth, "a22")
-        label["D"] = f"{label['D']} ({par_ground_truth['a22'].value}, {bias:.1f}$\sigma$)"
+        label["D"] = (
+            f"{label['D']} ({par_ground_truth['a22'].value}, {bias:.1f}$\sigma$)"
+        )
 
     # Constant parameters
     label["A"] = label["A"] + "\n" + f'$c_1\;\;\;={p_dp["c1"]: .2ugL}$'
     label["D"] = label["D"] + "\n" + f'$c_2\;\;\;={p_dp["c2"]: .2ugL}$'
     if par_ground_truth:
         bias = get_bias(p_dp, par_ground_truth, "c1")
-        label["A"] = f"{label['A']} ({par_ground_truth['c1'].value}, {bias:.1f}$\sigma$)"
+        label["A"] = (
+            f"{label['A']} ({par_ground_truth['c1'].value}, {bias:.1f}$\sigma$)"
+        )
         bias = get_bias(p_dp, par_ground_truth, "c2")
-        label["D"] = f"{label['D']} ({par_ground_truth['c2'].value}, {bias:.1f}$\sigma$)"
+        label["D"] = (
+            f"{label['D']} ({par_ground_truth['c2'].value}, {bias:.1f}$\sigma$)"
+        )
 
     if order == "quad":
         # Add quadratic parameters
@@ -194,9 +201,13 @@ def set_labels(p_dp, order, mix, par_ground_truth=None):
         label["C"] = rf'$\alpha_{{21}}\;\,={p_dp["a21"]: .2ugL}$'
         if par_ground_truth:
             bias = get_bias(p_dp, par_ground_truth, "a12")
-            label["B"] = f"{label['B']} ({par_ground_truth['a12'].value}, {bias:.1f}$\sigma$)"
+            label["B"] = (
+                f"{label['B']} ({par_ground_truth['a12'].value}, {bias:.1f}$\sigma$)"
+            )
             bias = get_bias(p_dp, par_ground_truth, "a21")
-            label["C"] = f"{label['C']} ({par_ground_truth['a21'].value}, {bias:.1f}$\sigma$)"
+            label["C"] = (
+                f"{label['C']} ({par_ground_truth['a21'].value}, {bias:.1f}$\sigma$)"
+            )
 
         # Mixed quadratic parameters
         if order == "quad":
@@ -490,7 +501,10 @@ def plot_corr_2d(
     if out_base:
         plt.savefig(f"{out_base}.png", bbox_inches="tight")
 
-def plot_contours(sample_list, names, labels, savefig=None, show=False, close=True, **kwargs):
+
+def plot_contours(
+    sample_list, names, labels, savefig=None, show=False, close=True, **kwargs
+):
     """
     plot_contours
 
@@ -502,7 +516,7 @@ def plot_contours(sample_list, names, labels, savefig=None, show=False, close=Tr
         A list containing np.array with samples in each entry.
     names : list str
         Names of the variable (See getdist documentation)
-    labels : list str 
+    labels : list str
         Labels of the parameters
     savefig : str, optional
         If not None, saves the figure with this filename
@@ -511,16 +525,19 @@ def plot_contours(sample_list, names, labels, savefig=None, show=False, close=Tr
     close : bool, optional
         If True, closes the plot after saving/showing
     """
-    sample_list = [MCSamples(samples=samps, names=names, labels=labels) for samps in sample_list]
+    sample_list = [
+        MCSamples(samples=samps, names=names, labels=labels)
+        for samps in sample_list
+    ]
     g = plots.get_subplot_plotter()
     g.triangle_plot(sample_list, filled=True, **kwargs)
 
     if savefig is not None:
         plt.savefig(savefig)
-        
+
     if show:
         plt.show()
-        
+
     if close:
         plt.close()
 
@@ -544,9 +561,9 @@ def plots_all_corr_2d(
     verbose=False,
 ):
     """Plots All Corr 1D.
-    
+
     Creates all plots for 1D correlations.
-    
+
     Parameters
     ----------
     x : array(double)
@@ -573,15 +590,14 @@ def plots_all_corr_2d(
         plot all individual data points if ``True``; default is ``False``
     par_ground_truth : dict, optional
         ground truth parameter, for plotting, default is `None`
-    
+
     """
     if colors is None:
         prop_cycle = plt.rcParams["axes.prop_cycle"]
         colors = prop_cycle.by_key()["color"]
 
     p_dp = {
-        p: ufloat(res_params[p].value, res_params[p].stderr)
-        for p in res_params
+        p: ufloat(res_params[p].value, res_params[p].stderr) for p in res_params
     }
 
     # Get spin coefficients
@@ -590,7 +606,9 @@ def plots_all_corr_2d(
     # Output to stats file
     if stats_file:
         for p in res_params:
-            leakage.print_stats(f"{p}={p_dp[p]:.2ugP}", stats_file, verbose=verbose)
+            leakage.print_stats(
+                f"{p}={p_dp[p]:.2ugP}", stats_file, verbose=verbose
+            )
         for spin in s_ds:
             leakage.print_stats(
                 f"{spin}={s_ds[spin]:.2ugP}",
@@ -599,7 +617,11 @@ def plots_all_corr_2d(
             )
 
     # Bar plots of spin components
-    s_ground_truth = leakage.param_order2spin(par_ground_truth, order, mix) if par_ground_truth else None
+    s_ground_truth = (
+        leakage.param_order2spin(par_ground_truth, order, mix)
+        if par_ground_truth
+        else None
+    )
     out_path_spin = f"{out_base}_spin.png" if out_base else None
     plot_bar_spin(
         s_ds,

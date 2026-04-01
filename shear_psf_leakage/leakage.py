@@ -271,35 +271,110 @@ def func_bias_2d(params, x1_data, x2_data, order="lin", mix=False):
     return y1_model, y2_model
 
 
-def jackknife_mean_std(
+def weighted_mean_std(data, weights):
+    """Weighted Mean and Standard Error.
+
+    Fast computation of weighted mean and standard error of the mean.
+
+    Parameters
+    ----------
+    data : array
+        input sample
+    weights : array
+        weights
+
+    Returns
+    -------
+    float
+        weighted mean
+    float
+        weighted standard error of the mean
+
+    """
+    w_sum = np.sum(weights)
+    if w_sum == 0:
+        return np.nan, np.nan
+
+    mean = np.average(data, weights=weights)
+
+    # Weighted variance
+    variance = np.average((data - mean) ** 2, weights=weights)
+
+    # Standard error of the mean (using effective sample size)
+    n_eff = w_sum ** 2 / np.sum(weights ** 2)
+    std_err = np.sqrt(variance / n_eff)
+
+    return mean, std_err
+
+
+def jackknife_mean_std(data, weights):
+    """Jackknife Mean Standard Deviation.
+
+    Computes weighted mean and standard error using delete-1 jackknife.
+    Uses vectorized O(n) computation - no loops or random sampling.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        input sample
+    weights : numpy.ndarray
+        weights
+
+    Returns
+    -------
+    float
+        weighted mean
+    float
+        jackknife standard error
+
+    """
+    n = len(data)
+    if n < 2:
+        return np.nanmean(data), np.nan
+
+    # Total weighted sum and total weights
+    total_weighted = np.sum(data * weights)
+    total_weights = np.sum(weights)
+
+    # Leave-one-out weighted means: (total - x_i * w_i) / (total_w - w_i)
+    leave_one_out_means = (total_weighted - data * weights) / (total_weights - weights)
+
+    # Jackknife variance estimate: (n-1)/n * sum((theta_i - theta_bar)^2)
+    mean_of_means = np.nanmean(leave_one_out_means)
+    jackknife_var = (n - 1) / n * np.nansum((leave_one_out_means - mean_of_means) ** 2)
+
+    return total_weighted / total_weights, np.sqrt(jackknife_var)
+
+
+def jackknife_mean_std_random(
     data,
     weights,
     remove_size=0.1,
     n_realization=100,
 ):
-    """Jackknife Mean Standard Devitation.
+    """Jackknife Mean Standard Deviation (Random Subsampling).
 
-    Computes weighted mean and standard deviation from jackknife resampling.
+    Computes weighted mean and standard deviation from random subsampling.
+    Uses vectorized operations for efficiency.
 
     Parameters
     ----------
-    data : list
+    data : numpy.ndarray
         input sample
-    weights : list
+    weights : numpy.ndarray
         weights
     remove_size : float, optional
-        fraction of input sample to remove for each jackknife resampling,
+        fraction of input sample to remove for each resampling,
         default is ``0.1``
-    n_realisation : int, optional
-        number of jackknife resamples, default is ``100``
+    n_realization : int, optional
+        number of resamples, default is ``100``
 
     Returns
     -------
-    numpy.ndarray
+    float
         weighted mean
-    numpy.ndarray
+    float
         weighted standard deviation
-
 
     """
     samp_size = len(data)
@@ -310,22 +385,23 @@ def jackknife_mean_std(
 
     subsamp_size = int(samp_size * keep_size_pc)
 
-    all_ind = np.arange(samp_size)
+    # Generate all random indices at once (n_realization x subsamp_size)
+    all_indices = np.random.randint(0, samp_size, size=(n_realization, subsamp_size))
 
-    all_est = []
-    for i in range(n_realization):
-        sub_data_ind = np.random.choice(all_ind, subsamp_size)
+    # Extract subsampled data and weights (n_realization x subsamp_size)
+    sub_data = data[all_indices]
+    sub_weights = weights[all_indices]
 
-        if sum(data[sub_data_ind]) == 0:
-            all_est.append(np.nan)
-        else:
-            all_est.append(
-                np.average(data[sub_data_ind], weights=weights[sub_data_ind])
-            )
+    # Compute weighted means for all realizations at once
+    # weighted_mean = sum(data * weights) / sum(weights)
+    weighted_sums = np.sum(sub_data * sub_weights, axis=1)
+    weight_sums = np.sum(sub_weights, axis=1)
 
-    all_est = np.array(all_est)
+    # Handle division by zero
+    with np.errstate(divide='ignore', invalid='ignore'):
+        all_est = np.where(weight_sums > 0, weighted_sums / weight_sums, np.nan)
 
-    return np.mean(all_est), np.std(all_est)
+    return np.nanmean(all_est), np.nanstd(all_est)
 
 
 def func_bias_quad_1D(params, x_data):
@@ -399,6 +475,7 @@ def quad_corr_quant(
     verbose=False,
     seed=None,
     rng=None,
+    error_method="jackknife",
 ):
     """Quadratic Correlation Quantity.
 
@@ -434,6 +511,11 @@ def quad_corr_quant(
         Seed to initialize the randoms. [Default: None]
     rng: numpy.random.RandomState
         Random generator. [Default: None]
+    error_method : str, optional, default="jackknife"
+        method for computing binned error estimates:
+        - "analytical": fast weighted mean/std (no resampling)
+        - "jackknife": delete-1 jackknife (deterministic, fast)
+        - "jackknife_random": random subsampling (original method)
 
     Returns
     -------
@@ -488,7 +570,8 @@ def quad_corr_quant(
         y_bin.append([])
         err_bin.append([])
 
-    # Bin data for plot
+    # Precompute bin indices (depends only on x, not y)
+    bin_indices = []
     for idx in range(n_bin):
         if idx < diff_size:
             bin_size_tmp = size_bin + 1
@@ -499,18 +582,30 @@ def quad_corr_quant(
         ind = x_arg_sort[
             starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
         ]
-
+        bin_indices.append(ind)
         x_bin.append(np.mean(x[ind]))
 
+    # Bin y data using precomputed indices
+    for ind in bin_indices:
         for j in range(len(y)):
-            r_jk = jackknife_mean_std(
-                y[j][ind],
-                weights[ind],
-                remove_size=0.2,
-                n_realization=50,
-            )
-            y_bin[j].append(r_jk[0])
-            err_bin[j].append(r_jk[1])
+            if error_method == "analytical":
+                mean, std_err = weighted_mean_std(y[j][ind], weights[ind])
+            elif error_method == "jackknife":
+                mean, std_err = jackknife_mean_std(y[j][ind], weights[ind])
+            elif error_method == "jackknife_random":
+                mean, std_err = jackknife_mean_std_random(
+                    y[j][ind],
+                    weights[ind],
+                    remove_size=0.2,
+                    n_realization=50,
+                )
+            else:
+                raise ValueError(
+                    f"Unknown error_method '{error_method}'. "
+                    "Use 'analytical', 'jackknife', or 'jackknife_random'."
+                )
+            y_bin[j].append(mean)
+            err_bin[j].append(std_err)
 
     x_bin = np.array(x_bin)
     for jdx in range(len(y)):
@@ -605,6 +700,7 @@ def quad_corr_n_quant(
     stats_file=None,
     verbose=False,
     seed=None,
+    error_method="jackknife",
 ):
     """Quadratic Correlation N Quantity.
 
@@ -638,6 +734,11 @@ def quad_corr_n_quant(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
+    error_method : str, optional, default="jackknife"
+        method for computing binned error estimates:
+        - "analytical": fast weighted mean/std (no resampling)
+        - "jackknife": delete-1 jackknife (deterministic, fast)
+        - "jackknife_random": random subsampling (original method)
 
     """
     master_rng = np.random.RandomState(seed)
@@ -668,6 +769,7 @@ def quad_corr_n_quant(
             stats_file=stats_file,
             verbose=verbose,
             seed=seed_tmp,
+            error_method=error_method,
         )
 
         for i in range(len(slope)):
@@ -773,6 +875,106 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     y_model = func_bias_lin_1d(params, x_data)
     residuals = (y_model - y_data) / err
     return residuals
+
+
+def weighted_linear_fit(x, y, weights):
+    """Weighted Linear Fit.
+
+    Perform weighted linear regression y = m*x + c using analytical formula.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        x-values
+    y : numpy.ndarray
+        y-values
+    weights : numpy.ndarray
+        weights for each data point
+
+    Returns
+    -------
+    float
+        slope m
+    float
+        intercept c
+
+    """
+    S = np.sum(weights)
+    Sx = np.sum(weights * x)
+    Sy = np.sum(weights * y)
+    Sxx = np.sum(weights * x**2)
+    Sxy = np.sum(weights * x * y)
+
+    delta = S * Sxx - Sx**2
+    if delta == 0:
+        return np.nan, np.nan
+
+    m = (S * Sxy - Sx * Sy) / delta
+    c = (Sxx * Sy - Sx * Sxy) / delta
+
+    return m, c
+
+
+def bootstrap_linear_regression(x, y, weights, n_bootstrap=1000, seed=None):
+    """Bootstrap Linear Regression.
+
+    Compute linear regression parameters and uncertainties using bootstrap
+    resampling.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        x-values
+    y : numpy.ndarray
+        y-values
+    weights : numpy.ndarray
+        weights for each data point
+    n_bootstrap : int, optional
+        number of bootstrap samples, default is 1000
+    seed : int, optional
+        random seed for reproducibility
+
+    Returns
+    -------
+    float
+        slope m (mean of bootstrap samples)
+    float
+        slope uncertainty (std of bootstrap samples)
+    float
+        intercept c (mean of bootstrap samples)
+    float
+        intercept uncertainty (std of bootstrap samples)
+
+    """
+    rng = np.random.RandomState(seed)
+    n = len(x)
+
+    m_samples = np.zeros(n_bootstrap)
+    c_samples = np.zeros(n_bootstrap)
+
+    for i in range(n_bootstrap):
+        # Resample with replacement
+        idx = rng.choice(n, size=n, replace=True)
+        x_boot = x[idx]
+        y_boot = y[idx]
+        w_boot = weights[idx]
+
+        m_samples[i], c_samples[i] = weighted_linear_fit(x_boot, y_boot, w_boot)
+
+    # Remove any NaN values from failed fits
+    valid = ~(np.isnan(m_samples) | np.isnan(c_samples))
+    m_samples = m_samples[valid]
+    c_samples = c_samples[valid]
+
+    if len(m_samples) == 0:
+        return np.nan, np.nan, np.nan, np.nan
+
+    return (
+        np.mean(m_samples),
+        np.std(m_samples),
+        np.mean(c_samples),
+        np.std(c_samples),
+    )
 
 
 def loss_bias_2d(params, x_data, y_data, err, order, mix):
@@ -954,6 +1156,10 @@ def affine_corr(
     verbose=False,
     seed=None,
     rng=None,
+    regr_on_binned=False,
+    error_method="jackknife",
+    regr_error_method="covariance",
+    n_bootstrap=1000,
 ):
     """Affine Corr.
 
@@ -989,6 +1195,20 @@ def affine_corr(
         Seed to initialize the randoms. [Default: None]
     rng: numpy.random.RandomState
         Random generator. [Default: None]
+    regr_on_binned : bool, optional, default=False
+        if True, perform regression on binned data (faster for large
+        catalogues); if False, perform regression on unbinned data
+    error_method : str, optional, default="jackknife"
+        method for computing binned error estimates:
+        - "analytical": fast weighted mean/std (no resampling)
+        - "jackknife": delete-1 jackknife (deterministic, fast)
+        - "jackknife_random": random subsampling (original method)
+    regr_error_method : str, optional, default="covariance"
+        method for computing regression parameter uncertainties:
+        - "covariance": use lmfit covariance matrix (fast, assumes Gaussian errors)
+        - "bootstrap": use bootstrap resampling (slower, more robust)
+    n_bootstrap : int, optional, default=1000
+        number of bootstrap samples (only used if regr_error_method="bootstrap")
 
     Returns
     -------
@@ -996,6 +1216,10 @@ def affine_corr(
         slopes of the linear fits
     list
         errors of the slopes
+    list
+        offsets of the linear fits
+    list
+        errors of the offsets
     list
         labels of the linear fits
 
@@ -1041,7 +1265,8 @@ def affine_corr(
         y_bin.append([])
         err_bin.append([])
 
-    # Bin data for plot
+    # Precompute bin indices (depends only on x, not y)
+    bin_indices = []
     for idx in range(n_bin):
         if idx < diff_size:
             bin_size_tmp = size_bin + 1
@@ -1052,18 +1277,33 @@ def affine_corr(
         ind = x_arg_sort[
             starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
         ]
-
+        bin_indices.append(ind)
         x_bin.append(np.mean(x[ind]))
 
+    # Bin y data using precomputed indices
+    for idx, ind in enumerate(bin_indices):
         for j in range(len(y)):
-            r_jk = jackknife_mean_std(
-                y[j][ind],
-                weights[ind],
-                remove_size=0.2,
-                n_realization=50,
-            )
-            y_bin[j].append(r_jk[0])
-            err_bin[j].append(r_jk[1])
+            if error_method == "analytical":
+                # Fast weighted mean/std (no resampling)
+                mean, std_err = weighted_mean_std(y[j][ind], weights[ind])
+            elif error_method == "jackknife":
+                # Delete-1 jackknife (deterministic, fast)
+                mean, std_err = jackknife_mean_std(y[j][ind], weights[ind])
+            elif error_method == "jackknife_random":
+                # Random subsampling (original method)
+                mean, std_err = jackknife_mean_std_random(
+                    y[j][ind],
+                    weights[ind],
+                    remove_size=0.2,
+                    n_realization=50,
+                )
+            else:
+                raise ValueError(
+                    f"Unknown error_method '{error_method}'. "
+                    "Use 'analytical', 'jackknife', or 'jackknife_random'."
+                )
+            y_bin[j].append(mean)
+            err_bin[j].append(std_err)
 
     x_bin = np.array(x_bin)
     for jdx in range(len(y)):
@@ -1075,27 +1315,83 @@ def affine_corr(
 
     m_arr = []
     m_err_arr = []
+    c_arr = []
+    c_err_arr = []
     tick_name_arr = []
 
-    for jdx in range(len(y)):
-        params = Parameters()
-        params.add("m", value=0.01)
-        params.add("c", value=0.01)
-        res = minimize(
-            loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
+    # Print regression info
+    regr_mode = "binned" if regr_on_binned else "unbinned"
+    err_mode = regr_error_method
+    n_unbinned = len(x)
+    n_binned = len(x_bin)
+    n_regr = n_binned if regr_on_binned else n_unbinned
+    print(
+        f"Regression ({regr_mode}, errors={err_mode}): {xlabel}, "
+        f"n_unbinned={n_unbinned}, n_binned={n_binned}, "
+        f"using n={n_regr} points"
+    )
+
+    # Print regression mode header to stats file
+    if stats_file:
+        print_stats(
+            f"--- Regression ({regr_mode}, errors={err_mode}): {xlabel} ---",
+            stats_file,
+            verbose=verbose,
         )
 
-        m_arr.append(res.params["m"].value)
-        # MKDEBUG float required?
-        m_err_arr.append(float(res.params["m"].stderr))
+    for jdx in range(len(y)):
+        if regr_error_method == "bootstrap":
+            # Use bootstrap for both best-fit values and uncertainties
+            if regr_on_binned:
+                # Bootstrap on binned data
+                w_bin = 1.0 / np.array(err_bin[jdx]) ** 2
+                m_val, m_err, c_val, c_err = bootstrap_linear_regression(
+                    x_bin, np.array(y_bin[jdx]), w_bin,
+                    n_bootstrap=n_bootstrap, seed=master_rng.randint(2**30)
+                )
+            else:
+                # Bootstrap on unbinned data
+                m_val, m_err, c_val, c_err = bootstrap_linear_regression(
+                    x, y[jdx], weights,
+                    n_bootstrap=n_bootstrap, seed=master_rng.randint(2**30)
+                )
+        else:
+            # Use lmfit for best-fit values and covariance-based uncertainties
+            params = Parameters()
+            params.add("m", value=0.01)
+            params.add("c", value=0.01)
+
+            if regr_on_binned:
+                # Regression on binned data (faster for large catalogues)
+                res = minimize(
+                    loss_bias_lin_1d,
+                    params,
+                    args=(x_bin, y_bin[jdx], err_bin[jdx]),
+                )
+            else:
+                # Regression on unbinned data
+                res = minimize(
+                    loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
+                )
+
+            m_val = res.params["m"].value
+            m_err = float(res.params["m"].stderr)
+            c_val = res.params["c"].value
+            c_err = float(res.params["c"].stderr)
+
+        m_arr.append(m_val)
+        m_err_arr.append(m_err)
+        c_arr.append(c_val)
+        c_err_arr.append(c_err)
         tick_name_arr.append(f"{xlabel}_e{jdx+1}")
 
-        m_dm = ufloat(res.params["m"].value, res.params["m"].stderr)
-        c_dc = ufloat(res.params["c"].value, res.params["c"].stderr)
+        # Plot results
+        m_dm = ufloat(m_val, m_err)
+        c_dc = ufloat(c_val, c_err)
         label = rf"${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$"
         plt.plot(
             x_bin,
-            func_bias_lin_1d(res.params, x_bin),
+            m_val * x_bin + c_val,
             c=colors[jdx],
             label=label,
         )
@@ -1104,8 +1400,10 @@ def affine_corr(
         )
 
         if stats_file:
-            msg = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
-            print_stats(msg, stats_file, verbose=verbose)
+            msg_m = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
+            msg_c = "{}: {}={:.2ugP}".format(xlabel, clabel[jdx], c_dc)
+            print_stats(msg_m, stats_file, verbose=verbose)
+            print_stats(msg_c, stats_file, verbose=verbose)
 
     # Finalise plots
     plt_xmin, plt_xmax = plt.xlim()
@@ -1122,7 +1420,7 @@ def affine_corr(
 
     plt.close()
 
-    return m_arr, m_err_arr, tick_name_arr
+    return m_arr, m_err_arr, c_arr, c_err_arr, tick_name_arr
 
 
 def read_regr_res_from_file(path):
@@ -1139,6 +1437,14 @@ def read_regr_res_from_file(path):
     -------
     list
         list of slopes
+    list
+        list of slope errors
+    list
+        list of offsets
+    list
+        list of offset errors
+    list
+        list of tick names
 
     """
     with open(path, "r") as f:
@@ -1146,13 +1452,23 @@ def read_regr_res_from_file(path):
         m = cs_args.my_string_split(str_m, num=2, stop=True)
         str_m_err = f.readline()
         m_err = cs_args.my_string_split(str_m_err, num=2, stop=True)
+        str_c = f.readline()
+        c = cs_args.my_string_split(str_c, num=2, stop=True)
+        str_c_err = f.readline()
+        c_err = cs_args.my_string_split(str_c_err, num=2, stop=True)
         str_tick_name = f.readline()
         tick_name = cs_args.my_string_split(str_tick_name, num=2, stop=True)
 
-    return [float(i) for i in m], [float(i) for i in m_err], tick_name
+    return (
+        [float(i) for i in m],
+        [float(i) for i in m_err],
+        [float(i) for i in c],
+        [float(i) for i in c_err],
+        tick_name,
+    )
 
 
-def write_regr_res_to_file(m, m_err, tick_name, path):
+def write_regr_res_to_file(m, m_err, c, c_err, tick_name, path):
     """Write Regr Res To File.
 
     Write regression result to ASCII file.
@@ -1163,6 +1479,10 @@ def write_regr_res_to_file(m, m_err, tick_name, path):
         slopes for first and second ellipticity component
     m_err: list
         errors of the slopes for first and second ellipticity component
+    c: list
+        offsets for first and second ellipticity component
+    c_err: list
+        errors of the offsets for first and second ellipticity component
     tick_name: list
         names of the quantities associated to each slope
     path: str
@@ -1174,7 +1494,12 @@ def write_regr_res_to_file(m, m_err, tick_name, path):
         f.write("\n")
         f.write(" ".join(map(str, m_err)))
         f.write("\n")
-        f.write(" ".join(map(str, tick_name)))
+        f.write(" ".join(map(str, c)))
+        f.write("\n")
+        f.write(" ".join(map(str, c_err)))
+        f.write("\n")
+        # Write quoted labels to deal with white spaces
+        f.write(" ".join(f'"{x}"' for x in tick_name))
         f.write("\n")
 
 
@@ -1193,6 +1518,10 @@ def affine_corr_n(
     stats_file=None,
     verbose=False,
     seed=None,
+    regr_on_binned=False,
+    error_method="jackknife",
+    regr_error_method="covariance",
+    n_bootstrap=1000,
 ):
     """Affine Corr N.
 
@@ -1226,6 +1555,20 @@ def affine_corr_n(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
+    regr_on_binned : bool, optional, default=False
+        if True, perform regression on binned data (faster for large
+        catalogues); if False, perform regression on unbinned data
+    error_method : str, optional, default="jackknife"
+        method for computing binned error estimates:
+        - "analytical": fast weighted mean/std (no resampling)
+        - "jackknife": delete-1 jackknife (deterministic, fast)
+        - "jackknife_random": random subsampling (original method)
+    regr_error_method : str, optional, default="covariance"
+        method for computing regression parameter uncertainties:
+        - "covariance": use lmfit covariance matrix (fast, assumes Gaussian errors)
+        - "bootstrap": use bootstrap resampling (slower, more robust)
+    n_bootstrap : int, optional, default=1000
+        number of bootstrap samples (only used if regr_error_method="bootstrap")
 
     """
     master_rng = np.random.RandomState(seed)
@@ -1235,6 +1578,8 @@ def affine_corr_n(
         out_path_arr = [None] * len(x_arr)
     m_arr = []
     m_err_arr = []
+    c_arr = []
+    c_err_arr = []
     tick_name_arr = []
     for x, xlabel, out_path, seed_tmp in zip(
         x_arr, xlabel_arr, out_path_arr, seeds
@@ -1243,10 +1588,10 @@ def affine_corr_n(
         out_path_txt = f"{out_path}.txt"
         if os.path.exists(out_path_txt):
             print(f"Reading regression result from file {out_path_txt}.")
-            m, m_err, tick_name = read_regr_res_from_file(out_path_txt)
+            m, m_err, c, c_err, tick_name = read_regr_res_from_file(out_path_txt)
         else:
             print(f"Running regression, writing result to file {out_path_txt}.")
-            m, m_err, tick_name = affine_corr(
+            m, m_err, c, c_err, tick_name = affine_corr(
                 x,
                 y,
                 xlabel,
@@ -1261,13 +1606,19 @@ def affine_corr_n(
                 stats_file=stats_file,
                 verbose=verbose,
                 seed=seed_tmp,
+                regr_on_binned=regr_on_binned,
+                error_method=error_method,
+                regr_error_method=regr_error_method,
+                n_bootstrap=n_bootstrap,
             )
-            write_regr_res_to_file(m, m_err, tick_name, out_path_txt)
+            write_regr_res_to_file(m, m_err, c, c_err, tick_name, out_path_txt)
         m_arr.extend(m)
         m_err_arr.extend(m_err)
+        c_arr.extend(c)
+        c_err_arr.extend(c_err)
         tick_name_arr.extend(tick_name)
 
-    return m_arr, m_err_arr, tick_name_arr
+    return m_arr, m_err_arr, c_arr, c_err_arr, tick_name_arr
 
 
 def save_to_file(data, fname):

@@ -34,6 +34,7 @@ from cs_util import plots as cs_plots
 
 import shear_psf_leakage.run_scale as run
 from shear_psf_leakage.leakage import *
+
 # -
 
 # ## Compute leakage
@@ -55,7 +56,9 @@ if os.path.exists(params_in_path):
     for key in params_in:
         obj._params[key] = params_in[key]
 else:
-    print(f"Configuration script {params_in_path} not found, asking for user input")
+    print(
+        f"Configuration script {params_in_path} not found, asking for user input"
+    )
 
     for key in obj._params:
         msg = f"{key}? [{obj._params[key]}] "
