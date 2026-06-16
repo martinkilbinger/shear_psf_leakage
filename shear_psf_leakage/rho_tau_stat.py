@@ -631,6 +631,9 @@ class RhoStat:
         save_cov=False,
         func=None,
         var_method="jackknife",
+        write_treecorr=False,
+        write_patch_results=False,
+        write_cov=False
     ):
         """
         compute_rho_stats
@@ -651,6 +654,10 @@ class RhoStat:
                 + catalog_id
                 + " in progress..."
             )
+        if write_treecorr:
+            # Remove extension of the filename
+            filename_no_ext = filename.split(".")[0]
+
         rho_0 = treecorr.GGCorrelation(self._treecorr_config)
         rho_0.process(
             self.catalogs.get_cat("psf_" + catalog_id),
@@ -666,8 +673,28 @@ class RhoStat:
             self.catalogs.get_cat("psf_error_" + catalog_id),
             self.catalogs.get_cat("psf_" + catalog_id),
         )
-        rho_3 = treecorr.GGCorrelation(self._treecorr_config)
+        if write_treecorr:
+            self.save_treecorr(
+                rho_0,
+                filename_no_ext + "_rho_0.txt",
+                write_patch_results,
+                write_cov
+            )
+            self.save_treecorr(
+                rho_1,
+                filename_no_ext + "_rho_1.txt",
+                write_patch_results,
+                write_cov
+            )
+            self.save_treecorr(
+                rho_2,
+                filename_no_ext + "_rho_2.txt",
+                write_patch_results,
+                write_cov
+            )
+
         if self.use_eta:
+            rho_3 = treecorr.GGCorrelation(self._treecorr_config)
             rho_3.process(
                 self.catalogs.get_cat("psf_size_error_" + catalog_id),
                 self.catalogs.get_cat("psf_size_error_" + catalog_id),
@@ -682,6 +709,25 @@ class RhoStat:
                 self.catalogs.get_cat("psf_" + catalog_id),
                 self.catalogs.get_cat("psf_size_error_" + catalog_id),
             )
+            if write_treecorr:
+                self.save_treecorr(
+                    rho_3,
+                    filename_no_ext + "_rho_3.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_4,
+                    filename_no_ext + "_rho_4.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_5,
+                    filename_no_ext + "_rho_5.txt",
+                    write_patch_results,
+                    write_cov
+                )
 
         if self.use_fourth_moment:
             rho_6 = treecorr.GGCorrelation(self._treecorr_config)
@@ -699,11 +745,68 @@ class RhoStat:
             rho_12 = treecorr.GGCorrelation(self._treecorr_config)
             rho_12.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
 
+            if write_treecorr:
+                self.save_treecorr(
+                    rho_6,
+                    filename_no_ext + "_rho_6.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_7,
+                    filename_no_ext + "_rho_7.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_8,
+                    filename_no_ext + "_rho_8.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_9,
+                    filename_no_ext + "_rho_9.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_10,
+                    filename_no_ext + "_rho_10.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_11,
+                    filename_no_ext + "_rho_11.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_12,
+                    filename_no_ext + "_rho_12.txt",
+                    write_patch_results,
+                    write_cov
+                )
+
         if self.use_eta and self.use_fourth_moment:
             rho_13 = treecorr.GGCorrelation(self._treecorr_config)
             rho_13.process(self.catalogs.get_cat('psf_fourth_moment_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
             rho_14 = treecorr.GGCorrelation(self._treecorr_config)
             rho_14.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            if write_treecorr:
+                self.save_treecorr(
+                    rho_13,
+                    filename_no_ext + "_rho_13.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    rho_14,
+                    filename_no_ext + "_rho_14.txt",
+                    write_patch_results,
+                    write_cov
+                )
 
         if self.use_eta and not self.use_fourth_moment:
             self.rho_stats = Table(
@@ -1054,6 +1157,13 @@ class RhoStat:
     def load_rho_stats(self, filename):
         self.rho_stats = fits.getdata(self.catalogs._output + "/" + filename)
 
+    def save_treecorr(self, treecorr_gg, filename, write_patch_results, write_cov):
+        treecorr_gg.write(
+            self.catalogs._output + "/" + filename,
+            write_patch_results=write_patch_results,
+            write_cov=write_cov,
+        )
+
     def plot_rho_stats(
         self,
         filenames,
@@ -1101,6 +1211,19 @@ class RhoStat:
         close : bool, optional
             If True, close the plot after saving. Default is True.
         """
+        e_psf = "e^\mathrm{PSF}"
+        delta_e_psf = r"\delta e^\mathrm{PSF}"
+        delta_T_psf = r"\delta T^\mathrm{PSF}"
+
+        titles = [
+            rf"$\langle {e_psf} {e_psf} \rangle$",
+            rf"$\langle {delta_e_psf} {delta_e_psf} \rangle$",
+            rf"$\langle {e_psf} {delta_e_psf} \rangle$",
+            rf"$\langle {delta_T_psf} {delta_T_psf} \rangle$",
+            rf"$\langle {delta_e_psf} {delta_T_psf} \rangle$",
+            rf"$\langle {e_psf} {delta_T_psf} \rangle$",
+        ]
+        
         # To adapt to the new boolean argument
         fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(15, 9))
         ax = ax.flatten()
@@ -1113,12 +1236,8 @@ class RhoStat:
             for i in range(6):
                 xlabel = r"$\theta$ [arcmin]" if i > 2 else ""
 
-                if legend == "each":
-                    ylabel = r"$\rho-$statistics" if (i == 0 or i == 3) else ""
-                    label = rf"$\rho_{i}(\theta)$ {cat_id}"
-                elif legend == "outside":
-                    ylabel = rf"$\rho_i(\theta)$"
-                    label = rf"$\rho_i$ {cat_id}"
+                ylabel = rf"$\rho_{i}(\theta)$"
+                label = rf"{cat_id}"
 
                 if abs:
                     ax[i].errorbar(
@@ -1160,8 +1279,18 @@ class RhoStat:
                 if legend == "each":
                     ax[i].legend(loc="best", fontsize="small")
 
+        for i, title_ in enumerate(titles):
+            ax[i].set_title(title_)
+
         if legend == "outside":
-            ax[-1].legend(bbox_to_anchor=(1.5, 0.0), fontsize="small")
+            handles, labels = ax[-1].get_legend_handles_labels()
+            fig.legend(
+                handles, labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, 0.0),
+                ncol=3,
+                frameon=False
+            )
 
         if title:
             plt.suptitle(title)
@@ -1335,6 +1464,9 @@ class TauStat:
         save_cov=False,
         func=None,
         var_method="jackknife",
+        write_treecorr=False,
+        write_patch_results=False,
+        write_cov=False
     ):
         """
         compute_tau_stats
@@ -1365,6 +1497,10 @@ class TauStat:
                 + catalog_id
                 + " in progress..."
             )
+
+        if write_treecorr:
+            filename_no_ext = filename.split(".")[0]
+
         tau_0 = treecorr.GGCorrelation(self._treecorr_config)
         tau_0.process(
             self.catalogs.get_cat("gal_" + catalog_id),
@@ -1375,14 +1511,50 @@ class TauStat:
             self.catalogs.get_cat("gal_" + catalog_id),
             self.catalogs.get_cat("psf_error_" + catalog_id),
         )
+
+        if write_treecorr:
+            self.save_treecorr(
+                tau_0,
+                filename_no_ext + "_tau_0.txt",
+                write_patch_results,
+                write_cov
+            )
+            self.save_treecorr(
+                tau_2,
+                filename_no_ext + "_tau_2.txt",
+                write_patch_results,
+                write_cov
+            )
+
         if self.use_eta:
             tau_5 = treecorr.GGCorrelation(self._treecorr_config)
             tau_5.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            if write_treecorr:
+                self.save_treecorr(
+                    tau_5,
+                    filename_no_ext + "_tau_5.txt",
+                    write_patch_results,
+                    write_cov
+                )
+
         if self.use_fourth_moment:
             tau_6 = treecorr.GGCorrelation(self._treecorr_config)
             tau_6.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_'+catalog_id))
             tau_7 = treecorr.GGCorrelation(self._treecorr_config)
             tau_7.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id))
+            if write_treecorr:
+                self.save_treecorr(
+                    tau_6,
+                    filename_no_ext + "_tau_6.txt",
+                    write_patch_results,
+                    write_cov
+                )
+                self.save_treecorr(
+                    tau_7,
+                    filename_no_ext + "_tau_7.txt",
+                    write_patch_results,
+                    write_cov
+                )
 
         if self.use_eta and not self.use_fourth_moment:
 
@@ -1572,6 +1744,13 @@ class TauStat:
     def load_tau_stats(self, filename):
         self.tau_stats = fits.getdata(self.catalogs._output + "/" + filename)
 
+    def save_treecorr(self, treecorr_gg, filename, write_patch_results, write_cov):
+        treecorr_gg.write(
+            self.catalogs._output + "/" + filename,
+            write_patch_results=write_patch_results,
+            write_cov=write_cov,
+        )
+    
     def plot_tau_stats(
         self,
         filenames,
@@ -1579,6 +1758,7 @@ class TauStat:
         catalog_ids,
         savefig=None,
         plot_tau_m=True,
+        plot_theta_times_tau=True,
         legend="inside",
         show=False,
         close=True,
@@ -1605,6 +1785,9 @@ class TauStat:
         plot_tau_m : bool
             If True, plot the tau - additionally.
 
+        plot_theta_times_tau : bool
+            If True, plot theta x tau for the 2 and 5 components.
+
         legend : str, optional
             allowed are "each" (default; legends in each panel), "outside" (legend outside of panels)
 
@@ -1620,6 +1803,22 @@ class TauStat:
 
         ax : Axes
         """
+        e_obs = "e^\mathrm{obs}"
+        e_psf = "e^\mathrm{PSF}"
+        delta_e_psf = "\delta e^\mathrm{PSF}"
+        delta_T_psf = "\delta T^\mathrm{PSF}"
+
+        titles = [
+            rf"$\langle {e_obs} {e_psf} \rangle$",
+            rf"$\langle {e_obs} {delta_e_psf} \rangle$",
+            rf"$\langle {e_obs} {delta_T_psf} \rangle$",
+        ]
+
+        dict_index_tau = {
+            0: '0',
+            1: '2',
+            2: '5',
+        }
         # To adapt to the new boolean fields
         nrows = 1 + plot_tau_m
 
@@ -1628,37 +1827,30 @@ class TauStat:
         if nrows == 1:
             ax = ax.reshape(1, 3)
 
-        for filename, color, cat_id in zip(
-            filenames, colors, catalog_ids
-        ):  # Plot for the different catalogs
-            self.load_tau_stats(filename)
-
-            for i in range(3):
-                for j in range(nrows):
+        for i in range(3):
+            for j in range(nrows):
+                for filename, color, cat_id in zip(
+                    filenames, colors, catalog_ids
+                ):  # Plot for the different catalogs
+                    self.load_tau_stats(filename)
                     p_or_m = "m" if j else "p"
                     p_or_m_label = "-" if j else "+"
                     xlabel = r"$\theta$ [arcmin]" if (j == nrows - 1) else ""
-                    if legend == "inside":
-                        ylabel = r"$\tau-$statistics" if (i == 0) else ""
-                        label = (
-                            rf"$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)$ "
-                            + cat_id
-                            if i == 0
-                            else rf"$\tau_{{{int(0.5*i**2+1.5*i)}, {p_or_m_label}}}(\theta)\theta$ "
-                            + cat_id
-                        )
-                    else:
-                        ylabel = rf"$\tau_{i}(\theta)$"
-                        label = rf"$\tau_i$ {cat_id}"
+                    ylabel = (
+                        rf"$\tau_{{{dict_index_tau[i]}, {p_or_m_label}}}(\theta)$"
+                        if (i == 0) or not plot_theta_times_tau
+                        else rf"$\tau_{{{dict_index_tau[i]}, {p_or_m_label}}}(\theta)\theta$"
+                    )
+                    label = rf"{cat_id}"
                     factor_theta = (
                         np.ones_like(self.tau_stats["theta"])
-                        if i == 0
+                        if (i == 0) or not plot_theta_times_tau
                         else self.tau_stats["theta"]
                     )
                     y = (
                         self.tau_stats[
                             "tau_"
-                            + str(int(0.5 * i**2 + 1.5 * i))
+                            + dict_index_tau[i]
                             + "_"
                             + p_or_m
                         ]
@@ -1668,7 +1860,7 @@ class TauStat:
                         np.sqrt(
                             self.tau_stats[
                                 "vartau_"
-                                + str(int(0.5 * i**2 + 1.5 * i))
+                                + dict_index_tau[i]
                                 + "_"
                                 + p_or_m
                             ]
@@ -1684,18 +1876,33 @@ class TauStat:
                         color=color,
                         capsize=2,
                     )
-                    ax[j, i].set_xlim(
-                        self._treecorr_config["min_sep"],
-                        self._treecorr_config["max_sep"],
-                    )
-                    ax[j, i].set_xlabel(xlabel)
-                    ax[j, i].set_ylabel(ylabel)
-                    ax[j, i].set_xscale("log")
-                    if legend == "inside":
-                        ax[j, i].legend(loc="best", fontsize="small")
+                ax[j, i].set_xlim(
+                    self._treecorr_config["min_sep"],
+                    self._treecorr_config["max_sep"],
+                )
+                ax[j, i].set_xlabel(xlabel)
+                ax[j, i].set_xscale("log")
+                # Recover the text offset
+                fig.canvas.draw()
+                text_offset = ax[j, i].yaxis.get_offset_text().get_text()
+                ylabel+=text_offset
+                ax[j, i].yaxis.get_offset_text().set_visible(False)
+
+                ax[j, i].set_ylabel(ylabel)
+                if legend == "inside":
+                    ax[j, i].legend(loc="best", fontsize="small")
+
+                ax[j, i].set_title(titles[i])
 
         if legend == "outside":
-            ax[-1, -1].legend(bbox_to_anchor=(1.5, 0.0), fontsize="small")
+            handles, labels= ax[-1, -1].get_legend_handles_labels()
+            fig.legend(
+                handles, labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, 0.),
+                ncol=3,
+                frameon=False,
+            )
 
         plt.tight_layout()
         if savefig is not None:
