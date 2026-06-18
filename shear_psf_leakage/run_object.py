@@ -140,14 +140,16 @@ class LeakageObject:
         Update parameters.
 
         """
-        if self._params["cols"] and type(self._params["cols"]) is not list:
+        if self._params["cols"] and not isinstance(self._params["cols"], list):
             self._params["cols"] = cs_args.my_string_split(
                 self._params["cols"],
                 verbose=self._params["verbose"],
                 stop=True,
             )
 
-        if self._params["cols_ratio"] and type(self._params["cols_ratio"]) is not list:
+        if self._params["cols_ratio"] and not isinstance(
+            self._params["cols_ratio"], list
+        ):
             self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,

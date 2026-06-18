@@ -309,19 +309,7 @@ class Catalogs:
             "psf_fourth_moment",
             "psf_fourth_moment_error",
         ]
-        allowed_types = [
-            "gal",
-            "psf",
-            "psf_error",
-            "psf_size_error",
-            "psf_fourth_moment",
-            "psf_fourth_moment_error",
-        ]
 
-        assert cat_type in allowed_types, (
-            "The specified catalogue type is invalid. Check the one you use is allowed."
-            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'."
-        )
         assert cat_type in allowed_types, (
             "The specified catalogue type is invalid. Check the one you use is allowed."
             "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'."
@@ -640,32 +628,6 @@ class RhoStat:
                 cat=psf_cat,
                 cat_type="psf_fourth_moment",
                 key="psf_fourth_moment_" + catalog_id,
-                patch_centers=patch_centers,
-                square_size=square_size,
-                mask=mask,
-            )
-            self.catalogs.build_catalog(
-                cat=psf_cat,
-                cat_type="psf_fourth_moment_error",
-                key="psf_fourth_moment_error_" + catalog_id,
-                patch_centers=patch_centers,
-                square_size=square_size,
-                mask=mask,
-            )
-
-        if self.use_fourth_moment:
-            self.catalogs.build_catalog(
-                cat=psf_cat,
-                cat_type="psf_fourth_moment",
-                key="psf_fourth_moment_" + catalog_id,
-                patch_centers=patch_centers,
-                square_size=square_size,
-                mask=mask,
-            )
-            self.catalogs.build_catalog(
-                cat=psf_cat,
-                cat_type="psf_fourth_moment_error",
-                key="psf_fourth_moment_error_" + catalog_id,
                 patch_centers=patch_centers,
                 square_size=square_size,
                 mask=mask,
@@ -1204,19 +1166,6 @@ class RhoStat:
                 rhos += [rho_13, rho_14]
             cov = treecorr.estimate_multi_cov(rhos, var_method, func=func)
 
-            use_eta_str = "" if self.use_eta else "no_eta"
-            use_fourth_moment_str = (
-                "" if not self.use_fourth_moment else "w_fourth_moment"
-            )
-            np.save(
-                self.catalogs._output
-                + "/"
-                + "cov_rho_"
-                + catalog_id
-                + use_eta_str
-                + use_fourth_moment_str,
-                cov,
-            )
             use_eta_str = "" if self.use_eta else "no_eta"
             use_fourth_moment_str = (
                 "" if not self.use_fourth_moment else "w_fourth_moment"
