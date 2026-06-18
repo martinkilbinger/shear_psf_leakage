@@ -121,7 +121,7 @@ class LeakageObject:
             )
 
         if not self._params["obs_leakage"] and self._params["cols_ratio"]:
-            raise ValueError(f"Option 'cols_ratio' only valid for obs_leakage")
+            raise ValueError("Option 'cols_ratio' only valid for obs_leakage")
 
         if self._params["e1_col"] == self._params["e2_col"]:
             raise ValueError(
@@ -140,17 +140,14 @@ class LeakageObject:
         Update parameters.
 
         """
-        if self._params["cols"] and type(self._params["cols"]) != list:
+        if self._params["cols"] and type(self._params["cols"]) is not list:
             self._params["cols"] = cs_args.my_string_split(
                 self._params["cols"],
                 verbose=self._params["verbose"],
                 stop=True,
             )
 
-        if (
-            self._params["cols_ratio"]
-            and type(self._params["cols_ratio"]) != list
-        ):
+        if self._params["cols_ratio"] and type(self._params["cols_ratio"]) is not list:
             self._params["cols_ratio"] = cs_args.my_string_split(
                 self._params["cols_ratio"],
                 num=2,
@@ -284,7 +281,6 @@ class LeakageObject:
             verbose=self._params["verbose"],
         )
 
-
         # Save regression results
         self._m_arr = m_arr
         self._m_err_arr = m_err_arr
@@ -307,15 +303,14 @@ class LeakageObject:
             self._tick_name_arr.insert(2, "e1_e2")
             self._tick_name_arr.insert(3, "e2_e1")
 
-        except:
-            print("Ellipticity regression parameters not found, continuing")
+        except Exception as e:
+            print(f"Ellipticity regression parameters not found: {e}. Continuing...")
 
         self.plot_summary_obs(mode="ylin")
         self.plot_summary_obs(mode="ylog")
         self.plot_summary_obs(mode="ysig")
 
     def plot_summary_obs(self, mode="ylin"):
-
         # Summary plot
         plt.figure()
 
@@ -410,9 +405,7 @@ class LeakageObject:
             p_gt.add(par, value=pars_gt[par])
 
         # Ground-truth 2D (y_1, y_2) data
-        y1, y2 = leakage.func_bias_2d(
-            p_gt, x_arr[0], x_arr[1], order="quad", mix=True
-        )
+        y1, y2 = leakage.func_bias_2d(p_gt, x_arr[0], x_arr[1], order="quad", mix=True)
 
         # Perturbation
         dy1 = np.random.normal(scale=sig_x, size=size)
@@ -474,8 +467,7 @@ class LeakageObject:
 
         """
         return (
-            f"{self._params['output_dir']}"
-            + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
+            f"{self._params['output_dir']}" + f"/PSF_e_vs_e_gal_order-{order}_mix-{mix}"
         )
 
     def PSF_leakage(self, mix=True, order="lin"):
@@ -560,9 +552,7 @@ class LeakageObject:
         mlabel = [r"\alpha_1", r"\alpha_2"]
         clabel = ["c_1", "c_2"]
 
-        out_path_arr = [
-            f"{self._params['output_dir']}/{name}" for name in out_name_arr
-        ]
+        out_path_arr = [f"{self._params['output_dir']}/{name}" for name in out_name_arr]
         name = "systematics_test"
         out_path_arr.append(f"{self._params['output_dir']}/{name}")
         leakage.affine_corr_n(

@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from astropy import units
 from astropy.io import fits
+import astropy.coordinates as coords
 from cs_util import args as cs_args
 from cs_util import calc
 from cs_util import cat as cs_cat
@@ -76,7 +77,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     cols = [theta, alpha_leak, sig_alpha_leak]
     names = ["# theta[arcmin]", "alpha", "sig_alpha"]
     fname = f"{output_dir}/alpha_leakage_{sh}.txt"
-    write_ascii_table_file(cols, names, fname)
+    cs_cat.write_ascii_table_file(cols, names, fname)
 
 
 def save_xi_sys(
@@ -230,30 +231,23 @@ class LeakageScale:
             "ra_star_col": (
                 "right ascension column name in star catalogue, default={}"
             ),
-            "dec_star_col": (
-                "declination column name in star catalogue, default={}"
-            ),
-            "e1_PSF_star_col": (
-                "e1 PSF column name in star catalogue, default={}"
-            ),
-            "e2_PSF_star_col": (
-                "e2 PSF column name in star catalogue, default={}"
-            ),
+            "dec_star_col": ("declination column name in star catalogue, default={}"),
+            "e1_PSF_star_col": ("e1 PSF column name in star catalogue, default={}"),
+            "e2_PSF_star_col": ("e2 PSF column name in star catalogue, default={}"),
             "dndz_path": (
                 "path to galaxy redshift distribution file, for xi_sys ratio"
             ),
             "output_dir": "output_directory, default={}",
             "close_pair_tolerance": (
-                "tolerance angle for close objects in star catalogue,"
-                + " default={}"
+                "tolerance angle for close objects in star catalogue," + " default={}"
             ),
             "close_pair_mode": (
                 "mode for close objects in star catalogue, allowed are"
-                + f" 'remove', 'average'"
+                + " 'remove', 'average'"
             ),
             "cut": (
                 "list of criteria (white-space separated, do not use '_')"
-                + f" to cut data, e.g. 'w>0_mask!=0'"
+                + " to cut data, e.g. 'w>0_mask!=0'"
             ),
             "theta_min_amin": "mininum angular scale [arcmin], default={}",
             "theta_max_amin": "maximum angular scale [arcmin], default={}",
@@ -337,9 +331,7 @@ class LeakageScale:
         )
 
         for key in self._params:
-            leakage.print_stats(
-                f"{key}: {self._params[key]}", self._stats_file, False
-            )
+            leakage.print_stats(f"{key}: {self._params[key]}", self._stats_file, False)
 
     def run(self):
         """Run.
@@ -498,7 +490,7 @@ class LeakageScale:
                     done = np.append(done, ww)
                     n_avg_rem += len(ww) - 1
 
-                n_avg = len(dat_PSF_mult[ra_star_col])
+                n_avg = len(dat_PSF_mult[self._params["ra_star_col"]])
                 leakage.print_stats(
                     f"adding {n_avg}/{n_star} = {n_avg / n_star:.1%} "
                     + "averaged objects",
@@ -507,10 +499,8 @@ class LeakageScale:
                 )
 
                 for col in dat_PSF.dtype.names:
-                    dat_PSF_proc[col] = np.append(
-                        dat_PSF_proc[col], dat_PSF_mult[col]
-                    )
-            elif mode == "remove":
+                    dat_PSF_proc[col] = np.append(dat_PSF_proc[col], dat_PSF_mult[col])
+            elif self._params["mode"] == "remove":
                 n_rem = len(idx_mult)
                 leakage.print_stats(
                     f"removing {n_rem}/{n_star} = {n_rem / n_star:.1%} "
@@ -534,15 +524,15 @@ class LeakageScale:
             self._stats_file,
             verbose=self._params["verbose"],
         )
-        if mode == "average":
+        if self._params["mode"] == "average":
             leakage.print_stats(
-                f"Check: n_non_close + n_avg + n_avg_rem = n_star? "
+                "Check: n_non_close + n_avg + n_avg_rem = n_star? "
                 + f"{n_non_close} + {n_avg} + {n_avg_rem} = "
                 + f"{n_non_close + n_avg + n_avg_rem} ({n_star})",
                 self._stats_file,
                 verbose=self._params["verbose"],
             )
-        elif mode == "remove":
+        elif self._params["mode"] == "remove":
             leakage.print_stats(
                 f"Check: n_non_close + n_rem = n_star? {n_non_close} "
                 + f"+ {n_rem} = {n_non_close + n_rem} ({n_star})",
@@ -561,7 +551,7 @@ class LeakageScale:
             )
         else:
             leakage.print_stats(
-                f"keeping {n_out}/{n_in} = {n_out/n_in:.1%} stars",
+                f"keeping {n_out}/{n_in} = {n_out / n_in:.1%} stars",
                 self._stats_file,
                 verbose=self._params["verbose"],
             )
@@ -717,7 +707,7 @@ class LeakageScale:
         #    np.average(self.alpha_leak, weights=1/self.sig_alpha_leak**2)
         # )
         leakage.print_stats(
-            f"Weighted average alpha" + f" = {self.alpha_leak_mean:.3g}",
+            "Weighted average alpha" + f" = {self.alpha_leak_mean:.3g}",
             self._stats_file,
             verbose=self._params["verbose"],
         )
@@ -790,7 +780,7 @@ class LeakageScale:
             xlim = [x0, self._params["theta_max_amin"]]
             xlog = True
         else:
-            x0 = x0 ** factor
+            x0 = x0**factor
             x_affine = np.linspace(x0, self._params["theta_max_amin"])
             xlim = [x0, self._params["theta_max_amin"]]
             xlog = False
@@ -828,9 +818,7 @@ class LeakageScale:
         xlabel = r"$\theta$ [arcmin]"
         ylabel = r"$\alpha(\theta)$"
         title = ""
-        out_path = (
-            f"{self._params['output_dir']}" + f"/alpha_leakage_{xlinlog}.png"
-        )
+        out_path = f"{self._params['output_dir']}" + f"/alpha_leakage_{xlinlog}.png"
         ylim = self._params["leakage_alpha_ylim"]
 
         plots.plot_data_1d(
@@ -870,7 +858,7 @@ class LeakageScale:
                 alpha = self.get_alpha_ufloat(idx, jdx)
                 alpha_arr.append(unumpy.nominal_values(alpha))
                 yerr_arr.append(unumpy.std_devs(alpha))
-                labels.append(rf"$\alpha_{{{idx+1}{jdx+1}}}$")
+                labels.append(rf"$\alpha_{{{idx + 1}{jdx + 1}}}$")
         xlabel = r"$\theta$ [arcmin]"
         ylabel = r"$\alpha_{ij}(\theta)$"
         title = ""
@@ -918,9 +906,7 @@ class LeakageScale:
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
             msg = f"<|xi_sys_{symb}|> = {mean}"
-            leakage.print_stats(
-                msg, self._stats_file, verbose=self._params["verbose"]
-            )
+            leakage.print_stats(msg, self._stats_file, verbose=self._params["verbose"])
 
         ylim = self._params["leakage_xi_sys_ylim"]
         out_path = f"{self._params['output_dir']}/xi_sys.pdf"
@@ -993,11 +979,9 @@ class LeakageScale:
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
             msg = f"<|xi_sys_{symb}| / xi_{symb}> = {mean}"
-            leakage.print_stats(
-                msg, self._stats_file, verbose=self._params["verbose"]
-            )
+            leakage.print_stats(msg, self._stats_file, verbose=self._params["verbose"])
 
-        out_path = f"{self._params['output_dir']}" + f"/xi_sys_ratio.pdf"
+        out_path = f"{self._params['output_dir']}" + "/xi_sys_ratio.pdf"
 
         ylim = [0, 0.5]
 
@@ -1103,12 +1087,8 @@ class LeakageScale:
         self.xi_std_pp_m = np.zeros((2, 2, n_theta))
         for idx in (0, 1):
             for jdx in (0, 1):
-                self.xi_std_gp_m[idx][jdx] = np.sqrt(
-                    self.r_corr_gp_m[idx][jdx].varxip
-                )
-                self.xi_std_pp_m[idx][jdx] = np.sqrt(
-                    self.r_corr_pp_m[idx][jdx].varxip
-                )
+                self.xi_std_gp_m[idx][jdx] = np.sqrt(self.r_corr_gp_m[idx][jdx].varxip)
+                self.xi_std_pp_m[idx][jdx] = np.sqrt(self.r_corr_pp_m[idx][jdx].varxip)
 
         # TODO: include <e><e> in error computation
 
@@ -1117,7 +1097,6 @@ class LeakageScale:
         values = np.zeros((2, 2), dtype=float)
         stds = np.zeros((2, 2), dtype=float)
         for ndx in range(n_theta):
-
             # Set Xi_gp
             for idx in (0, 1):
                 for jdx in (0, 1):
@@ -1168,37 +1147,25 @@ class LeakageScale:
             mat.append(self.alpha_leak_ufloat[ndx][idx, jdx])
 
         return np.array(mat)
-    
+
     def compute_alpha_spin_coeffs(self):
         """Compute Alpha Spin Coefficients.
-        
+
         Compute the spin coefficients of the PSF leakage alpha(theta) from
         the matrix elements.
-        
+
         """
-        self._alpha_0_r = (
-            0.5 * (
-                self.get_alpha_ufloat(0, 0)
-                + self.get_alpha_ufloat(1, 1)
-            )
+        self._alpha_0_r = 0.5 * (
+            self.get_alpha_ufloat(0, 0) + self.get_alpha_ufloat(1, 1)
         )
-        self._alpha_0_i = (
-            0.5 * (
-                -self.get_alpha_ufloat(0, 1)
-                + self.get_alpha_ufloat(1, 0)
-            )
+        self._alpha_0_i = 0.5 * (
+            -self.get_alpha_ufloat(0, 1) + self.get_alpha_ufloat(1, 0)
         )
-        self._alpha_4_r = (
-            0.5 * (
-                self.get_alpha_ufloat(0, 0)
-                - self.get_alpha_ufloat(1, 1)
-            )
+        self._alpha_4_r = 0.5 * (
+            self.get_alpha_ufloat(0, 0) - self.get_alpha_ufloat(1, 1)
         )
-        self._alpha_4_i = (
-            0.5 * (
-                self.get_alpha_ufloat(0, 1)
-                + self.get_alpha_ufloat(1, 0)
-            )
+        self._alpha_4_i = 0.5 * (
+            self.get_alpha_ufloat(0, 1) + self.get_alpha_ufloat(1, 0)
         )
 
     def do_alpha_matrix(self):
@@ -1277,9 +1244,9 @@ class LeakageScale:
             for jdx in (0, 1):
                 alpha = self.get_alpha_ufloat(idx, jdx)
                 cols.append(unumpy.nominal_values(alpha))
-                names.append(rf"alpha_{{{idx+1}{jdx+1}}}")
+                names.append(rf"alpha_{{{idx + 1}{jdx + 1}}}")
                 cols.append(unumpy.std_devs(alpha))
-                names.append(rf"sigma_alpha_{{{idx+1}{jdx+1}}}")
+                names.append(rf"sigma_alpha_{{{idx + 1}{jdx + 1}}}")
         fname = f"{self._params['output_dir']}/alpha_leakage_matrix.txt"
         cs_cat.write_ascii_table_file(cols, names, fname)
 

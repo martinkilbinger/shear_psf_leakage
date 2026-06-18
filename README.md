@@ -2,13 +2,13 @@
 
 ## About
 
-This library quantifies the PSF leakage on weak-lensing galaxy shear            
-measurements. It computes the following quantities:                             
-                                                                                
-- The object-wise PSF leakage at linear and quadratic order, using regression.  
-- The object-wise dependency of galaxy shear to other (scalar) observables.     
-- The scale-dependent PSF leakage function galaxy - PSF leakage using           
-  two-point correlation functions. 
+This library quantifies the PSF leakage on weak-lensing galaxy shear
+measurements. It computes the following quantities:
+
+- The object-wise PSF leakage at linear and quadratic order, using regression.
+- The object-wise dependency of galaxy shear to other (scalar) observables.
+- The scale-dependent PSF leakage function galaxy - PSF leakage using
+  two-point correlation functions.
 
 ## Installation
 

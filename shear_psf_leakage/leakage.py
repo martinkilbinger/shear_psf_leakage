@@ -22,7 +22,7 @@ from cs_util import args as cs_args
 from lmfit import Parameters, minimize
 from uncertainties import ufloat
 
-from .plot_style import *
+plt.style.use("mplconfig")
 
 
 # MKDEBUG TODO: to cs_util (and see sp_validation/io.py)
@@ -145,8 +145,7 @@ def cut_data(data, cut, verbose=False):
             raise ValueError(f"cut '{cut}' has incorrect syntax")
         if len(res.groups()) != 3:
             raise ValueError(
-                f"cut criterium '{cut}' does not match syntax "
-                "'field rel val'"
+                f"cut criterium '{cut}' does not match syntax 'field rel val'"
             )
         field, rel, val = res.groups()
 
@@ -449,11 +448,12 @@ def quad_corr_quant(
         errors of 2nd order coeff
 
     """
+    # Unused so commented out
     # Init randoms
-    if isinstance(rng, np.random.RandomState):
-        master_rng = rng
-    else:
-        master_rng = np.random.RandomState(seed)
+    # if isinstance(rng, np.random.RandomState):
+    #    master_rng = rng
+    # else:
+    #   master_rng = np.random.RandomState(seed)
 
     n_y = len(y)
 
@@ -538,7 +538,7 @@ def quad_corr_quant(
         qslope.append(res.params["q"].value)
         slope.append(res.params["m"].value)
 
-        ticks_names.append(f"{xlabel}_e_{jdx+1}")
+        ticks_names.append(f"{xlabel}_e_{jdx + 1}")
         q_dm = ufloat(res.params["q"].value, res.params["q"].stderr)
         m_dm = ufloat(res.params["m"].value, res.params["m"].stderr)
         c_dc = ufloat(res.params["c"].value, res.params["c"].stderr)
@@ -650,9 +650,7 @@ def quad_corr_n_quant(
 
     if out_path_arr is None:
         out_path_arr = [None] * len(x_arr)
-    for x, xlabel, out_path, seed_tmp in zip(
-        x_arr, xlabel_arr, out_path_arr, seeds
-    ):
+    for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
         slope, qslope, ticks_names, m_err, q_err = quad_corr_quant(
             x,
             y,
@@ -816,9 +814,7 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
         raise IndexError("Length of both data components has to be equal")
 
     # Get model 1D y1 and y2 components
-    y1_model, y2_model = func_bias_2d(
-        params, x1_data, x2_data, order=order, mix=mix
-    )
+    y1_model, y2_model = func_bias_2d(params, x1_data, x2_data, order=order, mix=mix)
 
     # Compute residuals between data and model
     res1 = (y1_model - y1_data) / err
@@ -1000,11 +996,12 @@ def affine_corr(
         labels of the linear fits
 
     """
+    # Unused so commented out
     # Init randoms
-    if isinstance(rng, np.random.RandomState):
-        master_rng = rng
-    else:
-        master_rng = np.random.RandomState(seed)
+    # if isinstance(rng, np.random.RandomState):
+    #    master_rng = rng
+    # else:
+    #    master_rng = np.random.RandomState(seed)
 
     n_y = len(y)
 
@@ -1081,14 +1078,12 @@ def affine_corr(
         params = Parameters()
         params.add("m", value=0.01)
         params.add("c", value=0.01)
-        res = minimize(
-            loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
-        )
+        res = minimize(loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights)))
 
         m_arr.append(res.params["m"].value)
         # MKDEBUG float required?
         m_err_arr.append(float(res.params["m"].stderr))
-        tick_name_arr.append(f"{xlabel}_e{jdx+1}")
+        tick_name_arr.append(f"{xlabel}_e{jdx + 1}")
 
         m_dm = ufloat(res.params["m"].value, res.params["m"].stderr)
         c_dc = ufloat(res.params["c"].value, res.params["c"].stderr)
@@ -1099,9 +1094,7 @@ def affine_corr(
             c=colors[jdx],
             label=label,
         )
-        plt.errorbar(
-            x_bin, y_bin[jdx], yerr=err_bin[jdx], c=colors[jdx], fmt="."
-        )
+        plt.errorbar(x_bin, y_bin[jdx], yerr=err_bin[jdx], c=colors[jdx], fmt=".")
 
         if stats_file:
             msg = "{}: {}={:.2ugP}".format(xlabel, mlabel[jdx], m_dm)
@@ -1236,10 +1229,7 @@ def affine_corr_n(
     m_arr = []
     m_err_arr = []
     tick_name_arr = []
-    for x, xlabel, out_path, seed_tmp in zip(
-        x_arr, xlabel_arr, out_path_arr, seeds
-    ):
-
+    for x, xlabel, out_path, seed_tmp in zip(x_arr, xlabel_arr, out_path_arr, seeds):
         out_path_txt = f"{out_path}.txt"
         if os.path.exists(out_path_txt):
             print(f"Reading regression result from file {out_path_txt}.")

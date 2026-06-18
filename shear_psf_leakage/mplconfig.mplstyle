@@ -1,0 +1,16 @@
+lines.linewidth : 2
+lines.markersize : 10
+font.size : 18
+xtick.labelsize : 18
+ytick.labelsize : 18
+xtick.minor.size : 5
+ytick.minor.size : 5
+xtick.major.size : 7
+ytick.major.size : 7
+xtick.major.width : 2
+ytick.major.width : 2
+boxplot.boxprops.linewidth : 2
+boxplot.medianprops.linewidth : 2
+boxplot.flierprops.markersize : 12
+boxplot.whiskerprops.linewidth : 2
+boxplot.capprops.linewidth : 2

@@ -9,7 +9,6 @@
 
 """
 
-import getdist
 import numpy as np
 from getdist import MCSamples, plots
 from matplotlib import pylab as plt
@@ -129,12 +128,8 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
 
 
 def get_bias(p_dp, par_ground_truth, key):
+    return (p_dp[key].nominal_value - par_ground_truth[key].value) / p_dp[key].std_dev
 
-    return (
-        (p_dp[key].nominal_value - par_ground_truth[key].value)
-        / p_dp[key].std_dev
-    )
-    
 
 def set_labels(p_dp, order, mix, par_ground_truth=None):
     """Set Labels.
@@ -158,52 +153,68 @@ def set_labels(p_dp, order, mix, par_ground_truth=None):
     """
     # Affine parameters
     label = {
-        "A": rf'$\alpha_{{11}}\;\,={p_dp["a11"]: .2ugL}$',
-        "D": rf'$\alpha_{{22}}\;\,={p_dp["a22"]: .2ugL}$',
+        "A": rf"$\alpha_{{11}}\;\,={p_dp['a11']: .2ugL}$",
+        "D": rf"$\alpha_{{22}}\;\,={p_dp['a22']: .2ugL}$",
     }
 
     if par_ground_truth:
         bias = get_bias(p_dp, par_ground_truth, "a11")
-        label["A"] = f"{label['A']} ({par_ground_truth['a11'].value}, {bias:.1f}$\sigma$)"
+        label["A"] = (
+            f"{label['A']} ({par_ground_truth['a11'].value}, {bias:.1f}$\sigma$)"
+        )
         bias = get_bias(p_dp, par_ground_truth, "a22")
-        label["D"] = f"{label['D']} ({par_ground_truth['a22'].value}, {bias:.1f}$\sigma$)"
+        label["D"] = (
+            f"{label['D']} ({par_ground_truth['a22'].value}, {bias:.1f}$\sigma$)"
+        )
 
     # Constant parameters
-    label["A"] = label["A"] + "\n" + f'$c_1\;\;\;={p_dp["c1"]: .2ugL}$'
-    label["D"] = label["D"] + "\n" + f'$c_2\;\;\;={p_dp["c2"]: .2ugL}$'
+    label["A"] = label["A"] + "\n" + f"$c_1\;\;\;={p_dp['c1']: .2ugL}$"
+    label["D"] = label["D"] + "\n" + f"$c_2\;\;\;={p_dp['c2']: .2ugL}$"
     if par_ground_truth:
         bias = get_bias(p_dp, par_ground_truth, "c1")
-        label["A"] = f"{label['A']} ({par_ground_truth['c1'].value}, {bias:.1f}$\sigma$)"
+        label["A"] = (
+            f"{label['A']} ({par_ground_truth['c1'].value}, {bias:.1f}$\sigma$)"
+        )
         bias = get_bias(p_dp, par_ground_truth, "c2")
-        label["D"] = f"{label['D']} ({par_ground_truth['c2'].value}, {bias:.1f}$\sigma$)"
+        label["D"] = (
+            f"{label['D']} ({par_ground_truth['c2'].value}, {bias:.1f}$\sigma$)"
+        )
 
     if order == "quad":
         # Add quadratic parameters
-        label_q111 = f'$q_{{111}}={p_dp["q111"]: .2ugL}$'
-        label_q222 = f'$q_{{222}}={p_dp["q222"]: .2ugL}$'
+        label_q111 = f"$q_{{111}}={p_dp['q111']: .2ugL}$"
+        label_q222 = f"$q_{{222}}={p_dp['q222']: .2ugL}$"
         if par_ground_truth:
             bias = get_bias(p_dp, par_ground_truth, "q111")
-            label_q111 = f"{label_q111} ({par_ground_truth['q111'].value}, {bias:.1f}$\sigma$)"
+            label_q111 = (
+                f"{label_q111} ({par_ground_truth['q111'].value}, {bias:.1f}$\sigma$)"
+            )
             bias = get_bias(p_dp, par_ground_truth, "q222")
-            label_q222 = f"{label_q222} ({par_ground_truth['q222'].value}, {bias:.1f}$\sigma$)"
+            label_q222 = (
+                f"{label_q222} ({par_ground_truth['q222'].value}, {bias:.1f}$\sigma$)"
+            )
         label["A"] = label_q111 + "\n" + label["A"]
         label["D"] = label_q222 + "\n" + label["D"]
     if mix:
         # Mixed linear parameters
-        label["B"] = rf'$\alpha_{{12}}\;\,={p_dp["a12"]: .2ugL}$'
-        label["C"] = rf'$\alpha_{{21}}\;\,={p_dp["a21"]: .2ugL}$'
+        label["B"] = rf"$\alpha_{{12}}\;\,={p_dp['a12']: .2ugL}$"
+        label["C"] = rf"$\alpha_{{21}}\;\,={p_dp['a21']: .2ugL}$"
         if par_ground_truth:
             bias = get_bias(p_dp, par_ground_truth, "a12")
-            label["B"] = f"{label['B']} ({par_ground_truth['a12'].value}, {bias:.1f}$\sigma$)"
+            label["B"] = (
+                f"{label['B']} ({par_ground_truth['a12'].value}, {bias:.1f}$\sigma$)"
+            )
             bias = get_bias(p_dp, par_ground_truth, "a21")
-            label["C"] = f"{label['C']} ({par_ground_truth['a21'].value}, {bias:.1f}$\sigma$)"
+            label["C"] = (
+                f"{label['C']} ({par_ground_truth['a21'].value}, {bias:.1f}$\sigma$)"
+            )
 
         # Mixed quadratic parameters
         if order == "quad":
-            label_q211 = f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
-            label_q212 = f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
-            label_q122 = f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
-            label_q112 = f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
+            label_q211 = f"$q_{{211}}={p_dp['q211']: .2ugL}$"
+            label_q212 = f"$q_{{212}}={p_dp['q212']: .2ugL}$"
+            label_q122 = f"$q_{{122}}={p_dp['q122']: .2ugL}$"
+            label_q112 = f"$q_{{112}}={p_dp['q112']: .2ugL}$"
 
             if par_ground_truth:
                 bias = get_bias(p_dp, par_ground_truth, "q211")
@@ -264,7 +275,7 @@ def plot_bar_spin(par, s_ground_truth, output_path=None):
 
     fig, ax = plt.subplots()
 
-    bars = ax.bar(
+    _ = ax.bar(
         x,
         y,
         yerr=dy,
@@ -365,9 +376,7 @@ def plot_corr_2d(
         colors = prop_cycle.by_key()["color"]
 
     # Compute binned data for pretty plotting.
-    x_bin, y_bin, err_bin = compute_bins_func_2d(
-        x, y, n_bin, mix, weights=weights
-    )
+    x_bin, y_bin, err_bin = compute_bins_func_2d(x, y, n_bin, mix, weights=weights)
 
     # Initialise mosaic figure
     figure_mosaic = """
@@ -490,7 +499,10 @@ def plot_corr_2d(
     if out_base:
         plt.savefig(f"{out_base}.png", bbox_inches="tight")
 
-def plot_contours(sample_list, names, labels, savefig=None, show=False, close=True, **kwargs):
+
+def plot_contours(
+    sample_list, names, labels, savefig=None, show=False, close=True, **kwargs
+):
     """
     plot_contours
 
@@ -502,7 +514,7 @@ def plot_contours(sample_list, names, labels, savefig=None, show=False, close=Tr
         A list containing np.array with samples in each entry.
     names : list str
         Names of the variable (See getdist documentation)
-    labels : list str 
+    labels : list str
         Labels of the parameters
     savefig : str, optional
         If not None, saves the figure with this filename
@@ -511,16 +523,18 @@ def plot_contours(sample_list, names, labels, savefig=None, show=False, close=Tr
     close : bool, optional
         If True, closes the plot after saving/showing
     """
-    sample_list = [MCSamples(samples=samps, names=names, labels=labels) for samps in sample_list]
+    sample_list = [
+        MCSamples(samples=samps, names=names, labels=labels) for samps in sample_list
+    ]
     g = plots.get_subplot_plotter()
     g.triangle_plot(sample_list, filled=True, **kwargs)
 
     if savefig is not None:
         plt.savefig(savefig)
-        
+
     if show:
         plt.show()
-        
+
     if close:
         plt.close()
 
@@ -544,9 +558,9 @@ def plots_all_corr_2d(
     verbose=False,
 ):
     """Plots All Corr 1D.
-    
+
     Creates all plots for 1D correlations.
-    
+
     Parameters
     ----------
     x : array(double)
@@ -573,16 +587,13 @@ def plots_all_corr_2d(
         plot all individual data points if ``True``; default is ``False``
     par_ground_truth : dict, optional
         ground truth parameter, for plotting, default is `None`
-    
+
     """
     if colors is None:
         prop_cycle = plt.rcParams["axes.prop_cycle"]
         colors = prop_cycle.by_key()["color"]
 
-    p_dp = {
-        p: ufloat(res_params[p].value, res_params[p].stderr)
-        for p in res_params
-    }
+    p_dp = {p: ufloat(res_params[p].value, res_params[p].stderr) for p in res_params}
 
     # Get spin coefficients
     s_ds = leakage.param_order2spin(p_dp, order, mix)
@@ -599,7 +610,11 @@ def plots_all_corr_2d(
             )
 
     # Bar plots of spin components
-    s_ground_truth = leakage.param_order2spin(par_ground_truth, order, mix) if par_ground_truth else None
+    s_ground_truth = (
+        leakage.param_order2spin(par_ground_truth, order, mix)
+        if par_ground_truth
+        else None
+    )
     out_path_spin = f"{out_base}_spin.png" if out_base else None
     plot_bar_spin(
         s_ds,

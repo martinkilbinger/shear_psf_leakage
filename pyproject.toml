@@ -42,6 +42,7 @@ pytest = "^6.2.5"
 pydocstyle = "^6.3.0"
 pytest-cov = "^4.1.0"
 black = "^23.7.0"
+pre-commit = "^4.6.0"
 
 [tool.black]
 line-length = 80
