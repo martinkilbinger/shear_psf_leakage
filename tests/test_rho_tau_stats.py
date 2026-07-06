@@ -37,15 +37,6 @@ masks = [
     True,
 ]
 
-# Specify is the sizes have to be squared. It can depend on the catalog.
-square_sizes = [
-    # True,
-    False,
-    True,
-    True,
-    True,
-]
-
 output = "/home/guerrini/rho_tau_stats_output/new_setup_2"
 
 # Contains the params of your catalog. Don't forget to specify them since they can vary between different catalogs
@@ -55,14 +46,14 @@ params_sp = {
     "w_col": "w",
     "ra_col": "RA",
     "dec_col": "Dec",
-    "e1_PSF_col": "E1_PSF_HSM",
-    "e2_PSF_col": "E2_PSF_HSM",
-    "e1_star_col": "E1_STAR_HSM",
-    "e2_star_col": "E2_STAR_HSM",
-    "PSF_size": "SIGMA_PSF_HSM",
-    "star_size": "SIGMA_STAR_HSM",
-    "PSF_flag": "FLAG_PSF_HSM",
-    "star_flag": "FLAG_STAR_HSM",
+    "e1_PSF_col": "HSM_G1_PSF",
+    "e2_PSF_col": "HSM_G2_PSF",
+    "e1_star_col": "HSM_G1_STAR",
+    "e2_star_col": "HSM_G2_STAR",
+    "PSF_size": "HSM_T_PSF",
+    "star_size": "HSM_T_STAR",
+    "PSF_flag": "HSM_FLAG_PSF",
+    "star_flag": "HSM_FLAG_STAR",
     "patch_number": 200,
     "ra_units": "deg",
     "dec_units": "deg",
@@ -92,14 +83,14 @@ params_axel = {
     "w_col": "w",
     "ra_col": "RA",
     "dec_col": "Dec",
-    "e1_PSF_col": "E1_PSF_HSM",
-    "e2_PSF_col": "E2_PSF_HSM",
-    "e1_star_col": "E1_STAR_HSM",
-    "e2_star_col": "E2_STAR_HSM",
-    "PSF_size": "SIGMA_PSF_HSM",
-    "star_size": "SIGMA_STAR_HSM",
-    "PSF_flag": "FLAG_PSF_HSM",
-    "star_flag": "FLAG_STAR_HSM",
+    "e1_PSF_col": "HSM_G1_PSF",
+    "e2_PSF_col": "HSM_G2_PSF",
+    "e1_star_col": "HSM_G1_STAR",
+    "e2_star_col": "HSM_G2_STAR",
+    "PSF_size": "HSM_T_PSF",
+    "star_size": "HSM_T_STAR",
+    "PSF_flag": "HSM_FLAG_PSF",
+    "star_flag": "HSM_FLAG_STAR",
     "patch_number": 120,
     "ra_units": "deg",
     "dec_units": "deg",
@@ -126,8 +117,8 @@ print(paths_psf)
 rho_stat_handler = RhoStat(
     output=output, treecorr_config=treecorr_config, verbose=True
 )  # Create your class to compute, save, load and plot rho_stats
-for path_gal, path_psf, cat_id, param, mask, square_size in zip(
-    paths_gal, paths_psf, catalog_ids, params, masks, square_sizes
+for path_gal, path_psf, cat_id, param, mask in zip(
+    paths_gal, paths_psf, catalog_ids, params, masks
 ):  # Iterate on the different catalogs
     try:
         rho_stat_handler.load_rho_stats("rho_stats_" + cat_id + ".fits")
@@ -139,7 +130,7 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(
                 param, output
             )  # Set the right parameters
         rho_stat_handler.build_cat_to_compute_rho(
-            path_psf, catalog_id=cat_id, square_size=square_size, mask=mask
+            path_psf, catalog_id=cat_id, mask=mask
         )  # Build the different catalogs
         rho_stat_handler.compute_rho_stats(
             cat_id, "rho_stats_" + cat_id + ".fits"
@@ -159,8 +150,8 @@ tau_stat_handler = TauStat(
     verbose=True,
 )  # Create your class to compute, save, load and plot tau_stats
 
-for path_gal, path_psf, cat_id, param, mask, square_size in zip(
-    paths_gal, paths_psf, catalog_ids, params, masks, square_sizes
+for path_gal, path_psf, cat_id, param, mask in zip(
+    paths_gal, paths_psf, catalog_ids, params, masks
 ):  # Iterate on the catalogs
     try:
         tau_stat_handler.load_tau_stats("tau_stats_" + cat_id + ".fits")
@@ -175,14 +166,12 @@ for path_gal, path_psf, cat_id, param, mask, square_size in zip(
                 path_psf,
                 cat_type="psf",
                 catalog_id=cat_id,
-                square_size=square_size,
                 mask=mask,
             )  # Build the catalog of galaxies. PSF was computed above
         tau_stat_handler.build_cat_to_compute_tau(
             path_gal,
             cat_type="gal",
             catalog_id=cat_id,
-            square_size=square_size,
             mask=mask,
         )  # Build the catalog of galaxies. PSF was computed above
 
