@@ -25,10 +25,6 @@
 # %matplotlib inline
 
 # +
-import os
-import sys
-import matplotlib.pylab as plt
-from astropy import units
 from uncertainties import unumpy
 
 from cs_util import plots as cs_plots
@@ -48,9 +44,7 @@ obj_scale = run_scale.LeakageScale()
 
 # Read python parameter file or get user input
 params_upd = args.read_param_script(
-    "params_leakage_scale.py",
-    obj_scale._params,
-    verbose=True
+    "params_leakage_scale.py", obj_scale._params, verbose=True
 )
 for key in params_upd:
     obj_scale._params[key] = params_upd[key]
@@ -109,24 +103,25 @@ r = []
 r_ratio_1 = []
 r_ratio_2 = []
 for ndx in range(len(theta)):
-    my_r = (
-        obj_scale.Xi_pp_ufloat[ndx][0, 1] ** 2
-        / (obj_scale.Xi_pp_ufloat[ndx][0, 0] * obj_scale.Xi_pp_ufloat[ndx][1, 1])
+    my_r = obj_scale.Xi_pp_ufloat[ndx][0, 1] ** 2 / (
+        obj_scale.Xi_pp_ufloat[ndx][0, 0] * obj_scale.Xi_pp_ufloat[ndx][1, 1]
     )
     r.append(my_r)
     r_ratio_1.append(1 / (1 - my_r))
-    r_ratio_2.append(my_r / (1 - my_r)) 
+    r_ratio_2.append(my_r / (1 - my_r))
 
 print("min max mean r = ", np.min(r), np.max(r), np.mean(r))
 
 # Approximate: Using uncentered correlation functions
-r_fast = obj_scale.xi_pp_m[0][1] ** 2 / (obj_scale.xi_pp_m[0][0] * obj_scale.xi_pp_m[1][1])
+r_fast = obj_scale.xi_pp_m[0][1] ** 2 / (
+    obj_scale.xi_pp_m[0][0] * obj_scale.xi_pp_m[1][1]
+)
 
 n = 6
 theta_arr = [theta] * n
 r_arr = []
 dr_arr = []
-    
+
 r_arr.append(unumpy.nominal_values(r))
 r_arr.append(unumpy.nominal_values(r_ratio_1))
 r_arr.append(unumpy.nominal_values(r_ratio_2))
@@ -185,16 +180,16 @@ ylim = obj_scale._params["leakage_alpha_ylim"]
 
 n = 4
 theta_arr = [theta] * n
-    
+
 alpha = []
 yerr = []
 labels = []
 for idx in (0, 1):
-    for jdx in (0, 1):   
+    for jdx in (0, 1):
         alpha_ufloat = obj_scale.get_alpha_ufloat(idx, jdx)
         alpha.append(unumpy.nominal_values(alpha_ufloat))
         yerr.append(unumpy.std_devs(alpha_ufloat))
-        labels.append(rf"$\alpha_{{{idx+1}{jdx+1}}}$")
+        labels.append(rf"$\alpha_{{{idx + 1}{jdx + 1}}}$")
 
 colors = ["blue", "orange", "orange", "green"]
 linestyles = ["-", "-", "--", "-"]
@@ -244,15 +239,10 @@ dy_arr = [
     unumpy.std_devs(obj_scale._alpha_4_r),
     unumpy.std_devs(obj_scale._alpha_4_i),
 ]
-labels = [
-    r"$\alpha^\Re_0$",
-    r"$\alpha^\Im_0$",
-    r"$\alpha^\Re_r$",
-    r"$\alpha^\Im_r$"
-]
+labels = [r"$\alpha^\Re_0$", r"$\alpha^\Im_0$", r"$\alpha^\Re_r$", r"$\alpha^\Im_r$"]
 colors = ["blue", "orange", "green", "magenta"]
 markers = ["o", "s", "^", "v"]
-linestyles = ["-"] * 4 
+linestyles = ["-"] * 4
 
 xlabel = r"$\theta$ [arcmin]"
 ylabel = r"Components of leakage matrix"
@@ -465,5 +455,3 @@ cs_plots.plot_data_1d(
     linestyles=linestyles,
 )
 # -
-
-

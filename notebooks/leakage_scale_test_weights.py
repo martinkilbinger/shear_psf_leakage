@@ -26,9 +26,6 @@
 
 # +
 import os
-import sys
-import matplotlib.pylab as plt
-from astropy import units
 
 from cs_util import plots as cs_plots
 
@@ -64,7 +61,7 @@ if os.path.exists(params_in_path):
     # Set instance parameters, copy from above
     for key in params_in:
         obj._params[key] = params_in[key]
-        
+
 else:
     raise IOError("configuration script {params_in_path} not found")
 # -
@@ -108,7 +105,7 @@ idx = 0
 
 for key, obj in zip(objects.keys(), objects.values()):
     obj.do_alpha()
-    
+
     theta.append(obj.r_corr_gp.meanr * fx ** (idx - nx))
     alpha_theta.append(obj.alpha_leak)
     yerr.append(obj.sig_alpha_leak)
@@ -155,12 +152,12 @@ for key, obj in zip(objects.keys(), objects.values()):
     labels.append(key)
     idx += 1
 
-    
+
 # Compute approximate leakage (fast)
 for key, obj in zip(objects.keys(), objects.values()):
     obj.do_alpha(fast=True)
 
-    theta.append(obj.r_corr_gp.meanr  * fx ** (idx - nx))
+    theta.append(obj.r_corr_gp.meanr * fx ** (idx - nx))
     alpha_theta.append(obj.alpha_leak)
     yerr.append(obj.sig_alpha_leak)
     labels.append(f"{key} approx")
@@ -169,12 +166,12 @@ for key, obj in zip(objects.keys(), objects.values()):
 # +
 # Plot
 
-markers = ["o", "s", "d", "p", "v", "*"] 
+markers = ["o", "s", "d", "p", "v", "*"]
 
 obj = objects["weighted"]
 xlim = [obj._params["theta_min_amin"], obj._params["theta_max_amin"]]
-ylim = obj._params["leakage_alpha_ylim"]    
-    
+ylim = obj._params["leakage_alpha_ylim"]
+
 xlabel = r"$\theta$ [arcmin]"
 ylabel = r"$\alpha(\theta)$"
 title = ""

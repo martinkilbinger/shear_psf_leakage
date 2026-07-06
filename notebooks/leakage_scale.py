@@ -26,8 +26,6 @@
 
 # +
 import os
-import sys
-import matplotlib.pylab as plt
 from astropy import units
 
 from cs_util import plots as cs_plots
