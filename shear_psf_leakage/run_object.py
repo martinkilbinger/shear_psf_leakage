@@ -665,6 +665,7 @@ def run_leakage_object(*args):
     Run object-wise PSF leakage as python script from command line.
 
     """
+    leakage.set_style()
     # Create object for object-wise leakage calculations
     obj = LeakageObject()
 

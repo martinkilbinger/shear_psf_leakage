@@ -1257,6 +1257,7 @@ def run_leakage_scale(*args):
     Run scale-dependent PSF leakage as python script from command line.
 
     """
+    leakage.set_style()
     # Create object for scale-dependent leakage calculations
     obj = LeakageScale()
 

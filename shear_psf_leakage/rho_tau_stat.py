@@ -632,6 +632,14 @@ class RhoStat:
                 square_size=square_size,
                 mask=mask,
             )
+            self.catalogs.build_catalog(
+                cat=psf_cat,
+                cat_type="psf_fourth_moment_error",
+                key="psf_fourth_moment_error_" + catalog_id,
+                patch_centers=patch_centers,
+                square_size=square_size,
+                mask=mask,
+            )
 
         del psf_cat
 

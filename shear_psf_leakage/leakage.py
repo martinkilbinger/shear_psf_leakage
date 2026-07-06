@@ -22,7 +22,10 @@ from cs_util import args as cs_args
 from lmfit import Parameters, minimize
 from uncertainties import ufloat
 
-plt.style.use("mplconfig")
+
+def set_style():
+    """Apply the shear_psf_leakage plot style (opt-in)."""
+    plt.style.use(os.path.join(os.path.dirname(__file__), "shear_psf_leakage.mplstyle"))
 
 
 # MKDEBUG TODO: to cs_util (and see sp_validation/io.py)
