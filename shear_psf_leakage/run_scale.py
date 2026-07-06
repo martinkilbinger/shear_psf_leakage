@@ -11,6 +11,7 @@ from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
+from astropy import coordinates as coords
 from astropy import units
 from astropy.io import fits
 import astropy.coordinates as coords
