@@ -80,22 +80,16 @@
 # %matplotlib inline
 
 # +
-import os
 import matplotlib.pylab as plt
 import numpy as np
 
-from astropy import units
 
-from uncertainties import ufloat
-from uncertainties import unumpy                                                 
+from uncertainties import unumpy
 
-from cs_util import canfar
 from cs_util import plots as cs_plots
 from cs_util import args
 
-from shear_psf_leakage import run_object
 from shear_psf_leakage import run_scale
-from shear_psf_leakage import leakage
 # -
 
 # ## Set up
@@ -122,69 +116,50 @@ obj_scale.prepare_output()
 # Read input galaxy and star catalogue
 obj_scale.read_data()
 
-# #### Compute correlation function and alpha matrices                           
+# #### Compute correlation function and alpha matrices
 # The following command calls `treecorr` to compute auto- and cross-correlation functions.
-# This can take a few minutes.                                                   
+# This can take a few minutes.
 
-obj_scale.compute_corr_gp_pp_alpha_matrix()                                            
+obj_scale.compute_corr_gp_pp_alpha_matrix()
 
-obj_scale.alpha_matrix()                                                               
+obj_scale.alpha_matrix()
 
 # +
 # Compute spin coefficients from matrix elements
 
-alpha_0_r = (
-    0.5 * (
-        obj_scale.get_alpha_ufloat(0, 0)
-        + obj_scale.get_alpha_ufloat(1, 1)
-    )
-)
-alpha_0_i = (
-    0.5 * (
-        -obj_scale.get_alpha_ufloat(0, 1)
-        + obj_scale.get_alpha_ufloat(1, 0)
-    )
-)
-alpha_4_r = (
-    0.5 * (
-        obj_scale.get_alpha_ufloat(0, 0)
-        - obj_scale.get_alpha_ufloat(1, 1)
-    )
-)
-alpha_4_i = (
-    0.5 * (
-        obj_scale.get_alpha_ufloat(0, 1)
-        + obj_scale.get_alpha_ufloat(1, 0)
-    )
-)
+alpha_0_r = 0.5 * (obj_scale.get_alpha_ufloat(0, 0) + obj_scale.get_alpha_ufloat(1, 1))
+alpha_0_i = 0.5 * (-obj_scale.get_alpha_ufloat(0, 1) + obj_scale.get_alpha_ufloat(1, 0))
+alpha_4_r = 0.5 * (obj_scale.get_alpha_ufloat(0, 0) - obj_scale.get_alpha_ufloat(1, 1))
+alpha_4_i = 0.5 * (obj_scale.get_alpha_ufloat(0, 1) + obj_scale.get_alpha_ufloat(1, 0))
 
 
 # -
 
-def get_rho_0(self, idx, jdx):                                        
-	"""Get Rho 0.                                                     
 
-	Return (i, j) matrix element of rho_0.                
+def get_rho_0(self, idx, jdx):
+    """Get Rho 0.
 
-	Parameters                                                               
-	----------                                                               
-	idx : int                                                                
-		line index, allowed are 0 or 1                                       
-	jdx : int                                                                
-		column index, allowed are 0 or 1                                     
+    Return (i, j) matrix element of rho_0.
 
-	Returns                                                                  
-	-------                                                                  
-	numpy.ndarray                                                            
-		matrix element as array over scales, each entry is                   
-		of type ufloat                                                       
+    Parameters
+    ----------
+    idx : int
+            line index, allowed are 0 or 1
+    jdx : int
+            column index, allowed are 0 or 1
 
-	"""  
-	mat = []                                                                 
-	n_theta = self._params["n_theta"]                                        
-	for ndx in range(n_theta):                                               
-		mat.append(self.Xi_pp_ufloat[ndx][idx, jdx])
-	return np.array(mat)
+    Returns
+    -------
+    numpy.ndarray
+            matrix element as array over scales, each entry is
+            of type ufloat
+
+    """
+    mat = []
+    n_theta = self._params["n_theta"]
+    for ndx in range(n_theta):
+        mat.append(self.Xi_pp_ufloat[ndx][idx, jdx])
+    return np.array(mat)
 
 
 # +
@@ -193,18 +168,16 @@ def get_rho_0(self, idx, jdx):
 
 # Split into +, '-', and mixed parts
 
-xi_sys_term_p = (
-    (alpha_0_r ** 2 + alpha_0_i ** 2 + alpha_4_r ** 2 + alpha_4_i ** 2)
-    * (get_rho_0(obj_scale, 0, 0) + get_rho_0(obj_scale, 1, 1))
+xi_sys_term_p = (alpha_0_r**2 + alpha_0_i**2 + alpha_4_r**2 + alpha_4_i**2) * (
+    get_rho_0(obj_scale, 0, 0) + get_rho_0(obj_scale, 1, 1)
 )
 xi_sys_term_m = (
-    2 * (alpha_0_r * alpha_4_r + alpha_0_i * alpha_4_i)
-     * (get_rho_0(obj_scale, 0, 0) - get_rho_0(obj_scale, 1, 1))
+    2
+    * (alpha_0_r * alpha_4_r + alpha_0_i * alpha_4_i)
+    * (get_rho_0(obj_scale, 0, 0) - get_rho_0(obj_scale, 1, 1))
 )
 xi_sys_term_mixed = (
-    4 * (
-        alpha_0_r * alpha_4_i - alpha_4_r * alpha_0_i
-    ) * get_rho_0(obj_scale, 0, 1)
+    4 * (alpha_0_r * alpha_4_i - alpha_4_r * alpha_0_i) * get_rho_0(obj_scale, 0, 1)
 )
 
 xi_sys_tot = xi_sys_term_p + xi_sys_term_m + xi_sys_term_mixed
@@ -229,8 +202,8 @@ e1_gal = obj_scale.dat_shear["e1"]
 e2_gal = obj_scale.dat_shear["e2"]
 weights_gal = obj_scale.dat_shear["w"]
 
-complex_gal = (                                                         
-    np.average(e1_gal, weights=weights_gal)                             
+complex_gal = (
+    np.average(e1_gal, weights=weights_gal)
     + np.average(e2_gal, weights=weights_gal) * 1j
 )
 
@@ -240,10 +213,12 @@ complex_psf = np.mean(e1_psf) + np.mean(e2_psf) * 1j
 
 # +
 # At the moment we compute the scalar xi_sys here using centered correlation functions.
-# TODO: Implement consistent centering in shear_psf_leakage classes. 
+# TODO: Implement consistent centering in shear_psf_leakage classes.
 
 # xi_sys = tau_0^2/rho_0
-xi_sys_scalar = (obj_scale.r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) ** 2 / (obj_scale.r_corr_pp.xip - np.abs((complex_psf) ** 2))
+xi_sys_scalar = (
+    obj_scale.r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)
+) ** 2 / (obj_scale.r_corr_pp.xip - np.abs((complex_psf) ** 2))
 std_xi_sys_scalar = obj_scale.C_sys_std_p
 
 y = [
@@ -252,7 +227,6 @@ y = [
     unumpy.nominal_values(xi_sys_term_mixed),
     unumpy.nominal_values(xi_sys_tot),
     xi_sys_scalar,
-    
 ]
 dy = [
     unumpy.std_devs(xi_sys_term_p),
@@ -264,16 +238,19 @@ dy = [
 x = [theta_arcmin] * len(y)
 
 title = r"Bacon et al. (2003) $\xi_{sys}$"
-xlabel = r"$\theta$ [arcmin]" 
+xlabel = r"$\theta$ [arcmin]"
 ylabel = "terms"
-out_path = f"{obj_scale._params['output_dir']}/xi_sys_terms.png"                                  
+out_path = f"{obj_scale._params['output_dir']}/xi_sys_terms.png"
 labels = ["$t_+$", "$t_-$", r"$t_{\rm mixed}$", r"$\sum t_i$", "scalar"]
 markers = ["o", "d", "^", "x", "s"]
 
 factor = 0.9
-xlim = [obj_scale._params["theta_min_amin"] ** factor, obj_scale._params["theta_max_amin"]]
+xlim = [
+    obj_scale._params["theta_min_amin"] ** factor,
+    obj_scale._params["theta_max_amin"],
+]
 
-#ylim = [-1e-6, 2e-6]
+# ylim = [-1e-6, 2e-6]
 
 cs_plots.plot_data_1d(
     x,
@@ -295,28 +272,29 @@ cs_plots.plot_data_1d(
 
 # Using a_ij matrix
 xi_sys_term_m_11 = (
-    (obj_scale.get_alpha_ufloat(0, 0) ** 2 + obj_scale.get_alpha_ufloat(1, 0) ** 2)
-    * get_rho_0(obj_scale, 0, 0)
-)
+    obj_scale.get_alpha_ufloat(0, 0) ** 2 + obj_scale.get_alpha_ufloat(1, 0) ** 2
+) * get_rho_0(obj_scale, 0, 0)
 xi_sys_term_m_22 = (
-    (obj_scale.get_alpha_ufloat(0, 1) ** 2 + obj_scale.get_alpha_ufloat(1, 1) ** 2)
-    * get_rho_0(obj_scale, 1, 1)
-)
+    obj_scale.get_alpha_ufloat(0, 1) ** 2 + obj_scale.get_alpha_ufloat(1, 1) ** 2
+) * get_rho_0(obj_scale, 1, 1)
 xi_sys_term_m_12 = (
-    2 * (obj_scale.get_alpha_ufloat(0, 0) * obj_scale.get_alpha_ufloat(0, 1)
-     + obj_scale.get_alpha_ufloat(1, 0) * obj_scale.get_alpha_ufloat(1, 1))
-     * get_rho_0(obj_scale, 0, 1)
+    2
+    * (
+        obj_scale.get_alpha_ufloat(0, 0) * obj_scale.get_alpha_ufloat(0, 1)
+        + obj_scale.get_alpha_ufloat(1, 0) * obj_scale.get_alpha_ufloat(1, 1)
+    )
+    * get_rho_0(obj_scale, 0, 1)
 )
 
 # Sum of the three terms
-xi_sys_m_tot =  xi_sys_term_m_11 + xi_sys_term_m_22 + xi_sys_term_m_12
+xi_sys_m_tot = xi_sys_term_m_11 + xi_sys_term_m_22 + xi_sys_term_m_12
 
 # Matrix sum
 xi_sys_m2_tot = 0
 for idx in (0, 1):
     for kdx in (0, 1):
         for ldx in (0, 1):
-            xi_sys_m2_tot +=  (
+            xi_sys_m2_tot += (
                 obj_scale.get_alpha_ufloat(idx, kdx)
                 * obj_scale.get_alpha_ufloat(idx, ldx)
                 * get_rho_0(obj_scale, kdx, ldx)
@@ -329,7 +307,6 @@ y = [
     unumpy.nominal_values(xi_sys_m_tot),
     unumpy.nominal_values(xi_sys_m2_tot),
     unumpy.nominal_values(xi_sys_tot),
-    
 ]
 dy = [
     unumpy.std_devs(xi_sys_term_m_11),
@@ -342,10 +319,17 @@ dy = [
 x = [theta_arcmin] * len(y)
 
 title = r"Bacon et al. (2003) $\xi_{sys}$"
-xlabel = r"$\theta$ [arcmin]" 
+xlabel = r"$\theta$ [arcmin]"
 ylabel = "terms with matrix coeffs"
-out_path = f"{obj_scale._params['output_dir']}/xi_sys_terms_m.png"                                  
-labels = ["$t_{11}$", "$t_{22}$", r"$t_{12}$", r"$\sum t_i$ (matrix terms)", r"$\sum t_i$ (matrix terms 2)", "$\sum t_i$ (spin terms)"]
+out_path = f"{obj_scale._params['output_dir']}/xi_sys_terms_m.png"
+labels = [
+    "$t_{11}$",
+    "$t_{22}$",
+    r"$t_{12}$",
+    r"$\sum t_i$ (matrix terms)",
+    r"$\sum t_i$ (matrix terms 2)",
+    "$\sum t_i$ (spin terms)",
+]
 markers = ["o", "d", "^", "x", "h", "s"]
 linestyles = [":"] * 3
 linestyles.extend(["-", "-.", "--"])
@@ -391,16 +375,22 @@ dy = [
     unumpy.std_devs(d1),
     unumpy.std_devs(d2),
     unumpy.std_devs(d3),
-    #unumpy.std_devs(d4),
-    #unumpy.std_devs(d5),
+    # unumpy.std_devs(d4),
+    # unumpy.std_devs(d5),
 ]
 x = [theta_arcmin] * len(y)
 
 title = r"Bacon et al. (2003) $\xi_{sys}$"
-xlabel = r"$\theta$ [arcmin]" 
+xlabel = r"$\theta$ [arcmin]"
 ylabel = "difference"
-out_path = f"{obj_scale._params['output_dir']}/xi_sys_diff.png"                                  
-labels = [r"(matrix - spin) tot", r"(matrix 2 - spin) tot", "(matrix - matrix 2) tot", "11 22", "mixed"]
+out_path = f"{obj_scale._params['output_dir']}/xi_sys_diff.png"
+labels = [
+    r"(matrix - spin) tot",
+    r"(matrix 2 - spin) tot",
+    "(matrix - matrix 2) tot",
+    "11 22",
+    "mixed",
+]
 markers = ["o", "d", "s", "x", "v"]
 linestyles = ["-", "--", ":", ":", ":"]
 
@@ -431,18 +421,24 @@ plt.loglog(theta_arcmin, obj_scale.C_sys_p, "p:", label="scalar uncentered")
 # spin t_+
 plt.loglog(
     theta_arcmin,
-    unumpy.nominal_values(xi_sys_term_p), 
+    unumpy.nominal_values(xi_sys_term_p),
     "d-",
     label="spin $t_+$ centered",
 )
 
 # tau^2 / rho
-plt.loglog(theta_arcmin, obj_scale.r_corr_gp.xip ** 2 / obj_scale.r_corr_pp.xip, "v:", label="scalar centered")
 plt.loglog(
     theta_arcmin,
-    (obj_scale.r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) ** 2 / (obj_scale.r_corr_pp.xip - np.abs((complex_psf) ** 2)),
+    obj_scale.r_corr_gp.xip**2 / obj_scale.r_corr_pp.xip,
+    "v:",
+    label="scalar centered",
+)
+plt.loglog(
+    theta_arcmin,
+    (obj_scale.r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf)) ** 2
+    / (obj_scale.r_corr_pp.xip - np.abs((complex_psf) ** 2)),
     "v-",
-    label="3c"
+    label="3c",
 )
 
 plt.legend()
@@ -450,6 +446,3 @@ plt.show()
 plt.savefig(f"{obj_scale._params['output_dir']}/xi_sys_test.png")
 
 # -
-
-
-

@@ -160,9 +160,7 @@ def neg_dash(
     if current_sign > 0:
         ax.errorbar(x, y, yerr=yerr, linestyle="-", label=lab, **errbkwargs)
     else:
-        ax.errorbar(
-            x, np.abs(y), yerr=yerr, linestyle="--", label=lab, **errbkwargs
-        )
+        ax.errorbar(x, np.abs(y), yerr=yerr, linestyle="--", label=lab, **errbkwargs)
     if semilogx:
         ax.set_xscale("log")
     if semilogy:
@@ -224,10 +222,6 @@ class Catalogs:
             "M_4_2_psf_col": "M_4_PSF_2",
             "M_4_1_star_col": "M_4_STAR_1",
             "M_4_2_star_col": "M_4_STAR_2",
-            "M_4_1_psf_col": "M_4_PSF_1",
-            "M_4_2_psf_col": "M_4_PSF_2",
-            "M_4_1_star_col": "M_4_STAR_1",
-            "M_4_2_star_col": "M_4_STAR_2",
             "PSF_flag": "HSM_FLAG_PSF",
             "star_flag": "HSM_FLAG_STAR",
             "patch_number": 120,
@@ -262,9 +256,9 @@ class Catalogs:
         ------
         AssertionError: Please specify a path for the shear catalog you want to read.
         """
-        assert (path_gal is not None) or (
-            path_psf is not None
-        ), "Please specify a path for the shear catalog you want to read."
+        assert (path_gal is not None) or (path_psf is not None), (
+            "Please specify a path for the shear catalog you want to read."
+        )
         if path_gal is not None:
             dat_shear = fits.getdata(path_gal, ext=hdu)
             return dat_shear
@@ -304,21 +298,27 @@ class Catalogs:
             If the specified cat_type does not belong to the allowed list.
         """
 
-        allowed_types = ['gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error']
-        allowed_types = ['gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error']
+        allowed_types = [
+            "gal",
+            "psf",
+            "psf_error",
+            "psf_size_error",
+            "psf_fourth_moment",
+            "psf_fourth_moment_error",
+        ]
 
-        assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
-                                           "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'.")
-        assert cat_type in allowed_types, ("The specified catalogue type is invalid. Check the one you use is allowed."
-                                           "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'.")
+        assert cat_type in allowed_types, (
+            "The specified catalogue type is invalid. Check the one you use is allowed."
+            "Allowed cat_type: 'gal', 'psf', 'psf_error', 'psf_size_error', 'psf_fourth_moment', 'psf_fourth_moment_error'."
+        )
 
         if cat_type == "gal":
+            ra = cat[self._params["ra_col"]]
+            dec = cat[self._params["dec_col"]]
             if self._params["w_col"] is not None:
                 weights = cat[self._params["w_col"]]
             else:
                 weights = np.ones_like(ra)
-            ra = cat[self._params["ra_col"]]
-            dec = cat[self._params["dec_col"]]
             g1 = cat[self._params["e1_col"]] - np.average(
                 cat[self._params["e1_col"]], weights=weights
             )
@@ -330,12 +330,14 @@ class Catalogs:
             if self._params.get("R22", None) is not None:
                 g2 /= self._params["R22"]
         else:
-            #Add a mask?
-            #mask = (self.dat_psf[self._params["HSM_FLAG_PSF"]]==0) & (self.dat_psf[self._params["HSM_FLAG_STAR"]]==0)
-            if self._params["ra_PSF_col"] is not None: #Check if a name for the columns of the PSF coordinates is given
+            # Add a mask?
+            # mask = (self.dat_psf[self._params["HSM_FLAG_PSF"]]==0) & (self.dat_psf[self._params["HSM_FLAG_STAR"]]==0)
+            if (
+                self._params["ra_PSF_col"] is not None
+            ):  # Check if a name for the columns of the PSF coordinates is given
                 ra = cat[self._params["ra_PSF_col"]]
                 dec = cat[self._params["dec_PSF_col"]]
-            else: #Else takes the same than the galaxy catalogue
+            else:  # Else takes the same than the galaxy catalogue
                 ra = cat[self._params["ra_col"]]
                 dec = cat[self._params["dec_col"]]
             weights = None
@@ -349,33 +351,41 @@ class Catalogs:
                 ]  # - cat[self._params["e2_PSF_col"]].mean()
 
             elif cat_type == "psf_error":
+                g1 = cat[self._params["e1_star_col"]] - cat[self._params["e1_PSF_col"]]
+                # g1 -= g1.mean()
+                g2 = cat[self._params["e2_star_col"]] - cat[self._params["e2_PSF_col"]]
+                # g2 -= g2.mean()
+
+            elif cat_type == "psf_size_error":
+                size_star = cat[self._params["star_size"]]
+                size_psf = cat[self._params["PSF_size"]]
+
                 g1 = (
                     cat[self._params["e1_star_col"]]
-                    - cat[self._params["e1_PSF_col"]]
+                    * (size_star - size_psf)
+                    / size_star
                 )
                 # g1 -= g1.mean()
                 g2 = (
                     cat[self._params["e2_star_col"]]
-                    - cat[self._params["e2_PSF_col"]]
+                    * (size_star - size_psf)
+                    / size_star
                 )
                 # g2 -= g2.mean()
 
-            elif cat_type=="psf_size_error":
-                size_star = cat[self._params["star_size"]]
-                size_psf = cat[self._params["PSF_size"]]
-
-                g1 = cat[self._params["e1_star_col"]] * (size_star - size_psf) / size_star
-                #g1 -= g1.mean()
-                g2 = cat[self._params["e2_star_col"]] * (size_star - size_psf) / size_star
-                #g2 -= g2.mean()
-            
-            elif cat_type=="psf_fourth_moment":
+            elif cat_type == "psf_fourth_moment":
                 g1 = cat[self._params["M_4_1_psf_col"]]
                 g2 = cat[self._params["M_4_2_psf_col"]]
-            
-            elif cat_type=="psf_fourth_moment_error":
-                g1 = (cat[self._params["M_4_1_star_col"]] - cat[self._params["M_4_1_psf_col"]])
-                g2 = (cat[self._params["M_4_2_star_col"]] - cat[self._params["M_4_2_psf_col"]])
+
+            elif cat_type == "psf_fourth_moment_error":
+                g1 = (
+                    cat[self._params["M_4_1_star_col"]]
+                    - cat[self._params["M_4_1_psf_col"]]
+                )
+                g2 = (
+                    cat[self._params["M_4_2_star_col"]]
+                    - cat[self._params["M_4_2_psf_col"]]
+                )
 
         return ra, dec, g1, g2, weights
 
@@ -412,9 +422,7 @@ class Catalogs:
         if npatch is None:
             npatch = self._params["patch_number"]
 
-        ra, dec, g1, g2, weights = self.get_cat_fields(
-            cat, cat_type
-        )
+        ra, dec, g1, g2, weights = self.get_cat_fields(cat, cat_type)
 
         if mask is None:
             mask = np.ones_like(ra, dtype=bool)
@@ -517,7 +525,6 @@ class RhoStat:
         treecorr_config=None,
         verbose=False,
     ):
-
         self.catalogs = Catalogs(params, output)
 
         if treecorr_config is None:
@@ -544,9 +551,7 @@ class RhoStat:
 
         self.verbose = verbose
 
-    def build_cat_to_compute_rho(
-        self, path_cat_star, catalog_id="", mask=None, hdu=1
-    ):
+    def build_cat_to_compute_rho(self, path_cat_star, catalog_id="", mask=None, hdu=1):
         """
         build_cat_to_compute_rho
 
@@ -578,9 +583,7 @@ class RhoStat:
             key="psf_" + catalog_id,
             mask=mask,
         )
-        patch_centers = self.catalogs.catalogs_dict[
-            "psf_" + catalog_id
-        ].patch_centers
+        patch_centers = self.catalogs.catalogs_dict["psf_" + catalog_id].patch_centers
         self.catalogs.build_catalog(
             cat=psf_cat,
             cat_type="psf_error",
@@ -594,16 +597,24 @@ class RhoStat:
                 cat_type="psf_size_error",
                 key="psf_size_error_" + catalog_id,
                 patch_centers=patch_centers,
-            mask=mask,
+                mask=mask,
             )
 
         if self.use_fourth_moment:
-            self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment', key='psf_fourth_moment_'+catalog_id, patch_centers=patch_centers, mask=mask)
-            self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment_error', key='psf_fourth_moment_error_'+catalog_id, patch_centers=patch_centers, mask=mask)
-
-        if self.use_fourth_moment:
-            self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment', key='psf_fourth_moment_'+catalog_id, patch_centers=patch_centers, mask=mask)
-            self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment_error', key='psf_fourth_moment_error_'+catalog_id, patch_centers=patch_centers, mask=mask)
+            self.catalogs.build_catalog(
+                cat=psf_cat,
+                cat_type="psf_fourth_moment",
+                key="psf_fourth_moment_" + catalog_id,
+                patch_centers=patch_centers,
+                mask=mask,
+            )
+            self.catalogs.build_catalog(
+                cat=psf_cat,
+                cat_type="psf_fourth_moment_error",
+                key="psf_fourth_moment_error_" + catalog_id,
+                patch_centers=patch_centers,
+                mask=mask,
+            )
 
         del psf_cat
 
@@ -620,7 +631,7 @@ class RhoStat:
         var_method="jackknife",
         write_treecorr=False,
         write_patch_results=False,
-        write_cov=False
+        write_cov=False,
     ):
         """
         compute_rho_stats
@@ -637,9 +648,7 @@ class RhoStat:
         """
         if self.verbose:
             print(
-                "Computation of the rho statistics of "
-                + catalog_id
-                + " in progress..."
+                "Computation of the rho statistics of " + catalog_id + " in progress..."
             )
         if write_treecorr:
             # Remove extension of the filename
@@ -662,22 +671,13 @@ class RhoStat:
         )
         if write_treecorr:
             self.save_treecorr(
-                rho_0,
-                filename_no_ext + "_rho_0.txt",
-                write_patch_results,
-                write_cov
+                rho_0, filename_no_ext + "_rho_0.txt", write_patch_results, write_cov
             )
             self.save_treecorr(
-                rho_1,
-                filename_no_ext + "_rho_1.txt",
-                write_patch_results,
-                write_cov
+                rho_1, filename_no_ext + "_rho_1.txt", write_patch_results, write_cov
             )
             self.save_treecorr(
-                rho_2,
-                filename_no_ext + "_rho_2.txt",
-                write_patch_results,
-                write_cov
+                rho_2, filename_no_ext + "_rho_2.txt", write_patch_results, write_cov
             )
 
         if self.use_eta:
@@ -701,98 +701,125 @@ class RhoStat:
                     rho_3,
                     filename_no_ext + "_rho_3.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_4,
                     filename_no_ext + "_rho_4.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_5,
                     filename_no_ext + "_rho_5.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
 
         if self.use_fourth_moment:
             rho_6 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_6.process(self.catalogs.get_cat('psf_fourth_moment_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_'+catalog_id))
+            rho_6.process(
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+            )
             rho_7 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_7.process(self.catalogs.get_cat('psf_fourth_moment_'+catalog_id), self.catalogs.get_cat('psf_'+catalog_id))
+            rho_7.process(
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+                self.catalogs.get_cat("psf_" + catalog_id),
+            )
             rho_8 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_8.process(self.catalogs.get_cat('psf_fourth_moment_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
+            rho_8.process(
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+                self.catalogs.get_cat("psf_error_" + catalog_id),
+            )
             rho_9 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_9.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id))
+            rho_9.process(
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+            )
             rho_10 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_10.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_'+catalog_id))
+            rho_10.process(
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+            )
             rho_11 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_11.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_'+catalog_id))
+            rho_11.process(
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+                self.catalogs.get_cat("psf_" + catalog_id),
+            )
             rho_12 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_12.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_error_'+catalog_id))
+            rho_12.process(
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+                self.catalogs.get_cat("psf_error_" + catalog_id),
+            )
 
             if write_treecorr:
                 self.save_treecorr(
                     rho_6,
                     filename_no_ext + "_rho_6.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_7,
                     filename_no_ext + "_rho_7.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_8,
                     filename_no_ext + "_rho_8.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_9,
                     filename_no_ext + "_rho_9.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_10,
                     filename_no_ext + "_rho_10.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_11,
                     filename_no_ext + "_rho_11.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_12,
                     filename_no_ext + "_rho_12.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
 
         if self.use_eta and self.use_fourth_moment:
             rho_13 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_13.process(self.catalogs.get_cat('psf_fourth_moment_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            rho_13.process(
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+                self.catalogs.get_cat("psf_size_error_" + catalog_id),
+            )
             rho_14 = treecorr.GGCorrelation(self._treecorr_config)
-            rho_14.process(self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            rho_14.process(
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+                self.catalogs.get_cat("psf_size_error_" + catalog_id),
+            )
             if write_treecorr:
                 self.save_treecorr(
                     rho_13,
                     filename_no_ext + "_rho_13.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     rho_14,
                     filename_no_ext + "_rho_14.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
 
         if self.use_eta and not self.use_fourth_moment:
@@ -899,48 +926,48 @@ class RhoStat:
                     rho_12.varxim,
                 ],
                 names=(
-                    'theta',
-                    'rho_0_p',
-                    'varrho_0_p',
-                    'rho_0_m',
-                    'varrho_0_m',
-                    'rho_1_p',
-                    'varrho_1_p',
-                    'rho_1_m',
-                    'varrho_1_m',
-                    'rho_2_p',
-                    'varrho_2_p',
-                    'rho_2_m',
-                    'varrho_2_m',
-                    'rho_6_p',
-                    'varrho_6_p',
-                    'rho_6_m',
-                    'varrho_6_m',
-                    'rho_7_p',
-                    'varrho_7_p',
-                    'rho_7_m',
-                    'varrho_7_m',
-                    'rho_8_p',
-                    'varrho_8_p',
-                    'rho_8_m',
-                    'varrho_8_m',
-                    'rho_9_p',
-                    'varrho_9_p',
-                    'rho_9_m',
-                    'varrho_9_m',
-                    'rho_10_p',
-                    'varrho_10_p',
-                    'rho_10_m',
-                    'varrho_10_m',
-                    'rho_11_p',
-                    'varrho_11_p',
-                    'rho_11_m',
-                    'varrho_11_m',
-                    'rho_12_p',
-                    'varrho_12_p',
-                    'rho_12_m',
-                    'varrho_12_m',
-                )
+                    "theta",
+                    "rho_0_p",
+                    "varrho_0_p",
+                    "rho_0_m",
+                    "varrho_0_m",
+                    "rho_1_p",
+                    "varrho_1_p",
+                    "rho_1_m",
+                    "varrho_1_m",
+                    "rho_2_p",
+                    "varrho_2_p",
+                    "rho_2_m",
+                    "varrho_2_m",
+                    "rho_6_p",
+                    "varrho_6_p",
+                    "rho_6_m",
+                    "varrho_6_m",
+                    "rho_7_p",
+                    "varrho_7_p",
+                    "rho_7_m",
+                    "varrho_7_m",
+                    "rho_8_p",
+                    "varrho_8_p",
+                    "rho_8_m",
+                    "varrho_8_m",
+                    "rho_9_p",
+                    "varrho_9_p",
+                    "rho_9_m",
+                    "varrho_9_m",
+                    "rho_10_p",
+                    "varrho_10_p",
+                    "rho_10_m",
+                    "varrho_10_m",
+                    "rho_11_p",
+                    "varrho_11_p",
+                    "rho_11_m",
+                    "varrho_11_m",
+                    "rho_12_p",
+                    "varrho_12_p",
+                    "rho_12_m",
+                    "varrho_12_m",
+                ),
             )
 
         elif self.use_fourth_moment and self.use_eta:
@@ -1009,68 +1036,68 @@ class RhoStat:
                     rho_14.varxim,
                 ],
                 names=(
-                    'theta',
-                    'rho_0_p',
-                    'varrho_0_p',
-                    'rho_0_m',
-                    'varrho_0_m',
-                    'rho_1_p',
-                    'varrho_1_p',
-                    'rho_1_m',
-                    'varrho_1_m',
-                    'rho_2_p',
-                    'varrho_2_p',
-                    'rho_2_m',
-                    'varrho_2_m',
-                    'rho_3_p',
-                    'varrho_3_p',
-                    'rho_3_m',
-                    'varrho_3_m',
-                    'rho_4_p',
-                    'varrho_4_p',
-                    'rho_4_m',
-                    'varrho_4_m',
-                    'rho_5_p',
-                    'varrho_5_p',
-                    'rho_5_m',
-                    'varrho_5_m',
-                    'rho_6_p',
-                    'varrho_6_p',
-                    'rho_6_m',
-                    'varrho_6_m',
-                    'rho_7_p',
-                    'varrho_7_p',
-                    'rho_7_m',
-                    'varrho_7_m',
-                    'rho_8_p',
-                    'varrho_8_p',
-                    'rho_8_m',
-                    'varrho_8_m',
-                    'rho_9_p',
-                    'varrho_9_p',
-                    'rho_9_m',
-                    'varrho_9_m',
-                    'rho_10_p',
-                    'varrho_10_p',
-                    'rho_10_m',
-                    'varrho_10_m',
-                    'rho_11_p',
-                    'varrho_11_p',
-                    'rho_11_m',
-                    'varrho_11_m',
-                    'rho_12_p',
-                    'varrho_12_p',
-                    'rho_12_m',
-                    'varrho_12_m',
-                    'rho_13_p',
-                    'varrho_13_p',
-                    'rho_13_m',
-                    'varrho_13_m',
-                    'rho_14_p',
-                    'varrho_14_p',
-                    'rho_14_m',
-                    'varrho_14_m',
-                )
+                    "theta",
+                    "rho_0_p",
+                    "varrho_0_p",
+                    "rho_0_m",
+                    "varrho_0_m",
+                    "rho_1_p",
+                    "varrho_1_p",
+                    "rho_1_m",
+                    "varrho_1_m",
+                    "rho_2_p",
+                    "varrho_2_p",
+                    "rho_2_m",
+                    "varrho_2_m",
+                    "rho_3_p",
+                    "varrho_3_p",
+                    "rho_3_m",
+                    "varrho_3_m",
+                    "rho_4_p",
+                    "varrho_4_p",
+                    "rho_4_m",
+                    "varrho_4_m",
+                    "rho_5_p",
+                    "varrho_5_p",
+                    "rho_5_m",
+                    "varrho_5_m",
+                    "rho_6_p",
+                    "varrho_6_p",
+                    "rho_6_m",
+                    "varrho_6_m",
+                    "rho_7_p",
+                    "varrho_7_p",
+                    "rho_7_m",
+                    "varrho_7_m",
+                    "rho_8_p",
+                    "varrho_8_p",
+                    "rho_8_m",
+                    "varrho_8_m",
+                    "rho_9_p",
+                    "varrho_9_p",
+                    "rho_9_m",
+                    "varrho_9_m",
+                    "rho_10_p",
+                    "varrho_10_p",
+                    "rho_10_m",
+                    "varrho_10_m",
+                    "rho_11_p",
+                    "varrho_11_p",
+                    "rho_11_m",
+                    "varrho_11_m",
+                    "rho_12_p",
+                    "varrho_12_p",
+                    "rho_12_m",
+                    "varrho_12_m",
+                    "rho_13_p",
+                    "varrho_13_p",
+                    "rho_13_m",
+                    "varrho_13_m",
+                    "rho_14_p",
+                    "varrho_14_p",
+                    "rho_14_m",
+                    "varrho_14_m",
+                ),
             )
 
         else:
@@ -1122,12 +1149,19 @@ class RhoStat:
                 rhos += [rho_13, rho_14]
             cov = treecorr.estimate_multi_cov(rhos, var_method, func=func)
 
-            use_eta_str = '' if self.use_eta else 'no_eta'
-            use_fourth_moment_str = '' if not self.use_fourth_moment else 'w_fourth_moment'
-            np.save(self.catalogs._output+'/'+'cov_rho_'+catalog_id+use_eta_str+use_fourth_moment_str, cov)
-            use_eta_str = '' if self.use_eta else 'no_eta'
-            use_fourth_moment_str = '' if not self.use_fourth_moment else 'w_fourth_moment'
-            np.save(self.catalogs._output+'/'+'cov_rho_'+catalog_id+use_eta_str+use_fourth_moment_str, cov)
+            use_eta_str = "" if self.use_eta else "no_eta"
+            use_fourth_moment_str = (
+                "" if not self.use_fourth_moment else "w_fourth_moment"
+            )
+            np.save(
+                self.catalogs._output
+                + "/"
+                + "cov_rho_"
+                + catalog_id
+                + use_eta_str
+                + use_fourth_moment_str,
+                cov,
+            )
 
         self.save_rho_stats(
             filename
@@ -1161,7 +1195,7 @@ class RhoStat:
         legend="each",
         title=None,
         show=False,
-        close=True
+        close=True,
     ):
         """
         plot_rho_stats
@@ -1210,7 +1244,7 @@ class RhoStat:
             rf"$\langle {delta_e_psf} {delta_T_psf} \rangle$",
             rf"$\langle {e_psf} {delta_T_psf} \rangle$",
         ]
-        
+
         # To adapt to the new boolean argument
         fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(15, 9))
         ax = ax.flatten()
@@ -1245,9 +1279,7 @@ class RhoStat:
                         ax[i],
                         self.rho_stats["theta"],
                         self.rho_stats["rho_" + str(i) + "_p"],
-                        yerr_in=np.sqrt(
-                            self.rho_stats["varrho_" + str(i) + "_p"]
-                        ),
+                        yerr_in=np.sqrt(self.rho_stats["varrho_" + str(i) + "_p"]),
                         vertical_lines=False,
                         rho_nb=str(i),
                         cat_id=cat_id,
@@ -1272,11 +1304,12 @@ class RhoStat:
         if legend == "outside":
             handles, labels = ax[-1].get_legend_handles_labels()
             fig.legend(
-                handles, labels,
+                handles,
+                labels,
                 loc="upper center",
                 bbox_to_anchor=(0.5, 0.0),
                 ncol=3,
-                frameon=False
+                frameon=False,
             )
 
         if title:
@@ -1284,9 +1317,7 @@ class RhoStat:
 
         plt.tight_layout()
         if savefig is not None:
-            plt.savefig(
-                self.catalogs._output + "/" + savefig, bbox_inches="tight"
-            )
+            plt.savefig(self.catalogs._output + "/" + savefig, bbox_inches="tight")
 
         if show:
             plt.show()
@@ -1313,7 +1344,6 @@ class TauStat:
         catalogs=None,
         verbose=False,
     ):
-
         if catalogs is None:
             self.catalogs = Catalogs(params, output)
         else:
@@ -1383,7 +1413,7 @@ class TauStat:
                 cat=psf_cat,
                 cat_type="psf",
                 key="psf_" + catalog_id,
-            mask=mask,
+                mask=mask,
             )
             patch_centers = self.catalogs.catalogs_dict[
                 "psf_" + catalog_id
@@ -1393,17 +1423,53 @@ class TauStat:
                 cat_type="psf_error",
                 key="psf_error_" + catalog_id,
                 patch_centers=patch_centers,
-            mask=mask,
+                mask=mask,
             )
             if self.use_eta:
-                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, mask=mask)
+                self.catalogs.build_catalog(
+                    cat=psf_cat,
+                    cat_type="psf_size_error",
+                    key="psf_size_error_" + catalog_id,
+                    patch_centers=patch_centers,
+                    mask=mask,
+                )
             if self.use_fourth_moment:
-                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment', key='psf_fourth_moment_'+catalog_id, patch_centers=patch_centers, mask=mask)
-                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment_error', key='psf_fourth_moment_error_'+catalog_id, patch_centers=patch_centers, mask=mask)
-                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_size_error', key='psf_size_error_'+catalog_id, patch_centers=patch_centers, mask=mask)
+                self.catalogs.build_catalog(
+                    cat=psf_cat,
+                    cat_type="psf_fourth_moment",
+                    key="psf_fourth_moment_" + catalog_id,
+                    patch_centers=patch_centers,
+                    mask=mask,
+                )
+                self.catalogs.build_catalog(
+                    cat=psf_cat,
+                    cat_type="psf_fourth_moment_error",
+                    key="psf_fourth_moment_error_" + catalog_id,
+                    patch_centers=patch_centers,
+                    mask=mask,
+                )
+                self.catalogs.build_catalog(
+                    cat=psf_cat,
+                    cat_type="psf_size_error",
+                    key="psf_size_error_" + catalog_id,
+                    patch_centers=patch_centers,
+                    mask=mask,
+                )
             if self.use_fourth_moment:
-                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment', key='psf_fourth_moment_'+catalog_id, patch_centers=patch_centers, mask=mask)
-                self.catalogs.build_catalog(cat=psf_cat, cat_type='psf_fourth_moment_error', key='psf_fourth_moment_error_'+catalog_id, patch_centers=patch_centers, mask=mask)
+                self.catalogs.build_catalog(
+                    cat=psf_cat,
+                    cat_type="psf_fourth_moment",
+                    key="psf_fourth_moment_" + catalog_id,
+                    patch_centers=patch_centers,
+                    mask=mask,
+                )
+                self.catalogs.build_catalog(
+                    cat=psf_cat,
+                    cat_type="psf_fourth_moment_error",
+                    key="psf_fourth_moment_error_" + catalog_id,
+                    patch_centers=patch_centers,
+                    mask=mask,
+                )
 
             del psf_cat
 
@@ -1420,15 +1486,13 @@ class TauStat:
                     "psf_" + catalog_id
                 ].patch_centers
             except KeyError:
-                warnings.warn(
-                    "You should build psf catalog before galaxy catalog."
-                )
+                warnings.warn("You should build psf catalog before galaxy catalog.")
                 patch_centers = None
             self.catalogs.build_catalog(
                 cat=gal_cat,
                 cat_type="gal",
                 key="gal_" + catalog_id,
-            mask=mask,
+                mask=mask,
                 patch_centers=patch_centers,
             )
 
@@ -1447,7 +1511,7 @@ class TauStat:
         var_method="jackknife",
         write_treecorr=False,
         write_patch_results=False,
-        write_cov=False
+        write_cov=False,
     ):
         """
         compute_tau_stats
@@ -1474,9 +1538,7 @@ class TauStat:
 
         if self.verbose:
             print(
-                "Computation of the tau statistics of "
-                + catalog_id
-                + " in progress..."
+                "Computation of the tau statistics of " + catalog_id + " in progress..."
             )
 
         if write_treecorr:
@@ -1495,50 +1557,52 @@ class TauStat:
 
         if write_treecorr:
             self.save_treecorr(
-                tau_0,
-                filename_no_ext + "_tau_0.txt",
-                write_patch_results,
-                write_cov
+                tau_0, filename_no_ext + "_tau_0.txt", write_patch_results, write_cov
             )
             self.save_treecorr(
-                tau_2,
-                filename_no_ext + "_tau_2.txt",
-                write_patch_results,
-                write_cov
+                tau_2, filename_no_ext + "_tau_2.txt", write_patch_results, write_cov
             )
 
         if self.use_eta:
             tau_5 = treecorr.GGCorrelation(self._treecorr_config)
-            tau_5.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_size_error_'+catalog_id))
+            tau_5.process(
+                self.catalogs.get_cat("gal_" + catalog_id),
+                self.catalogs.get_cat("psf_size_error_" + catalog_id),
+            )
             if write_treecorr:
                 self.save_treecorr(
                     tau_5,
                     filename_no_ext + "_tau_5.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
 
         if self.use_fourth_moment:
             tau_6 = treecorr.GGCorrelation(self._treecorr_config)
-            tau_6.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_'+catalog_id))
+            tau_6.process(
+                self.catalogs.get_cat("gal_" + catalog_id),
+                self.catalogs.get_cat("psf_fourth_moment_" + catalog_id),
+            )
             tau_7 = treecorr.GGCorrelation(self._treecorr_config)
-            tau_7.process(self.catalogs.get_cat('gal_'+catalog_id), self.catalogs.get_cat('psf_fourth_moment_error_'+catalog_id))
+            tau_7.process(
+                self.catalogs.get_cat("gal_" + catalog_id),
+                self.catalogs.get_cat("psf_fourth_moment_error_" + catalog_id),
+            )
             if write_treecorr:
                 self.save_treecorr(
                     tau_6,
                     filename_no_ext + "_tau_6.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
                 self.save_treecorr(
                     tau_7,
                     filename_no_ext + "_tau_7.txt",
                     write_patch_results,
-                    write_cov
+                    write_cov,
                 )
 
         if self.use_eta and not self.use_fourth_moment:
-
             self.tau_stats = Table(
                 [
                     tau_0.meanr,
@@ -1571,9 +1635,8 @@ class TauStat:
                     "vartau_5_m",
                 ),
             )
-        
-        elif self.use_fourth_moment and not self.use_eta:
 
+        elif self.use_fourth_moment and not self.use_eta:
             self.tau_stats = Table(
                 [
                     tau_0.meanr,
@@ -1595,28 +1658,27 @@ class TauStat:
                     tau_7.varxim,
                 ],
                 names=(
-                    'theta',
-                    'tau_0_p',
-                    'vartau_0_p',
-                    'tau_0_m',
-                    'vartau_0_m',
-                    'tau_2_p',
-                    'vartau_2_p',
-                    'tau_2_m',
-                    'vartau_2_m',
-                    'tau_6_p',
-                    'vartau_6_p',
-                    'tau_6_m',
-                    'vartau_6_m',
-                    'tau_7_p',
-                    'vartau_7_p',
-                    'tau_7_m',
-                    'vartau_7_m',
-                )
+                    "theta",
+                    "tau_0_p",
+                    "vartau_0_p",
+                    "tau_0_m",
+                    "vartau_0_m",
+                    "tau_2_p",
+                    "vartau_2_p",
+                    "tau_2_m",
+                    "vartau_2_m",
+                    "tau_6_p",
+                    "vartau_6_p",
+                    "tau_6_m",
+                    "vartau_6_m",
+                    "tau_7_p",
+                    "vartau_7_p",
+                    "tau_7_m",
+                    "vartau_7_m",
+                ),
             )
-        
-        elif self.use_eta and self.use_fourth_moment:
 
+        elif self.use_eta and self.use_fourth_moment:
             self.tau_stats = Table(
                 [
                     tau_0.meanr,
@@ -1642,32 +1704,31 @@ class TauStat:
                     tau_7.varxim,
                 ],
                 names=(
-                    'theta',
-                    'tau_0_p',
-                    'vartau_0_p',
-                    'tau_0_m',
-                    'vartau_0_m',
-                    'tau_2_p',
-                    'vartau_2_p',
-                    'tau_2_m',
-                    'vartau_2_m',
-                    'tau_5_p',
-                    'vartau_5_p',
-                    'tau_5_m',
-                    'vartau_5_m',
-                    'tau_6_p',
-                    'vartau_6_p',
-                    'tau_6_m',
-                    'vartau_6_m',
-                    'tau_7_p',
-                    'vartau_7_p',
-                    'tau_7_m',
-                    'vartau_7_m',
-                )
+                    "theta",
+                    "tau_0_p",
+                    "vartau_0_p",
+                    "tau_0_m",
+                    "vartau_0_m",
+                    "tau_2_p",
+                    "vartau_2_p",
+                    "tau_2_m",
+                    "vartau_2_m",
+                    "tau_5_p",
+                    "vartau_5_p",
+                    "tau_5_m",
+                    "vartau_5_m",
+                    "tau_6_p",
+                    "vartau_6_p",
+                    "tau_6_m",
+                    "vartau_6_m",
+                    "tau_7_p",
+                    "vartau_7_p",
+                    "tau_7_m",
+                    "vartau_7_m",
+                ),
             )
 
         else:
-
             self.tau_stats = Table(
                 [
                     tau_0.meanr,
@@ -1706,9 +1767,19 @@ class TauStat:
                 taus += [tau_6, tau_7]
             cov = treecorr.estimate_multi_cov(taus, var_method, func=func)
 
-            use_eta_str = '' if self.use_eta else 'no_eta'
-            use_fourth_moment_str = '' if not self.use_fourth_moment else 'w_fourth_moment'
-            np.save(self.catalogs._output+'/'+'cov_tau_'+catalog_id+use_eta_str+use_fourth_moment_str, cov)
+            use_eta_str = "" if self.use_eta else "no_eta"
+            use_fourth_moment_str = (
+                "" if not self.use_fourth_moment else "w_fourth_moment"
+            )
+            np.save(
+                self.catalogs._output
+                + "/"
+                + "cov_tau_"
+                + catalog_id
+                + use_eta_str
+                + use_fourth_moment_str,
+                cov,
+            )
 
         self.save_tau_stats(
             filename
@@ -1731,7 +1802,7 @@ class TauStat:
             write_patch_results=write_patch_results,
             write_cov=write_cov,
         )
-    
+
     def plot_tau_stats(
         self,
         filenames,
@@ -1796,9 +1867,9 @@ class TauStat:
         ]
 
         dict_index_tau = {
-            0: '0',
-            1: '2',
-            2: '5',
+            0: "0",
+            1: "2",
+            2: "5",
         }
         # To adapt to the new boolean fields
         nrows = 1 + plot_tau_m
@@ -1829,22 +1900,12 @@ class TauStat:
                         else self.tau_stats["theta"]
                     )
                     y = (
-                        self.tau_stats[
-                            "tau_"
-                            + dict_index_tau[i]
-                            + "_"
-                            + p_or_m
-                        ]
+                        self.tau_stats["tau_" + dict_index_tau[i] + "_" + p_or_m]
                         * factor_theta
                     )
                     yerr_in = (
                         np.sqrt(
-                            self.tau_stats[
-                                "vartau_"
-                                + dict_index_tau[i]
-                                + "_"
-                                + p_or_m
-                            ]
+                            self.tau_stats["vartau_" + dict_index_tau[i] + "_" + p_or_m]
                         )
                         * factor_theta
                     )
@@ -1866,7 +1927,7 @@ class TauStat:
                 # Recover the text offset
                 fig.canvas.draw()
                 text_offset = ax[j, i].yaxis.get_offset_text().get_text()
-                ylabel+=text_offset
+                ylabel += text_offset
                 ax[j, i].yaxis.get_offset_text().set_visible(False)
 
                 ax[j, i].set_ylabel(ylabel)
@@ -1876,27 +1937,26 @@ class TauStat:
                 ax[j, i].set_title(titles[i])
 
         if legend == "outside":
-            handles, labels= ax[-1, -1].get_legend_handles_labels()
+            handles, labels = ax[-1, -1].get_legend_handles_labels()
             fig.legend(
-                handles, labels,
+                handles,
+                labels,
                 loc="upper center",
-                bbox_to_anchor=(0.5, 0.),
+                bbox_to_anchor=(0.5, 0.0),
                 ncol=3,
                 frameon=False,
             )
 
         plt.tight_layout()
         if savefig is not None:
-            plt.savefig(
-                self.catalogs._output + "/" + savefig, bbox_inches="tight"
-            )
+            plt.savefig(self.catalogs._output + "/" + savefig, bbox_inches="tight")
 
         if show:
             plt.show()
 
         if close:
             plt.close()
-            
+
         return fig, ax
 
 
@@ -1911,9 +1971,13 @@ class PSFErrorFit:
     """
 
     def __init__(
-        self, rho_stat_handler, tau_stat_handler, data_directory, use_eta=True, use_fourth_moment=False
+        self,
+        rho_stat_handler,
+        tau_stat_handler,
+        data_directory,
+        use_eta=True,
+        use_fourth_moment=False,
     ):
-
         self.rho_stat_handler = rho_stat_handler
         self.tau_stat_handler = tau_stat_handler
         print(
@@ -1928,8 +1992,8 @@ class PSFErrorFit:
 
         def log_likelihood(theta, y, inv_cov):
             y_model = self.model(theta, self.use_eta, self.use_fourth_moment)
-            d = y_model -y
-            return -0.5 * d.T@inv_cov@d
+            d = y_model - y
+            return -0.5 * d.T @ inv_cov @ d
 
         self.log_likelihood = log_likelihood
         self.data_directory = data_directory
@@ -1995,35 +2059,46 @@ class PSFErrorFit:
         filename : str
             Name of the file containing the covariance matrix.
         """
-        if cov_type=='rho':
-            self.cov_rho = np.load(self.data_directory+'/'+filename)
-            #Reshape the covariance if needed
-            nbins = self.rho_stat_handler.rho_stats['theta'].shape[0]
-            #Check shape
+        if cov_type == "rho":
+            self.cov_rho = np.load(self.data_directory + "/" + filename)
+            # Reshape the covariance if needed
+            nbins = self.rho_stat_handler.rho_stats["theta"].shape[0]
+            # Check shape
             if self.use_eta and self.use_fourth_moment:
-                target_shape = 15*nbins
+                target_shape = 15 * nbins
             elif self.use_eta and (not self.use_fourth_moment):
-                target_shape = 6*nbins
+                target_shape = 6 * nbins
             elif (not self.use_eta) and self.use_fourth_moment:
-                target_shape = 10*nbins
+                target_shape = 10 * nbins
             else:
-                target_shape = 3*nbins
-            assert self.cov_rho.shape[0] == target_shape, "The shape of the covariance matrix is not correct."
+                target_shape = 3 * nbins
+            assert self.cov_rho.shape[0] == target_shape, (
+                "The shape of the covariance matrix is not correct."
+            )
         else:
             self.cov_tau = np.load(self.data_directory + "/" + filename)
             nbins = self.tau_stat_handler.tau_stats["theta"].shape[0]
             if not self.use_eta:
-                self.cov_tau = self.cov_tau[:2*nbins, :2*nbins]
-            #Check shape
-            target_shape = 3*nbins if self.use_eta else 2*nbins
-            assert self.cov_tau.shape[0] == target_shape, "The shape of the covariance matrix is not correct."
+                self.cov_tau = self.cov_tau[: 2 * nbins, : 2 * nbins]
+            # Check shape
+            target_shape = 3 * nbins if self.use_eta else 2 * nbins
+            assert self.cov_tau.shape[0] == target_shape, (
+                "The shape of the covariance matrix is not correct."
+            )
 
-    def init_log_prior(self,
-                       low_alpha=-2.0, high_alpha=2.0,
-                       low_beta=-10.0, high_beta=10.0,
-                       low_eta=-20.0, high_eta=20.0,
-                       low_alpha_4=-20.0, high_alpha_4=20.0,
-                       low_beta_4=-20.0, high_beta_4=20.0):
+    def init_log_prior(
+        self,
+        low_alpha=-2.0,
+        high_alpha=2.0,
+        low_beta=-10.0,
+        high_beta=10.0,
+        low_eta=-20.0,
+        high_eta=20.0,
+        low_alpha_4=-20.0,
+        high_alpha_4=20.0,
+        low_beta_4=-20.0,
+        high_beta_4=20.0,
+    ):
         """
         init_log_prior
 
@@ -2055,7 +2130,7 @@ class PSFErrorFit:
 
         high_alpha_4 : float
             Upper bound on alpha_4 prior (Default: 20.0).
-        
+
         low_beta_4 : float
             Lower bound on beta_4 prior (Default: -20.0).
 
@@ -2071,7 +2146,13 @@ class PSFErrorFit:
 
         def log_prior(theta):
             alpha, beta, eta, alpha_4, beta_4 = theta
-            if low_alpha <= alpha <= high_alpha and low_beta <= beta <= high_beta and low_eta <=eta <= high_eta and low_alpha_4 <= alpha_4 <= high_alpha_4 and low_beta_4 <= beta_4 <= high_beta_4:
+            if (
+                low_alpha <= alpha <= high_alpha
+                and low_beta <= beta <= high_beta
+                and low_eta <= eta <= high_eta
+                and low_alpha_4 <= alpha_4 <= high_alpha_4
+                and low_beta_4 <= beta_4 <= high_beta_4
+            ):
                 return 0.0
             return -np.inf
 
@@ -2101,20 +2182,76 @@ class PSFErrorFit:
             tau_0_p = alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"]
             tau_2_p = alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"]
         elif (use_eta) and (not use_fourth_moment):
-            tau_0_p = alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"] + eta * rhos["rho_5_p"]
-            tau_2_p = alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"] + eta * rhos["rho_4_p"]
-            tau_5_p = alpha * rhos["rho_5_p"] + beta * rhos["rho_4_p"] + eta * rhos["rho_3_p"]
+            tau_0_p = (
+                alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"] + eta * rhos["rho_5_p"]
+            )
+            tau_2_p = (
+                alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"] + eta * rhos["rho_4_p"]
+            )
+            tau_5_p = (
+                alpha * rhos["rho_5_p"] + beta * rhos["rho_4_p"] + eta * rhos["rho_3_p"]
+            )
         elif (not use_eta) and (use_fourth_moment):
-            tau_0_p = alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"] + alpha_4 * rhos["rho_7_p"] + beta_4 * rhos["rho_12_p"]
-            tau_2_p = alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"] + alpha_4 * rhos["rho_8_p"] + beta_4 * rhos["rho_11_p"]
-            tau_6_p = alpha * rhos["rho_7_p"] + beta * rhos["rho_8_p"] + alpha_4 * rhos["rho_6_p"] + beta_4 * rhos["rho_10_p"]
-            tau_7_p = alpha * rhos["rho_12_p"] + beta * rhos["rho_11_p"] + alpha_4 * rhos["rho_10_p"] + beta_4 * rhos["rho_9_p"]
+            tau_0_p = (
+                alpha * rhos["rho_0_p"]
+                + beta * rhos["rho_2_p"]
+                + alpha_4 * rhos["rho_7_p"]
+                + beta_4 * rhos["rho_12_p"]
+            )
+            tau_2_p = (
+                alpha * rhos["rho_2_p"]
+                + beta * rhos["rho_1_p"]
+                + alpha_4 * rhos["rho_8_p"]
+                + beta_4 * rhos["rho_11_p"]
+            )
+            tau_6_p = (
+                alpha * rhos["rho_7_p"]
+                + beta * rhos["rho_8_p"]
+                + alpha_4 * rhos["rho_6_p"]
+                + beta_4 * rhos["rho_10_p"]
+            )
+            tau_7_p = (
+                alpha * rhos["rho_12_p"]
+                + beta * rhos["rho_11_p"]
+                + alpha_4 * rhos["rho_10_p"]
+                + beta_4 * rhos["rho_9_p"]
+            )
         elif (use_eta) and (use_fourth_moment):
-            tau_0_p = alpha * rhos["rho_0_p"] + beta * rhos["rho_2_p"] + eta * rhos["rho_5_p"] + alpha_4 * rhos["rho_7_p"] + beta_4 * rhos["rho_12_p"]
-            tau_2_p = alpha * rhos["rho_2_p"] + beta * rhos["rho_1_p"] + eta * rhos["rho_4_p"] + alpha_4 * rhos["rho_8_p"] + beta_4 * rhos["rho_11_p"]
-            tau_5_p = alpha * rhos["rho_5_p"] + beta * rhos["rho_4_p"] + eta * rhos["rho_3_p"] + alpha_4 * rhos["rho_13_p"] + beta_4 * rhos["rho_14_p"]
-            tau_6_p = alpha * rhos["rho_7_p"] + beta * rhos["rho_8_p"] + eta * rhos["rho_13_p"] + alpha_4 * rhos["rho_6_p"] + beta_4 * rhos["rho_10_p"]
-            tau_7_p = alpha * rhos["rho_12_p"] + beta * rhos["rho_11_p"] + eta * rhos["rho_14_p"] + alpha_4 * rhos["rho_10_p"] + beta_4 * rhos["rho_9_p"]
+            tau_0_p = (
+                alpha * rhos["rho_0_p"]
+                + beta * rhos["rho_2_p"]
+                + eta * rhos["rho_5_p"]
+                + alpha_4 * rhos["rho_7_p"]
+                + beta_4 * rhos["rho_12_p"]
+            )
+            tau_2_p = (
+                alpha * rhos["rho_2_p"]
+                + beta * rhos["rho_1_p"]
+                + eta * rhos["rho_4_p"]
+                + alpha_4 * rhos["rho_8_p"]
+                + beta_4 * rhos["rho_11_p"]
+            )
+            tau_5_p = (
+                alpha * rhos["rho_5_p"]
+                + beta * rhos["rho_4_p"]
+                + eta * rhos["rho_3_p"]
+                + alpha_4 * rhos["rho_13_p"]
+                + beta_4 * rhos["rho_14_p"]
+            )
+            tau_6_p = (
+                alpha * rhos["rho_7_p"]
+                + beta * rhos["rho_8_p"]
+                + eta * rhos["rho_13_p"]
+                + alpha_4 * rhos["rho_6_p"]
+                + beta_4 * rhos["rho_10_p"]
+            )
+            tau_7_p = (
+                alpha * rhos["rho_12_p"]
+                + beta * rhos["rho_11_p"]
+                + eta * rhos["rho_14_p"]
+                + alpha_4 * rhos["rho_10_p"]
+                + beta_4 * rhos["rho_9_p"]
+            )
 
         model_output = [tau_0_p, tau_2_p]
 
@@ -2122,7 +2259,7 @@ class PSFErrorFit:
             model_output += [tau_5_p]
         if use_fourth_moment:
             model_output += [tau_6_p, tau_7_p]
-        
+
         model_output = np.array(model_output)
 
         return model_output.flatten()
@@ -2218,25 +2355,45 @@ class PSFErrorFit:
         elif (self.use_eta) and (self.use_fourth_moment):
             ndim = 5
             dim_to_use = [0, 1, 2, 3, 4]
-        assert (
-            self.rho_stat_handler.rho_stats is not None
-        ), "Please load rho statistics data."  # Check if data was loaded
-        assert (
-            self.tau_stat_handler.tau_stats is not None
-        ), "Please load tau statistics data."
+        assert self.rho_stat_handler.rho_stats is not None, (
+            "Please load rho statistics data."
+        )  # Check if data was loaded
+        assert self.tau_stat_handler.tau_stats is not None, (
+            "Please load tau statistics data."
+        )
         # assert (np.all(self.rho_stat_handler.rho_stats["theta"] == self.tau_stat_handler.tau_stats["theta"])), ("The rho and tau statistics have not the same angular scales. Check that they come from the same catalog with the same treecorr config.")
         # Check that the abssiss are the same
 
         assert self.cov_tau is not None, "Please load a covariance matrix"
 
         if (not self.use_eta) and (not self.use_fourth_moment):
-            assert (self.cov_tau.shape[0] == 2*self.rho_stat_handler.rho_stats["theta"].shape[0]), (f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}")
+            assert (
+                self.cov_tau.shape[0]
+                == 2 * self.rho_stat_handler.rho_stats["theta"].shape[0]
+            ), (
+                f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}"
+            )
         elif (not self.use_eta) and (self.use_fourth_moment):
-            assert (self.cov_tau.shape[0] == 4*self.rho_stat_handler.rho_stats["theta"].shape[0]), (f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}")
+            assert (
+                self.cov_tau.shape[0]
+                == 4 * self.rho_stat_handler.rho_stats["theta"].shape[0]
+            ), (
+                f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}"
+            )
         elif (self.use_eta) and (not self.use_fourth_moment):
-            assert (self.cov_tau.shape[0] == 3*self.rho_stat_handler.rho_stats["theta"].shape[0]), (f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}")
+            assert (
+                self.cov_tau.shape[0]
+                == 3 * self.rho_stat_handler.rho_stats["theta"].shape[0]
+            ), (
+                f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}"
+            )
         elif (self.use_eta) and (self.use_fourth_moment):
-            assert (self.cov_tau.shape[0] == 5*self.rho_stat_handler.rho_stats["theta"].shape[0]), (f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}")
+            assert (
+                self.cov_tau.shape[0]
+                == 5 * self.rho_stat_handler.rho_stats["theta"].shape[0]
+            ), (
+                f"The covariance matrix does not have the right shape. Shape: {self.cov_tau.shape}"
+            )
 
         inv_cov = np.linalg.inv(self.cov_tau)
 
@@ -2247,8 +2404,11 @@ class PSFErrorFit:
         if self.use_eta:
             output += [self.tau_stat_handler.tau_stats["tau_5_p"]]
         if self.use_fourth_moment:
-            output += [self.tau_stat_handler.tau_stats["tau_6_p"], self.tau_stat_handler.tau_stats["tau_7_p"]]
-        
+            output += [
+                self.tau_stat_handler.tau_stats["tau_6_p"],
+                self.tau_stat_handler.tau_stats["tau_7_p"],
+            ]
+
         output = np.array(output).flatten()
 
         if apply_debias:
@@ -2306,13 +2466,13 @@ class PSFErrorFit:
                 )
 
             print(
-                f"Max log_likelihood: {self.log_likelihood(mcmc_result[1,:], output, inv_cov)}"
+                f"Max log_likelihood: {self.log_likelihood(mcmc_result[1, :], output, inv_cov)}"
             )
 
         flat_samples = flat_samples[:, dim_to_use]
         mcmc_result = mcmc_result[:, dim_to_use]
         q = q[:, dim_to_use]
-        
+
         return flat_samples, mcmc_result, q
 
     def get_sample_path(self, catalog_id):
@@ -2330,9 +2490,7 @@ class PSFErrorFit:
         str
             file path
         """
-        file_path = (
-            f"{self.rho_stat_handler.catalogs._output}/samples_{catalog_id}.npy"
-        )
+        file_path = f"{self.rho_stat_handler.catalogs._output}/samples_{catalog_id}.npy"
         return file_path
 
     def get_params_path(self, catalog_id):
@@ -2350,9 +2508,7 @@ class PSFErrorFit:
         str
             file path
         """
-        file_path = (
-            f"{self.rho_stat_handler.catalogs._output}/params_{catalog_id}.npy"
-        )
+        file_path = f"{self.rho_stat_handler.catalogs._output}/params_{catalog_id}.npy"
         return file_path
 
     def save_samples(self, flat_samples, catalog_id):
@@ -2426,15 +2582,15 @@ class PSFErrorFit:
         np.array
             Matrix of rho statistics.
         """
-        n_thetas = len(self.rho_stat_handler.rho_stats["theta"]) #number of bins
+        n_thetas = len(self.rho_stat_handler.rho_stats["theta"])  # number of bins
         if (self.use_eta) and (not self.use_fourth_moment):
-            rho_matrix = np.zeros((3*n_thetas, 3))
+            rho_matrix = np.zeros((3 * n_thetas, 3))
         elif (self.use_eta) and (self.use_fourth_moment):
-            rho_matrix = np.zeros((5*n_thetas, 5))
+            rho_matrix = np.zeros((5 * n_thetas, 5))
         elif (not self.use_eta) and (self.use_fourth_moment):
-            rho_matrix = np.zeros((4*n_thetas, 4))
+            rho_matrix = np.zeros((4 * n_thetas, 4))
         elif (not self.use_eta) and (not self.use_fourth_moment):
-            rho_matrix = np.zeros((2*n_thetas, 2))
+            rho_matrix = np.zeros((2 * n_thetas, 2))
         if rho is None:
             rho_stats = self.rho_stat_handler.rho_stats
             for i in range(n_thetas):
@@ -2456,43 +2612,169 @@ class PSFErrorFit:
                     ]
                 else:
                     rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i]]
-                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i]]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_1_p"][i],
+                    ]
                 if (self.use_eta) and (not self.use_fourth_moment):
-                    rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_5_p"][i]]
-                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_4_p'][i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats['rho_5_p'][i], rho_stats['rho_4_p'][i], rho_stats['rho_3_p'][i]]
+                    rho_matrix[i] = [
+                        rho_stats["rho_0_p"][i],
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_5_p"][i],
+                    ]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_1_p"][i],
+                        rho_stats["rho_4_p"][i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats["rho_5_p"][i],
+                        rho_stats["rho_4_p"][i],
+                        rho_stats["rho_3_p"][i],
+                    ]
                 elif (self.use_eta) and (self.use_fourth_moment):
-                    rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_5_p"][i], rho_stats["rho_7_p"][i], rho_stats["rho_12_p"][i]]
-                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_4_p'][i], rho_stats['rho_8_p'][i], rho_stats['rho_11_p'][i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats['rho_5_p'][i], rho_stats['rho_4_p'][i], rho_stats['rho_3_p'][i], rho_stats['rho_13_p'][i], rho_stats['rho_14_p'][i]]
-                    rho_matrix[i+3*n_thetas] = [rho_stats['rho_7_p'][i], rho_stats['rho_8_p'][i], rho_stats['rho_13_p'][i], rho_stats['rho_6_p'][i], rho_stats['rho_10_p'][i]]
-                    rho_matrix[i+4*n_thetas] = [rho_stats['rho_12_p'][i], rho_stats['rho_11_p'][i], rho_stats['rho_14_p'][i], rho_stats['rho_10_p'][i], rho_stats['rho_9_p'][i]]
+                    rho_matrix[i] = [
+                        rho_stats["rho_0_p"][i],
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_5_p"][i],
+                        rho_stats["rho_7_p"][i],
+                        rho_stats["rho_12_p"][i],
+                    ]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_1_p"][i],
+                        rho_stats["rho_4_p"][i],
+                        rho_stats["rho_8_p"][i],
+                        rho_stats["rho_11_p"][i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats["rho_5_p"][i],
+                        rho_stats["rho_4_p"][i],
+                        rho_stats["rho_3_p"][i],
+                        rho_stats["rho_13_p"][i],
+                        rho_stats["rho_14_p"][i],
+                    ]
+                    rho_matrix[i + 3 * n_thetas] = [
+                        rho_stats["rho_7_p"][i],
+                        rho_stats["rho_8_p"][i],
+                        rho_stats["rho_13_p"][i],
+                        rho_stats["rho_6_p"][i],
+                        rho_stats["rho_10_p"][i],
+                    ]
+                    rho_matrix[i + 4 * n_thetas] = [
+                        rho_stats["rho_12_p"][i],
+                        rho_stats["rho_11_p"][i],
+                        rho_stats["rho_14_p"][i],
+                        rho_stats["rho_10_p"][i],
+                        rho_stats["rho_9_p"][i],
+                    ]
                 elif (not self.use_eta) and (self.use_fourth_moment):
-                    rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i], rho_stats["rho_7_p"][i], rho_stats["rho_12_p"][i]]
-                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i], rho_stats['rho_8_p'][i], rho_stats['rho_11_p'][i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats['rho_7_p'][i], rho_stats['rho_8_p'][i], rho_stats['rho_6_p'][i], rho_stats['rho_10_p'][i]]
-                    rho_matrix[i+3*n_thetas] = [rho_stats['rho_12_p'][i], rho_stats['rho_11_p'][i], rho_stats['rho_10_p'][i], rho_stats['rho_9_p'][i]]
+                    rho_matrix[i] = [
+                        rho_stats["rho_0_p"][i],
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_7_p"][i],
+                        rho_stats["rho_12_p"][i],
+                    ]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_1_p"][i],
+                        rho_stats["rho_8_p"][i],
+                        rho_stats["rho_11_p"][i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats["rho_7_p"][i],
+                        rho_stats["rho_8_p"][i],
+                        rho_stats["rho_6_p"][i],
+                        rho_stats["rho_10_p"][i],
+                    ]
+                    rho_matrix[i + 3 * n_thetas] = [
+                        rho_stats["rho_12_p"][i],
+                        rho_stats["rho_11_p"][i],
+                        rho_stats["rho_10_p"][i],
+                        rho_stats["rho_9_p"][i],
+                    ]
                 elif (not self.use_eta) and (not self.use_fourth_moment):
                     rho_matrix[i] = [rho_stats["rho_0_p"][i], rho_stats["rho_2_p"][i]]
-                    rho_matrix[i+n_thetas] = [rho_stats['rho_2_p'][i], rho_stats['rho_1_p'][i]]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats["rho_2_p"][i],
+                        rho_stats["rho_1_p"][i],
+                    ]
         else:
             rho_stats = rho
             for i in range(n_thetas):
                 if (self.use_eta) and (not self.use_fourth_moment):
                     rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[5, i]]
-                    rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[4, i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats[5, i], rho_stats[4, i], rho_stats[3, i]]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats[2, i],
+                        rho_stats[1, i],
+                        rho_stats[4, i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats[5, i],
+                        rho_stats[4, i],
+                        rho_stats[3, i],
+                    ]
                 elif (self.use_eta) and (self.use_fourth_moment):
-                    rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[5, i], rho_stats[7, i], rho_stats[12, i]]
-                    rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[4, i], rho_stats[8, i], rho_stats[11, i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats[5, i], rho_stats[4, i], rho_stats[3, i], rho_stats[13, i], rho_stats[14, i]]
-                    rho_matrix[i+3*n_thetas] = [rho_stats[7, i], rho_stats[8, i], rho_stats[13, i], rho_stats[6, i], rho_stats[10, i]]
-                    rho_matrix[i+4*n_thetas] = [rho_stats[12, i], rho_stats[11, i], rho_stats[14, i], rho_stats[10, i], rho_stats[9, i]]
+                    rho_matrix[i] = [
+                        rho_stats[0, i],
+                        rho_stats[2, i],
+                        rho_stats[5, i],
+                        rho_stats[7, i],
+                        rho_stats[12, i],
+                    ]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats[2, i],
+                        rho_stats[1, i],
+                        rho_stats[4, i],
+                        rho_stats[8, i],
+                        rho_stats[11, i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats[5, i],
+                        rho_stats[4, i],
+                        rho_stats[3, i],
+                        rho_stats[13, i],
+                        rho_stats[14, i],
+                    ]
+                    rho_matrix[i + 3 * n_thetas] = [
+                        rho_stats[7, i],
+                        rho_stats[8, i],
+                        rho_stats[13, i],
+                        rho_stats[6, i],
+                        rho_stats[10, i],
+                    ]
+                    rho_matrix[i + 4 * n_thetas] = [
+                        rho_stats[12, i],
+                        rho_stats[11, i],
+                        rho_stats[14, i],
+                        rho_stats[10, i],
+                        rho_stats[9, i],
+                    ]
                 elif (not self.use_eta) and (self.use_fourth_moment):
-                    rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i], rho_stats[4, i], rho_stats[9, i]]
-                    rho_matrix[i+n_thetas] = [rho_stats[2, i], rho_stats[1, i], rho_stats[5, i], rho_stats[8, i]]
-                    rho_matrix[i+2*n_thetas] = [rho_stats[4, i], rho_stats[5, i], rho_stats[3, i], rho_stats[7, i]]
-                    rho_matrix[i+3*n_thetas] = [rho_stats[9, i], rho_stats[8, i], rho_stats[7, i], rho_stats[6, i]]
+                    rho_matrix[i] = [
+                        rho_stats[0, i],
+                        rho_stats[2, i],
+                        rho_stats[4, i],
+                        rho_stats[9, i],
+                    ]
+                    rho_matrix[i + n_thetas] = [
+                        rho_stats[2, i],
+                        rho_stats[1, i],
+                        rho_stats[5, i],
+                        rho_stats[8, i],
+                    ]
+                    rho_matrix[i + 2 * n_thetas] = [
+                        rho_stats[4, i],
+                        rho_stats[5, i],
+                        rho_stats[3, i],
+                        rho_stats[7, i],
+                    ]
+                    rho_matrix[i + 3 * n_thetas] = [
+                        rho_stats[9, i],
+                        rho_stats[8, i],
+                        rho_stats[7, i],
+                        rho_stats[6, i],
+                    ]
                 elif (not self.use_eta) and (not self.use_fourth_moment):
                     rho_matrix[i] = [rho_stats[0, i], rho_stats[2, i]]
                     rho_matrix[i + n_thetas] = [
@@ -2545,9 +2827,9 @@ class PSFErrorFit:
         """
         rho_matrix = self.build_rho_matrix()
         tau_vec = self.build_tau_vec()
-        assert (
-            self.cov_tau is not None
-        ), "Please load a covariance matrix for the tau statistics."
+        assert self.cov_tau is not None, (
+            "Please load a covariance matrix for the tau statistics."
+        )
         inv_cov = np.linalg.inv(self.cov_tau)
         if apply_debias:
             inv_cov = (npatch - tau_vec.shape[0] - 2) / (npatch - 1) * inv_cov
@@ -2584,18 +2866,30 @@ class PSFErrorFit:
         np.array
             Error bars at the 68% confidence level.
         """
-        assert (
-            self.cov_tau is not None
-        ), "Please load a covariance matrix for the tau statistics."
-        assert (
-            self.cov_rho is not None
-        ), "Please load a covariance matrix for the rho statistics."
+        assert self.cov_tau is not None, (
+            "Please load a covariance matrix for the tau statistics."
+        )
+        assert self.cov_rho is not None, (
+            "Please load a covariance matrix for the rho statistics."
+        )
         rho_stats = self.rho_stat_handler.rho_stats
         rho_mean = [rho_stats["rho_0_p"], rho_stats["rho_1_p"], rho_stats["rho_2_p"]]
         if self.use_eta:
-            rho_mean += [rho_stats["rho_3_p"], rho_stats["rho_4_p"], rho_stats["rho_5_p"]]
+            rho_mean += [
+                rho_stats["rho_3_p"],
+                rho_stats["rho_4_p"],
+                rho_stats["rho_5_p"],
+            ]
         if self.use_fourth_moment:
-            rho_mean += [rho_stats["rho_6_p"], rho_stats["rho_7_p"], rho_stats["rho_8_p"], rho_stats["rho_9_p"], rho_stats["rho_10_p"], rho_stats["rho_11_p"], rho_stats["rho_12_p"]]
+            rho_mean += [
+                rho_stats["rho_6_p"],
+                rho_stats["rho_7_p"],
+                rho_stats["rho_8_p"],
+                rho_stats["rho_9_p"],
+                rho_stats["rho_10_p"],
+                rho_stats["rho_11_p"],
+                rho_stats["rho_12_p"],
+            ]
         if self.use_eta and self.use_fourth_moment:
             rho_mean += [rho_stats["rho_13_p"], rho_stats["rho_14_p"]]
         rho_mean = np.array(rho_mean).flatten()
@@ -2622,9 +2916,7 @@ class PSFErrorFit:
             tau_vec = self.build_tau_vec(tau)
             inv_cov = np.linalg.inv(self.cov_tau)
             if apply_debias:
-                inv_cov = (
-                    (npatch - tau_vec.shape[0] - 2) / (npatch - 1) * inv_cov
-                )
+                inv_cov = (npatch - tau_vec.shape[0] - 2) / (npatch - 1) * inv_cov
             if i == 0:
                 samples = (
                     np.linalg.inv(rho_matrix.T @ inv_cov @ rho_matrix)
@@ -2654,11 +2946,15 @@ class PSFErrorFit:
 
             print("Parameters constraints")
             print("----------------------")
-            for i in range(2+self.use_eta+2*self.use_fourth_moment):
-                print('Parameter: '+labels[i]+f'={result[1, i]:.4f}^+{q[0, i]:.4f}_{q[1, i]:.4f}')
+            for i in range(2 + self.use_eta + 2 * self.use_fourth_moment):
+                print(
+                    "Parameter: "
+                    + labels[i]
+                    + f"={result[1, i]:.4f}^+{q[0, i]:.4f}_{q[1, i]:.4f}"
+                )
 
             print(
-                f"Chi square: {self.eval_chi_square(result[1,:], npatch=npatch, apply_debias=apply_debias)}"
+                f"Chi square: {self.eval_chi_square(result[1, :], npatch=npatch, apply_debias=apply_debias)}"
             )
         return samples, result, q
 
@@ -2682,17 +2978,13 @@ class PSFErrorFit:
         """
         rho_matrix = self.build_rho_matrix()
         tau_vec = self.build_tau_vec()
-        assert (
-            self.cov_tau is not None
-        ), "Please load a covariance matrix for the tau statistics."
+        assert self.cov_tau is not None, (
+            "Please load a covariance matrix for the tau statistics."
+        )
         inv_cov = np.linalg.inv(self.cov_tau)
         if apply_debias:
             inv_cov = (npatch - tau_vec.shape[0] - 2) / (npatch - 1) * inv_cov
-        return (
-            (tau_vec - rho_matrix @ theta)
-            @ inv_cov
-            @ (tau_vec - rho_matrix @ theta)
-        )
+        return (tau_vec - rho_matrix @ theta) @ inv_cov @ (tau_vec - rho_matrix @ theta)
 
     def save_params(self, theta, catalog_id):
         """Save Parameters.
@@ -2709,9 +3001,7 @@ class PSFErrorFit:
         """
         np.save(self.get_sample_path(catalog_id), theta)
 
-    def plot_tau_stats_w_model(
-        self, theta, filename, color, catalog_id, savefig=None
-    ):
+    def plot_tau_stats_w_model(self, theta, filename, color, catalog_id, savefig=None):
         """
         plot_tau_stats_w_model
 
@@ -2735,9 +3025,9 @@ class PSFErrorFit:
             [filename], [color], [catalog_id], plot_tau_m=False
         )
 
-        assert (
-            self.rho_stat_handler.rho_stats is not None
-        ), "Please load rho statistics data."  # Check if data was loaded
+        assert self.rho_stat_handler.rho_stats is not None, (
+            "Please load rho statistics data."
+        )  # Check if data was loaded
 
         scales_diff_ratio = np.abs(
             (
@@ -2820,10 +3110,7 @@ class PSFErrorFit:
             plt.savefig("xi_psf_sys.png")
             plt.close()
 
-    def plot_xi_psf_sys_terms(
-        self, cat_id, theta, out_path, yscale="log", show=False
-    ):
-
+    def plot_xi_psf_sys_terms(self, cat_id, theta, out_path, yscale="log", show=False):
         ls = [
             "dotted",
             "dashed",
@@ -2894,7 +3181,7 @@ class PSFErrorFit:
         plt.legend(loc="best", fontsize="small")
         plt.ylim(ylim)
         plt.tight_layout()
-        plt.savefig(out_path, bbox_inches='tight')
+        plt.savefig(out_path, bbox_inches="tight")
         if show:
             plt.show()
         plt.close()
@@ -2922,14 +3209,14 @@ class PSFErrorFit:
             alpha, beta, eta, alpha_4, beta_4 = theta
         elif self.use_eta and (not self.use_fourth_moment):
             alpha, beta, eta = theta
-            alpha_4, beta_4 = 0., 0.
+            alpha_4, beta_4 = 0.0, 0.0
         elif (not self.use_eta) and self.use_fourth_moment:
             alpha, beta, alpha_4, beta_4 = theta
-            eta = 0.
+            eta = 0.0
         else:
             alpha, beta = theta
-            eta = 0.
-            alpha_4, beta_4 = 0., 0.
+            eta = 0.0
+            alpha_4, beta_4 = 0.0, 0.0
         if term == 0:
             prefactor = alpha**2
         elif term == 1:
@@ -2943,13 +3230,13 @@ class PSFErrorFit:
         elif term == 4:
             prefactor = 2 * beta * eta
         elif term == 6:
-            prefactor = alpha_4 **2
+            prefactor = alpha_4**2
         elif term == 7:
             prefactor = 2 * alpha * alpha_4
         elif term == 8:
             prefactor = 2 * alpha_4 * beta
         elif term == 9:
-            prefactor = beta_4 ** 2
+            prefactor = beta_4**2
         elif term == 10:
             prefactor = 2 * alpha_4 * beta_4
         elif term == 11:
@@ -2996,13 +3283,13 @@ class PSFErrorFit:
             terms = range(3)
 
         for term in terms:
-           xi_psf_sys += self.compute_xi_psf_sys_term(theta, term)
+            xi_psf_sys += self.compute_xi_psf_sys_term(theta, term)
 
-            #alpha ** 2 * self.rho_stat_handler.rho_stats["rho_0_p"]
-            #+ beta ** 2 * self.rho_stat_handler.rho_stats["rho_1_p"]
-            #+ eta ** 2 * self.rho_stat_handler.rho_stats["rho_3_p"]
-            #+ 2 * alpha * beta * self.rho_stat_handler.rho_stats["rho_2_p"]
-            #+ 2 * alpha * eta * self.rho_stat_handler.rho_stats["rho_5_p"]
-            #+ 2 * beta * eta * self.rho_stat_handler.rho_stats["rho_4_p"]
+            # alpha ** 2 * self.rho_stat_handler.rho_stats["rho_0_p"]
+            # + beta ** 2 * self.rho_stat_handler.rho_stats["rho_1_p"]
+            # + eta ** 2 * self.rho_stat_handler.rho_stats["rho_3_p"]
+            # + 2 * alpha * beta * self.rho_stat_handler.rho_stats["rho_2_p"]
+            # + 2 * alpha * eta * self.rho_stat_handler.rho_stats["rho_5_p"]
+            # + 2 * beta * eta * self.rho_stat_handler.rho_stats["rho_4_p"]
 
         return xi_psf_sys
